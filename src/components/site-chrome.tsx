@@ -14,7 +14,7 @@ export default   function SiteChrome({
 }>) {
 
   return (
-    <PlausibleProvider domain="thepostchaise.com">
+    <PlausibleProvider domain="frameitwrightphotography.com">
       <html lang="en" className="scroll-smooth">
         <body
           className={`${GeistSans.variable} ${GeistMono.variable} bg-stone min-h-screen font-sans text-sm dark:bg-stone-950 dark:text-stone-400`}
@@ -25,7 +25,7 @@ export default   function SiteChrome({
                 href="/"
                 className="font-mono text-sm uppercase tracking-widest "
               >
-                The Post Chaise
+                scope for imagination
               </Link>
               <Logo />
             </header>

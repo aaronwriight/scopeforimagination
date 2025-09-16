@@ -1,12 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "The Post Chaise",
-  description: "A guide to getting lost",
+  title: "scope for imagination",
+  description: "an ode to slow living",
   metadataBase: new URL(`https://${process.env.VERCEL_URL}`),
   openGraph: {
-    title: "Colophon | The Post Chaise",
-    description: "A guide to getting lost",
+    title: "scope for imagination",
+    description: "an ode to slow living",
     images: ["/opengraph.png"],
     authors: ["https://www.tbrasington.com"],
   },

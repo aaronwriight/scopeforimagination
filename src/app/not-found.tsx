@@ -3,14 +3,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import SiteChrome from "@/components/site-chrome";
 export const metadata: Metadata = {
-  title: "Page not found | The Post Chaise",
+  title: "Page not found | scope for imagination",
   description: "",
   metadataBase: new URL(`https://${process.env.VERCEL_URL}`),
   openGraph: {
-    title: "404 | The Post Chaise",
+    title: "404 | scope for imagination",
     description: "",
-    images: ["/opengraph.png"],
-    authors: ["https://www.tbrasington.com"],
+    images: ["/images/sand_dollar.png"],
+    authors: ["https://aaronwriight.github.io"],
   },
 };
 

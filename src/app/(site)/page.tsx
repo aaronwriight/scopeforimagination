@@ -8,14 +8,14 @@ import { draftMode } from "next/headers";
 import GuidesPreview from "@/components/guides/guides-preview";
 import { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "The Post Chaise",
-  description: "A guide to getting lost",
+  title: "scope for imagination",
+  description: "an ode to slow living",
   metadataBase: new URL(`https://${process.env.VERCEL_URL}`),
   openGraph: {
-    title: "The Post Chaise",
-    description: "A guide to getting lost",
-    images: ["/opengraph.png"],
-    authors: ["https://www.tbrasington.com"],
+    title: "scope for imagination",
+    description: "an ode to slow living",
+    images: ["/images/sand_dollar.png"],
+    authors: ["https://aaronwriight.github.io"],
   },
 };
 export default async function Page() {
