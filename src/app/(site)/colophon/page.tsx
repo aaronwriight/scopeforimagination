@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: "scope for imagination",
     description: "an ode to slow living",
     images: ["/opengraph.png"],
-    authors: ["https://www.tbrasington.com"],
+    authors: ["https://aaronwriight.github.io"],
   },
 };
 
@@ -20,7 +20,7 @@ export default function Colophon() {
         <h2 className="m-0  text-sm  font-medium antialiased">What</h2>
         <p className="m-0 mt-2 text-sm  antialiased">
           A photographic archive by{" "}
-          <Link href="https://tbrasington.com">tbrasington</Link>. Pre
+          <Link href="https://aaronwriight.github.io">aaronwriight</Link>. Pre
           social-networks (around 2004-8) this is what I and most of used to do
           with our photos. This is a bit of a digital garden for me to test out
           other technology and design combinations away from my work web
