@@ -32,9 +32,7 @@ export function SfiPostHeader({
       <div className="mt-2 space-y-2">
         {href ? (
           <p className={`font-serif italic leading-6 text-stone-500 ${large ? "text-base sm:text-lg" : "text-sm"}`}>
-            <Link href={href} className="hover:text-[#6f8200]">
-              {post.subtitle}
-            </Link>
+            {post.subtitle}
           </p>
         ) : (
           <p className={`font-serif italic leading-6 text-stone-500 ${large ? "text-base sm:text-lg" : "text-sm"}`}>{post.subtitle}</p>

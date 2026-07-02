@@ -55,11 +55,13 @@ export default async function ScopeForImaginationEntryPage({ params }: { params:
   const post = await getSfiPost(slug);
   if (!post) notFound();
 
+  const postYear = post.date.slice(0, 4);
+
   return (
     <JournalShell title={post.title} showTitle={false} years={years}>
       <article className="not-prose w-full max-w-none">
-        <Link href="/scope-for-imagination/index" className="text-xs lowercase tracking-widest text-stone-500 hover:text-[#6f8200]">
-          ← index
+        <Link href={`/scope-for-imagination/${postYear}`} className="text-xs lowercase tracking-widest text-stone-500">
+          ← {postYear}
         </Link>
 
         <SfiPostHeader post={post} large className="mt-10 border-b border-stone-300 pb-7 dark:border-stone-700" />

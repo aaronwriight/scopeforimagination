@@ -69,7 +69,7 @@ export function SiteMenu() {
       </span>
       <nav className="flex flex-col items-start gap-1 text-xs lowercase tracking-wider text-stone-500">
         {siteLinks.map(([label, href]) => (
-          <Link key={href} href={href} className="whitespace-nowrap hover:text-stone-900 dark:hover:text-stone-200">
+          <Link key={href} href={href} className="whitespace-nowrap">
             {label}
           </Link>
         ))}
@@ -92,7 +92,7 @@ function SectionMenu({
       </span>
       <nav className="flex flex-col items-start gap-1 text-xs lowercase tracking-wider text-stone-500">
         {links.map(([label, linkHref]) => (
-          <Link key={linkHref} href={linkHref} className="whitespace-nowrap hover:text-stone-900 dark:hover:text-stone-200">
+          <Link key={linkHref} href={linkHref} className="whitespace-nowrap">
             {label}
           </Link>
         ))}

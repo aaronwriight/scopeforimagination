@@ -17,6 +17,24 @@
   --bg-gradient-conic: conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops));
 }
 
+a {
+  text-decoration-line: none;
+}
+
+a:hover {
+  color: #6f8200;
+  text-decoration-line: underline;
+}
+
+.prose :where(a):not(:where(.not-prose, .not-prose *)) {
+  text-decoration-line: none;
+}
+
+.prose :where(a):not(:where(.not-prose, .not-prose *)):hover {
+  color: #6f8200;
+  text-decoration-line: underline;
+}
+
 /* @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 

@@ -34,7 +34,7 @@ export function ScienceShell({
                 href={href}
                 target={href.endsWith(".pdf") ? "_blank" : undefined}
                 rel={href.endsWith(".pdf") ? "noopener noreferrer" : undefined}
-                className="hover:text-stone-900 dark:hover:text-stone-200"
+                className="whitespace-nowrap"
               >
                 {label}
               </Link>
@@ -65,13 +65,13 @@ export function TopicDetails({
   children: React.ReactNode;
 }) {
   return (
-    <details className="group">
-      <summary className="cursor-pointer list-none">
+    <details>
+      <summary className="group cursor-pointer list-none">
         <strong>
           <em>{title}</em>
         </strong>{" "}
         <em className="text-stone-500">|</em>{" "}
-        <span className="text-[#6f8200] group-open:underline">
+        <span className="text-[#6f8200] group-hover:underline">
           <em>{question}</em>
         </span>
       </summary>

@@ -1,15 +1,29 @@
 import type { Metadata } from "next";
+import { Fragment, type ReactNode } from "react";
 import { ExternalLink, ScienceShell } from "@/components/science/science-content";
 
 export const metadata: Metadata = {
   title: "publications",
-  description: "Publications, preprints, posters, and presentations by Aaron Wright",
+  description: "Publications, posters, and presentations by Aaron Wright",
 };
 
-function PubDetails({ children }: { children: React.ReactNode }) {
+type PubLink = {
+  href: string;
+  label: string;
+};
+
+function PubLinks({ links, children }: { links: PubLink[]; children: ReactNode }) {
   return (
-    <details>
-      <summary className="cursor-pointer list-none text-[#6f8200]">ABS</summary>
+    <details className="mt-3">
+      <summary className="inline cursor-pointer list-none text-[#6f8200]">
+        <span className="hover:underline">ABS</span>
+        {links.map((link) => (
+          <Fragment key={link.href}>
+            {" | "}
+            <ExternalLink href={link.href}>{link.label}</ExternalLink>
+          </Fragment>
+        ))}
+      </summary>
       <div className="mt-3 pl-5">{children}</div>
     </details>
   );
@@ -24,48 +38,60 @@ export default function PublicationsPage() {
       </p>
 
       <section>
-        <p className="m-0 font-medium">preprints</p>
+        <p className="m-0 font-medium">papers</p>
         <ul>
           <li>
             <p>
-              Wolna, A., <strong>Wright, A.</strong>, Casto, C., Hutchinson, S., Lipkin, B., & Fedorenko, E. (2025). The extended language
-              network: Language selective brain areas whose contributions to language remain to be discovered. <em>bioRxiv.</em>
+              Wolna, A., <strong>Wright, A.</strong>, Casto, C., Hutchinson, S., Lipkin, B., & Fedorenko, E. (2026). The extended language
+              network: Language-selective brain areas whose contributions to language remain to be discovered. <em>The Journal of Neuroscience.</em>
             </p>
-            <p>
-              <ExternalLink href="https://doi.org/10.1101/2025.04.02.646835">DOI</ExternalLink> |{" "}
-              <ExternalLink href="https://www.biorxiv.org/content/10.1101/2025.04.02.646835v3.full.pdf">PDF</ExternalLink> |{" "}
-              <ExternalLink href="https://osf.io/7594t/">OSF</ExternalLink>
-            </p>
-            <PubDetails>
+            <PubLinks
+              links={[
+                {
+                  label: "DOI",
+                  href: "https://doi.org/10.1523/JNEUROSCI.0638-25.2026",
+                },
+                {
+                  label: "PDF",
+                  href: "https://www.jneurosci.org/content/jneuro/early/2026/06/24/JNEUROSCI.0638-25.2026.full.pdf",
+                },
+                {
+                  label: "OSF",
+                  href: "https://osf.io/7594t/",
+                },
+                {
+                  label: "Press",
+                  href: "https://mcgovern.mit.edu/2026/07/01/the-brains-language-network-is-more-extensive-than-previously-thought/",
+                },
+              ]}
+            >
               <p>
                 Using fMRI data from 772 participants performing an extensively validated language localizer, this work delineates areas that respond
                 reliably to language across written and auditory modalities and evaluates their selectivity relative to a demanding non-linguistic
                 task. The newly identified extended language-selective network includes areas around the temporal poles, medial frontal cortex,
                 hippocampus, and cerebellum.
               </p>
-            </PubDetails>
+            </PubLinks>
           </li>
-        </ul>
-      </section>
-
-      <section>
-        <p className="m-0 font-medium">papers</p>
-        <ul>
           <li>
             <p>
               Iltis, P. W., Frahm, J., Voit, D., <strong>Wright, A.</strong>, & Dever, A. (2024). A descriptive comparison of oral cavity movements
               between brass instrumentalists performing large interval slurs. <em>Medical Problems of Performing Artists, 39</em>(4), 169-176.
             </p>
-            <p>
-              <ExternalLink href="https://pubmed.ncbi.nlm.nih.gov/39641566/">DOI</ExternalLink>
-            </p>
-            <PubDetails>
+            <PubLinks
+              links={[
+                {
+                  label: "DOI",
+                  href: "https://pubmed.ncbi.nlm.nih.gov/39641566/",
+                },
+              ]}
+            >
               <p>
                 Real-time MRI films were used to compare oral cavity movements in horn, trumpet, and trombone players. The study reports patterned
                 tongue movements in horn and trumpet players during ascending and descending slurs, with implications for vocal-tract tuning in brass
                 performance.
               </p>
-            </PubDetails>
+            </PubLinks>
           </li>
         </ul>
       </section>

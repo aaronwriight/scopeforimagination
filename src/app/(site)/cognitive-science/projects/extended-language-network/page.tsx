@@ -15,8 +15,10 @@ export default function ExtendedLanguageNetworkProjectPage() {
         their contributions may be.
       </p>
       <p>
-        <ExternalLink href="https://doi.org/10.1101/2025.04.02.646835">preprint</ExternalLink> |{" "}
-        <ExternalLink href="https://osf.io/7594t/">osf</ExternalLink>
+        <ExternalLink href="https://doi.org/10.1523/JNEUROSCI.0638-25.2026">doi</ExternalLink> |{" "}
+        <ExternalLink href="https://www.jneurosci.org/content/jneuro/early/2026/06/24/JNEUROSCI.0638-25.2026.full.pdf">pdf</ExternalLink> |{" "}
+        <ExternalLink href="https://osf.io/7594t/">osf</ExternalLink> |{" "}
+        <ExternalLink href="https://mcgovern.mit.edu/2026/07/01/the-brains-language-network-is-more-extensive-than-previously-thought/">press</ExternalLink>
       </p>
     </ScienceShell>
   );
