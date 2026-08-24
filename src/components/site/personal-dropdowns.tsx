@@ -48,6 +48,17 @@ export function PersonalDropdowns() {
               <li><Link href="https://open.spotify.com/album/4QszKQEmQxFd6km1COQaoI"><em>Devotion [Deluxe]</em></Link>, Sunday (1994)</li>
               <li><Link href="https://open.spotify.com/album/4nYVLUVhQb9bD7l1QlYoFS"><em>Vice City Magic</em></Link>, Mustard Service</li>
               <li><Link href="https://open.spotify.com/track/2aGNR8A6GnHqoM78T31CCC"><em>High Highs to Low Lows</em></Link>, Lolo Zouaï</li>
+              <li><Link href="https://open.spotify.com/album/27SQuR7jPiGkJJXl8njEqY"><em>Jean</em></Link>, Yebba</li>
+              <li><Link href="https://open.spotify.com/album/4J8jmljF3FvpyhPjyB1fae"><em>Cape God</em></Link>, Allie X</li>
+              <li><Link href="https://open.spotify.com/album/5RUma3H9uzDLXxwT7JzTel"><em>Essex Honey</em></Link>, Blood Orange</li>
+              <li><Link href="https://open.spotify.com/album/25ktFe8igqIwv9aRbkdnTS"><em>Desire, I Want To Turn Into You: Everasking Edition</em></Link>, Caroline Polachek</li>
+              <li><Link href="https://open.spotify.com/album/4f3yGbwInBCKTfop0dLrkC"><em>I Miss You, I Do</em></Link>, Arny Margret</li>
+              <li><Link href="https://open.spotify.com/album/4ByOqAhq3BuBo0sN54XkEQ"><em>Good at Falling</em></Link>, The Japanese House</li>
+              <li><Link href="https://open.spotify.com/album/35tILwApqYtN9fTJq2v7M3"><em>brent iii</em></Link>, Jeremy Zucker &amp; Chelsea Cutler</li>
+              <li><Link href="https://open.spotify.com/album/0vrIRUpI2gB2QqOUQEG05v"><em>Grand Romantic</em></Link>, Nate Ruess</li>
+              <li><Link href="https://open.spotify.com/album/2eN97mVJc9gsJqmHnHpInv"><em>Honey</em></Link>, Samia</li>
+              <li><Link href="https://open.spotify.com/album/37ABUtLPqktcopsBJ7jmXT"><em>Oh Wonder</em></Link>, Oh Wonder</li>
+              <li><Link href="https://open.spotify.com/album/79thwyFL6Uo6rgTp3YWEAf"><em>Women In Music, Pt. III (Expanded Edition)</em></Link>, HAIM</li>
             </ul>
           </div>
 
@@ -107,6 +118,10 @@ export function PersonalDropdowns() {
               <li>My talented friend and storyteller, Eden Harfield, at <Link href="https://www.edengracecreative.com">Eden Grace Creative</Link></li>
               <li><Link href="https://www.instagram.com/newnativephotography/">New Native Photography</Link>: elopement and weddings, captured by my friend, Lindsey Tillman</li>
               <li>Stunning landscape photography by <Link href="https://www.frihead.ch/">Mathilde Rietsch</Link></li>
+              <li>
+                Grammy-nominated recording engineer, producer, and audio engineer (and photographer behind many of my sources of inspiration),{" "}
+                <Link href="https://www.instagram.com/bellaicecream/?hl=en">Bella Blasko</Link>
+              </li>
             </ul>
           </div>
 

@@ -6,6 +6,7 @@ const siteLinks = [
   ["cognitive science", "/cognitive-science"],
   ["photography", "/frame-it-wright-photography"],
   ["journal", "/scope-for-imagination"],
+  ["venture", "/venture"],
   ["literature", "/literature"],
   ["personal", "/personal"],
   ["contact", "/contact"],
@@ -31,6 +32,10 @@ const sectionLinks = {
     ["home", "/"],
   ],
   contact: [
+    ["home", "/"],
+  ],
+  venture: [
+    ["atlas", "/venture"],
     ["home", "/"],
   ],
   wiki: [
@@ -164,6 +169,22 @@ export function JournalShell({
 
   return (
     <SectionPageShell section="journal" links={journalLinks} title={title} showTitle={showTitle}>
+      {children}
+    </SectionPageShell>
+  );
+}
+
+export function VentureShell({
+  title,
+  showTitle = true,
+  children,
+}: {
+  title: string;
+  showTitle?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <SectionPageShell section="venture" links={sectionLinks.venture} title={title} showTitle={showTitle}>
       {children}
     </SectionPageShell>
   );

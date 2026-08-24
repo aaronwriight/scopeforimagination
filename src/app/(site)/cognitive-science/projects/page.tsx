@@ -19,6 +19,16 @@ const projects = [
     ],
   },
   {
+    section: "software",
+    items: [
+      {
+        title: "cortex",
+        href: "/cognitive-science/projects/cortex",
+        description: "The tidyverse for computational neuroscience.",
+      },
+    ],
+  },
+  {
     section: "data visualization",
     items: [
       {

@@ -7,7 +7,7 @@ import SiteChrome from "@/components/site-chrome";
 
 export const metadata: Metadata = {
   title: "aaron wright | cognitive scientist, artist",
-  description: "cognitive scientist, artist",
+  description: "aaron wright - cognitive scientist, artist",
   metadataBase: new URL(`https://${process.env.VERCEL_URL}`),
   icons: {
     icon: [{ url: "/sand_dollar.png", type: "image/png" }],
@@ -16,14 +16,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "aaron wright | cognitive scientist, artist",
-    description: "cognitive scientist, artist",
+    description: "aaron wright - cognitive scientist, artist",
     images: ["/sand_dollar.png"],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "aaron wright | cognitive scientist, artist",
-    description: "cognitive scientist, artist",
+    description: "aaron wright - cognitive scientist, artist",
     images: ["/sand_dollar.png"],
   },
 };

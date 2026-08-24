@@ -7,6 +7,7 @@ const scienceLinks = [
   ["projects", "/cognitive-science/projects"],
   ["readings & resources", "/cognitive-science/readings-resources"],
   ["mentorship", "/cognitive-science/mentorship"],
+  ["collaborators", "/cognitive-science/collaborators"],
   ["cv", "/files/cv/WrightAaron_cv_2026_current.pdf"],
   ["home", "/"],
 ];
@@ -52,6 +53,25 @@ export function ScienceShell({
         </article>
       </div>
     </main>
+  );
+}
+
+export function ProjectShell({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <ScienceShell title={title}>
+      <p className="not-prose m-0">
+        <Link href="/cognitive-science/projects" className="text-xs lowercase tracking-widest text-stone-500">
+          ← projects
+        </Link>
+      </p>
+      {children}
+    </ScienceShell>
   );
 }
 

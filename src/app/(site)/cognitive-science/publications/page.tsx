@@ -1,33 +1,11 @@
 import type { Metadata } from "next";
-import { Fragment, type ReactNode } from "react";
 import { ExternalLink, ScienceShell } from "@/components/science/science-content";
+import { PublicationLinks } from "@/components/science/publication-links";
 
 export const metadata: Metadata = {
   title: "publications",
   description: "Publications, posters, and presentations by Aaron Wright",
 };
-
-type PubLink = {
-  href: string;
-  label: string;
-};
-
-function PubLinks({ links, children }: { links: PubLink[]; children: ReactNode }) {
-  return (
-    <details className="mt-3">
-      <summary className="inline cursor-pointer list-none text-[#6f8200]">
-        <span className="hover:underline">ABS</span>
-        {links.map((link) => (
-          <Fragment key={link.href}>
-            {" | "}
-            <ExternalLink href={link.href}>{link.label}</ExternalLink>
-          </Fragment>
-        ))}
-      </summary>
-      <div className="mt-3 pl-5">{children}</div>
-    </details>
-  );
-}
 
 export default function PublicationsPage() {
   return (
@@ -45,7 +23,7 @@ export default function PublicationsPage() {
               Wolna, A., <strong>Wright, A.</strong>, Casto, C., Hutchinson, S., Lipkin, B., & Fedorenko, E. (2026). The extended language
               network: Language-selective brain areas whose contributions to language remain to be discovered. <em>The Journal of Neuroscience.</em>
             </p>
-            <PubLinks
+            <PublicationLinks
               links={[
                 {
                   label: "DOI",
@@ -71,14 +49,14 @@ export default function PublicationsPage() {
                 task. The newly identified extended language-selective network includes areas around the temporal poles, medial frontal cortex,
                 hippocampus, and cerebellum.
               </p>
-            </PubLinks>
+            </PublicationLinks>
           </li>
           <li>
             <p>
               Iltis, P. W., Frahm, J., Voit, D., <strong>Wright, A.</strong>, & Dever, A. (2024). A descriptive comparison of oral cavity movements
               between brass instrumentalists performing large interval slurs. <em>Medical Problems of Performing Artists, 39</em>(4), 169-176.
             </p>
-            <PubLinks
+            <PublicationLinks
               links={[
                 {
                   label: "DOI",
@@ -91,7 +69,7 @@ export default function PublicationsPage() {
                 tongue movements in horn and trumpet players during ascending and descending slurs, with implications for vocal-tract tuning in brass
                 performance.
               </p>
-            </PubLinks>
+            </PublicationLinks>
           </li>
         </ul>
       </section>

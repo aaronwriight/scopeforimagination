@@ -182,6 +182,7 @@ const tagColors: Record<string, string> = {
   travel: "#268bd2",
   faith: "#6c71c4",
   adventure: "#cb4b16",
+  venture: "#cb4b16",
   "life update": "#b58900",
 };
 

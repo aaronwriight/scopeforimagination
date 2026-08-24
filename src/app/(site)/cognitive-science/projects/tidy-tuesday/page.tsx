@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ExternalLink, ScienceShell } from "@/components/science/science-content";
+import { ProjectShell } from "@/components/science/science-content";
 
 export const metadata: Metadata = {
   title: "tidy tuesday",
@@ -8,11 +8,10 @@ export const metadata: Metadata = {
 
 export default function TidyTuesdayProjectPage() {
   return (
-    <ScienceShell title="tidy tuesday">
+    <ProjectShell title="tidy tuesday">
       <p>
         coming soon
-        {/* <ExternalLink href="https://aaronwriight.github.io/tidy_tuesday/">open tidy tuesday</ExternalLink> */}
       </p>
-    </ScienceShell>
+    </ProjectShell>
   );
 }
