@@ -1,0 +1,48 @@
+{
+  "$schema": "./travels.schema.json",
+  "destinations": [
+    {
+      "slug": "cambodia",
+      "name": "Cambodia",
+      "region": "Southeast Asia",
+      "latitude": 12.5657,
+      "longitude": 104.991,
+      "visits": [
+        {
+          "ordinal": 1,
+          "date": null
+        }
+      ]
+    },
+    {
+      "slug": "iceland",
+      "name": "Iceland",
+      "region": "Northern Europe",
+      "latitude": 64.9631,
+      "longitude": -19.0208,
+      "visits": [
+        {
+          "ordinal": 1,
+          "date": null
+        },
+        {
+          "ordinal": 2,
+          "date": null
+        }
+      ]
+    },
+    {
+      "slug": "turkiye",
+      "name": "Türkiye",
+      "region": "Western Asia and Southeast Europe",
+      "latitude": 38.9637,
+      "longitude": 35.2433,
+      "visits": [
+        {
+          "ordinal": 1,
+          "date": null
+        }
+      ]
+    }
+  ]
+}

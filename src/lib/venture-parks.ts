@@ -1,4 +1,5 @@
 import nationalParksJson from "../../content/venture/parks/national-parks.json";
+import visitedNationalParkBoundariesJson from "../../content/venture/parks/visited-national-park-boundaries.json";
 
 const EXPECTED_NATIONAL_PARK_COUNT = 63;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -6,8 +7,8 @@ const npsCodePattern = /^[A-Z]{4}$/;
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export type NationalParkVisit = Readonly<{
-  date?: string;
-  notes?: string;
+  date: string | null;
+  fieldNote?: string;
   entrySlug?: string;
 }>;
 
@@ -27,6 +28,35 @@ type NationalParksCatalog = Readonly<{
   coordinateSourceUrl: string;
   coordinateSourceNote: string;
   parks: readonly NationalPark[];
+}>;
+
+type Position = [number, number];
+type PolygonCoordinates = Position[][];
+type MultiPolygonCoordinates = Position[][][];
+
+export type NationalParkBoundaryGeometry =
+  | { type: "Polygon"; coordinates: PolygonCoordinates }
+  | { type: "MultiPolygon"; coordinates: MultiPolygonCoordinates };
+
+export type NationalParkBoundaryFeature = Readonly<{
+  type: "Feature";
+  id: string;
+  geometry: NationalParkBoundaryGeometry;
+  properties: Readonly<{
+    id: string;
+    npsCode: string;
+    slug: string;
+    title: string;
+    href: string;
+    location: string;
+    sourceUrl: string;
+  }>;
+}>;
+
+type NationalParkBoundaryCollection = Readonly<{
+  sourceUrl: string;
+  sourceNote: string;
+  features: readonly NationalParkBoundaryFeature[];
 }>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -60,26 +90,27 @@ function parseVisit(value: unknown, parkSlug: string, index: number): NationalPa
     throw new Error(`Invalid national park visit at ${parkSlug}.visits[${index}]: expected an object.`);
   }
 
-  const allowedKeys = ["date", "notes", "entrySlug"] as const;
-  if (!hasOnlyKeys(value, allowedKeys) || Object.keys(value).length === 0) {
-    throw new Error(
-      `Invalid national park visit at ${parkSlug}.visits[${index}]: expected at least one of date, notes, or entrySlug.`,
-    );
+  const allowedKeys = ["date", "fieldNote", "entrySlug"] as const;
+  if (!hasOnlyKeys(value, allowedKeys) || !("date" in value)) {
+    throw new Error(`Invalid national park visit at ${parkSlug}.visits[${index}]: date is required.`);
   }
 
-  if (value.date !== undefined && !isIsoDate(value.date)) {
+  if (value.date !== null && !isIsoDate(value.date)) {
     throw new Error(`Invalid national park visit date at ${parkSlug}.visits[${index}].date.`);
   }
-  if (value.notes !== undefined && (typeof value.notes !== "string" || value.notes.trim().length === 0)) {
-    throw new Error(`Invalid national park visit notes at ${parkSlug}.visits[${index}].notes.`);
+  if (
+    value.fieldNote !== undefined &&
+    (typeof value.fieldNote !== "string" || value.fieldNote.trim().length === 0)
+  ) {
+    throw new Error(`Invalid national park field note at ${parkSlug}.visits[${index}].fieldNote.`);
   }
   if (value.entrySlug !== undefined && (typeof value.entrySlug !== "string" || !slugPattern.test(value.entrySlug))) {
     throw new Error(`Invalid national park entry slug at ${parkSlug}.visits[${index}].entrySlug.`);
   }
 
   return Object.freeze({
-    ...(value.date === undefined ? {} : { date: value.date }),
-    ...(value.notes === undefined ? {} : { notes: value.notes }),
+    date: value.date,
+    ...(value.fieldNote === undefined ? {} : { fieldNote: value.fieldNote }),
     ...(value.entrySlug === undefined ? {} : { entrySlug: value.entrySlug }),
   });
 }
@@ -206,11 +237,157 @@ function parseCatalog(value: unknown): NationalParksCatalog {
   });
 }
 
+function parsePosition(value: unknown, context: string): Position {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 2 ||
+    typeof value[0] !== "number" ||
+    !Number.isFinite(value[0]) ||
+    value[0] < -180 ||
+    value[0] > 180 ||
+    typeof value[1] !== "number" ||
+    !Number.isFinite(value[1]) ||
+    value[1] < -90 ||
+    value[1] > 90
+  ) {
+    throw new Error(`Invalid national park boundary position at ${context}.`);
+  }
+
+  return [value[0], value[1]];
+}
+
+function parseLinearRing(value: unknown, context: string): Position[] {
+  if (!Array.isArray(value) || value.length < 4) {
+    throw new Error(`Invalid national park boundary ring at ${context}.`);
+  }
+
+  const ring = value.map((position, index) => parsePosition(position, `${context}[${index}]`));
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) {
+    throw new Error(`National park boundary ring is not closed at ${context}.`);
+  }
+  return ring;
+}
+
+function parsePolygonCoordinates(value: unknown, context: string): PolygonCoordinates {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`Invalid national park boundary polygon at ${context}.`);
+  }
+  return value.map((ring, index) => parseLinearRing(ring, `${context}[${index}]`));
+}
+
+function parseBoundaryGeometry(value: unknown, context: string): NationalParkBoundaryGeometry {
+  if (!isRecord(value) || !hasOnlyKeys(value, ["type", "coordinates"])) {
+    throw new Error(`Invalid national park boundary geometry at ${context}.`);
+  }
+
+  if (value.type === "Polygon") {
+    return { type: "Polygon", coordinates: parsePolygonCoordinates(value.coordinates, `${context}.coordinates`) };
+  }
+
+  if (value.type === "MultiPolygon") {
+    if (!Array.isArray(value.coordinates) || value.coordinates.length === 0) {
+      throw new Error(`Invalid national park multipolygon at ${context}.coordinates.`);
+    }
+    return {
+      type: "MultiPolygon",
+      coordinates: value.coordinates.map((polygon, index) =>
+        parsePolygonCoordinates(polygon, `${context}.coordinates[${index}]`),
+      ),
+    };
+  }
+
+  throw new Error(`Unsupported national park boundary geometry at ${context}.`);
+}
+
+export function formatNationalParkName(name: string): string {
+  if (name.startsWith("National Park of ")) return name.slice("National Park of ".length);
+  return name.replace(/ National Park(?: and Preserve)?$/, "");
+}
+
+function parseBoundaryCollection(
+  value: unknown,
+  parksByNpsCode: ReadonlyMap<string, NationalPark>,
+): NationalParkBoundaryCollection {
+  if (!isRecord(value) || !hasOnlyKeys(value, ["type", "sourceUrl", "sourceNote", "features"])) {
+    throw new Error("Invalid national park boundary collection.");
+  }
+  if (value.type !== "FeatureCollection") {
+    throw new Error("Invalid national park boundary collection type.");
+  }
+  if (!isHttpsUrl(value.sourceUrl, "services1.arcgis.com") || !new URL(value.sourceUrl).pathname.endsWith("/2")) {
+    throw new Error("Invalid national park boundary source URL.");
+  }
+  if (typeof value.sourceNote !== "string" || value.sourceNote.trim().length === 0) {
+    throw new Error("Invalid national park boundary source note.");
+  }
+  if (!Array.isArray(value.features) || value.features.length === 0) {
+    throw new Error("National park boundary collection must contain features.");
+  }
+
+  const seenCodes = new Set<string>();
+  const features = value.features.map((featureValue, index): NationalParkBoundaryFeature => {
+    if (!isRecord(featureValue) || !hasOnlyKeys(featureValue, ["type", "geometry", "properties"])) {
+      throw new Error(`Invalid national park boundary at features[${index}].`);
+    }
+    if (featureValue.type !== "Feature" || !isRecord(featureValue.properties)) {
+      throw new Error(`Invalid national park boundary feature at features[${index}].`);
+    }
+    if (!hasOnlyKeys(featureValue.properties, ["npsCode", "name", "status"])) {
+      throw new Error(`Invalid national park boundary properties at features[${index}].`);
+    }
+
+    const { npsCode, name, status } = featureValue.properties;
+    if (typeof npsCode !== "string" || !npsCodePattern.test(npsCode) || seenCodes.has(npsCode)) {
+      throw new Error(`Invalid or duplicate NPS code at boundary features[${index}].`);
+    }
+    const park = parksByNpsCode.get(npsCode);
+    if (!park || !park.visited || name !== park.name || status !== "Official") {
+      throw new Error(`National park boundary does not match a visited official park at features[${index}].`);
+    }
+    seenCodes.add(npsCode);
+
+    return Object.freeze({
+      type: "Feature",
+      id: park.slug,
+      geometry: parseBoundaryGeometry(featureValue.geometry, `features[${index}].geometry`),
+      properties: Object.freeze({
+        id: park.slug,
+        npsCode: park.npsCode,
+        slug: park.slug,
+        title: formatNationalParkName(park.name),
+        href: `/venture/parks/${park.slug}`,
+        location: park.stateOrTerritory,
+        sourceUrl: park.sourceUrl,
+      }),
+    });
+  });
+
+  const visitedCodes = [...parksByNpsCode.values()]
+    .filter((park) => park.visited)
+    .map((park) => park.npsCode);
+  if (visitedCodes.length !== seenCodes.size || visitedCodes.some((npsCode) => !seenCodes.has(npsCode))) {
+    throw new Error("National park boundary collection must cover every visited park exactly once.");
+  }
+
+  return Object.freeze({
+    sourceUrl: value.sourceUrl,
+    sourceNote: value.sourceNote,
+    features: Object.freeze(features),
+  });
+}
+
 const catalog = parseCatalog(nationalParksJson as unknown);
 const parksBySlug = new Map(catalog.parks.map((park) => [park.slug, park]));
+const parksByNpsCode = new Map(catalog.parks.map((park) => [park.npsCode, park]));
+const boundaryCollection = parseBoundaryCollection(visitedNationalParkBoundariesJson as unknown, parksByNpsCode);
 
 export const nationalParkCoordinateSourceUrl = catalog.coordinateSourceUrl;
 export const nationalParkCoordinateSourceNote = catalog.coordinateSourceNote;
+export const nationalParkBoundarySourceUrl = boundaryCollection.sourceUrl;
+export const nationalParkBoundarySourceNote = boundaryCollection.sourceNote;
+export const visitedNationalParkBoundaries = boundaryCollection.features;
 
 export function getAllNationalParks(): readonly NationalPark[] {
   return catalog.parks;
@@ -219,4 +396,13 @@ export function getAllNationalParks(): readonly NationalPark[] {
 export function getNationalPark(slug: string): NationalPark | null {
   if (!slugPattern.test(slug)) return null;
   return parksBySlug.get(slug) ?? null;
+}
+
+export function getNationalParkStates(park: NationalPark): readonly string[] {
+  return park.stateOrTerritory
+    .replace(/,\s+and\s+/g, ", ")
+    .replace(/\s+and\s+/g, ", ")
+    .split(",")
+    .map((state) => state.trim())
+    .filter(Boolean);
 }

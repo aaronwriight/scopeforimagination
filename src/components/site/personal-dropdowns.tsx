@@ -79,6 +79,7 @@ export function PersonalDropdowns() {
               <li><em>The Haunting of Hill House</em>, Shirley Jackson</li>
               <li><em>A Girl of the Limberlost</em>, Gene Stratton-Porter</li>
               <li><em>I&apos;m Glad My Mom Died</em>, <Link href="https://www.jennettemccurdy.com/">Jennette McCurdy</Link></li>
+              <li><Link href="https://www.kristinohlson.com/books/sweet-in-tooth-and-claw"><em>Sweet in Tooth and Claw</em></Link>, Kristin Ohlson</li>
             </ul>
           </div>
 

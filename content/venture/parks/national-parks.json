@@ -21,8 +21,12 @@
       "stateOrTerritory": "Utah",
       "latitude": 38.707924,
       "longitude": -109.595467,
-      "visited": false,
-      "visits": [],
+      "visited": true,
+      "visits": [
+        {
+          "date": null
+        }
+      ],
       "sourceUrl": "https://www.nps.gov/arch/index.htm"
     },
     {
@@ -263,8 +267,12 @@
       "stateOrTerritory": "Wyoming",
       "latitude": 43.826299,
       "longitude": -110.685587,
-      "visited": false,
-      "visits": [],
+      "visited": true,
+      "visits": [
+        {
+          "date": null
+        }
+      ],
       "sourceUrl": "https://www.nps.gov/grte/index.htm"
     },
     {
@@ -582,8 +590,12 @@
       "stateOrTerritory": "California",
       "latitude": 36.496369,
       "longitude": -118.560389,
-      "visited": false,
-      "visits": [],
+      "visited": true,
+      "visits": [
+        {
+          "date": null
+        }
+      ],
       "sourceUrl": "https://www.nps.gov/sequ/index.htm"
     },
     {
@@ -670,8 +682,12 @@
       "stateOrTerritory": "Wyoming, Montana, and Idaho",
       "latitude": 44.583039,
       "longitude": -110.490095,
-      "visited": false,
-      "visits": [],
+      "visited": true,
+      "visits": [
+        {
+          "date": null
+        }
+      ],
       "sourceUrl": "https://www.nps.gov/yell/index.htm"
     },
     {
@@ -681,8 +697,12 @@
       "stateOrTerritory": "California",
       "latitude": 37.841284,
       "longitude": -119.542841,
-      "visited": false,
-      "visits": [],
+      "visited": true,
+      "visits": [
+        {
+          "date": null
+        }
+      ],
       "sourceUrl": "https://www.nps.gov/yose/index.htm"
     },
     {
@@ -692,8 +712,12 @@
       "stateOrTerritory": "Utah",
       "latitude": 37.279525,
       "longitude": -113.045728,
-      "visited": false,
-      "visits": [],
+      "visited": true,
+      "visits": [
+        {
+          "date": null
+        }
+      ],
       "sourceUrl": "https://www.nps.gov/zion/index.htm"
     }
   ]

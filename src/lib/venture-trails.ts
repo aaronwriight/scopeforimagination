@@ -28,12 +28,23 @@ export type NortheastPeak = Readonly<{
   prominenceFeet: number;
   peakbaggerAscents: number;
   completed: boolean;
+  completionNumber: number | null;
   rating: number | null;
   timesHiked: number;
   ascents: readonly TrailAscent[];
   latitude: number;
   longitude: number;
   sourceUrl: string;
+}>;
+
+export type NortheastRangeArea = Readonly<{
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusDegrees: number;
+  peakCount: number;
+  completedPeakCount: number;
+  stateAbbreviations: readonly NortheastPeak["stateAbbreviation"][];
 }>;
 
 type Northeast115Catalog = Readonly<{
@@ -116,6 +127,7 @@ function parsePeak(value: unknown, index: number): NortheastPeak {
     "prominenceFeet",
     "peakbaggerAscents",
     "completed",
+    "completionNumber",
     "rating",
     "timesHiked",
     "ascents",
@@ -157,6 +169,17 @@ function parsePeak(value: unknown, index: number): NortheastPeak {
   if (typeof value.completed !== "boolean") {
     throw new Error(`Invalid completion status for Northeast 115 peak ${value.slug}.`);
   }
+  if (
+    value.completionNumber !== null &&
+    (!Number.isInteger(value.completionNumber) ||
+      (value.completionNumber as number) < 1 ||
+      (value.completionNumber as number) > EXPECTED_PEAK_COUNT)
+  ) {
+    throw new Error(`Invalid completion number for Northeast 115 peak ${value.slug}.`);
+  }
+  if (value.completionNumber !== null && !value.completed) {
+    throw new Error(`Incomplete Northeast 115 peak ${value.slug} cannot have a completion number.`);
+  }
   if (value.rating !== null && (typeof value.rating !== "number" || value.rating < 0 || value.rating > 10)) {
     throw new Error(`Invalid rating for Northeast 115 peak ${value.slug}.`);
   }
@@ -197,6 +220,7 @@ function parsePeak(value: unknown, index: number): NortheastPeak {
     prominenceFeet: value.prominenceFeet as number,
     peakbaggerAscents: value.peakbaggerAscents as number,
     completed: value.completed,
+    completionNumber: value.completionNumber as number | null,
     rating: value.rating as number | null,
     timesHiked: value.timesHiked as number,
     ascents,
@@ -235,6 +259,12 @@ function parseCatalog(value: unknown): Northeast115Catalog {
   const peaks = Object.freeze(value.peaks.map(parsePeak));
   const slugs = new Set(peaks.map((peak) => peak.slug));
   if (slugs.size !== peaks.length) throw new Error("Northeast 115 peak slugs must be unique.");
+  const completionNumbers = peaks.flatMap((peak) =>
+    peak.completionNumber === null ? [] : [peak.completionNumber],
+  );
+  if (new Set(completionNumbers).size !== completionNumbers.length) {
+    throw new Error("Northeast 115 completion numbers must be unique.");
+  }
   for (let index = 1; index < peaks.length; index += 1) {
     if (peaks[index - 1].rank > peaks[index].rank) {
       throw new Error("Northeast 115 peaks must be sorted by rank.");
@@ -267,4 +297,62 @@ export function getNortheastPeak(slug: string): NortheastPeak | null {
 
 export function getCompletedNortheastPeaks(): readonly NortheastPeak[] {
   return catalog.peaks.filter((peak) => peak.completed);
+}
+
+function angularDistanceDegrees(
+  first: Pick<NortheastPeak, "latitude" | "longitude">,
+  second: Pick<NortheastPeak, "latitude" | "longitude">,
+): number {
+  const radians = Math.PI / 180;
+  const firstLatitude = first.latitude * radians;
+  const secondLatitude = second.latitude * radians;
+  const latitudeDelta = (second.latitude - first.latitude) * radians;
+  const longitudeDelta = (second.longitude - first.longitude) * radians;
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return (2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))) / radians;
+}
+
+/**
+ * Geographic summaries for ranges containing at least one recorded summit.
+ * The atlas can reuse the centers and radii to draw the same range highlights
+ * as the Northeast map without duplicating grouping logic.
+ */
+export function getCompletedNortheastRangeAreas(): readonly NortheastRangeArea[] {
+  const grouped = new Map<string, NortheastPeak[]>();
+  for (const peak of catalog.peaks) {
+    const peaks = grouped.get(peak.range) ?? [];
+    peaks.push(peak);
+    grouped.set(peak.range, peaks);
+  }
+
+  return Object.freeze(
+    [...grouped.entries()]
+      .map(([name, peaks]) => {
+        const completedPeakCount = peaks.filter((peak) => peak.completed).length;
+        const latitude = peaks.reduce((sum, peak) => sum + peak.latitude, 0) / peaks.length;
+        const longitude = peaks.reduce((sum, peak) => sum + peak.longitude, 0) / peaks.length;
+        const center = { latitude, longitude };
+        const radiusDegrees = Math.max(
+          0.16,
+          ...peaks.map((peak) => angularDistanceDegrees(center, peak) + 0.1),
+        );
+
+        return Object.freeze({
+          name,
+          latitude,
+          longitude,
+          radiusDegrees,
+          peakCount: peaks.length,
+          completedPeakCount,
+          stateAbbreviations: Object.freeze(
+            [...new Set(peaks.map((peak) => peak.stateAbbreviation))].sort(),
+          ),
+        });
+      })
+      .filter((area) => area.completedPeakCount > 0)
+      .sort((first, second) => first.name.localeCompare(second.name)),
+  );
 }

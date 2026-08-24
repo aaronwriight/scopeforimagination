@@ -3,7 +3,7 @@ import path from "node:path";
 import type { MusicCredit } from "@/lib/music-credit";
 import { isMusicCredit } from "@/lib/music-credit";
 
-export const ventureCollections = ["northeast-115", "national-parks"] as const;
+export const ventureCollections = ["northeast-115", "national-parks", "travels"] as const;
 export type VentureCollection = (typeof ventureCollections)[number];
 
 export type VentureEntry = {
@@ -21,7 +21,7 @@ export type VentureEntry = {
 };
 
 const entriesDirectory = path.join(process.cwd(), "content", "venture", "entries");
-const reservedVentureSlugs = new Set(["index", "parks", "trails"]);
+const reservedVentureSlugs = new Set(["about", "index", "parks", "trails", "travels"]);
 
 function isVentureEntry(value: unknown): value is VentureEntry {
   if (!value || typeof value !== "object") return false;

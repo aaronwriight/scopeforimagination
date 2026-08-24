@@ -20,10 +20,15 @@
     "visit": {
       "type": "object",
       "additionalProperties": false,
-      "minProperties": 1,
+      "required": ["date"],
       "properties": {
-        "date": { "type": "string", "format": "date" },
-        "notes": { "type": "string", "minLength": 1 },
+        "date": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "null" }
+          ]
+        },
+        "fieldNote": { "type": "string", "minLength": 1 },
         "entrySlug": {
           "type": "string",
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"

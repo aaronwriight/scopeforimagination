@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Import Aaron's Northeast 115 workbook into Venture's trail catalog.
+"""Import Aaron's Northeast 115 workbook into Venture's peak catalog.
 
 The workbook is the source of truth for rankings, completion state, ratings,
-and notes. Coordinates come from the public Wilderlist Northeast 111 response,
-whose 115 mountains correspond to the same peak-bagging list.
+and ascent counts. Workbook notes are private by default and are copied only
+when ``--include-private-notes`` is explicitly supplied. Coordinates come from
+the public Wilderlist Northeast 111 response, whose 115 mountains correspond to
+the same peak-bagging list.
 """
 
 from __future__ import annotations
@@ -37,6 +39,12 @@ COORDINATE_ALIASES = {
     "Avery Peak": "Bigelow Mountain - Avery Peak",
     "Wildcat D": "Wildcat Mountain, D Peak",
 }
+
+COMPLETION_NUMBERS = {
+    "phelps-mountain": 26,
+}
+
+
 def normalize_name(value: str) -> str:
     value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
     value = value.replace("&", " and ").replace("'", "")
@@ -109,7 +117,12 @@ def has_completion_highlight(cell: Any) -> bool:
     return fill.fill_type == "solid" and color.type == "theme" and color.theme == 9 and color.tint > 0
 
 
-def build_catalog(workbook_path: Path, coordinate_path: Path) -> dict[str, Any]:
+def build_catalog(
+    workbook_path: Path,
+    coordinate_path: Path,
+    *,
+    include_private_notes: bool = False,
+) -> dict[str, Any]:
     workbook = load_workbook(workbook_path, data_only=True)
     sheet = workbook.active
     coordinates = load_coordinates(coordinate_path)
@@ -155,7 +168,11 @@ def build_catalog(workbook_path: Path, coordinate_path: Path) -> dict[str, Any]:
         workbook_count = int(row["timesHiked"] or 0)
         workbook_completed = bool(row["checked"] or row["highlighted"] or workbook_count > 0)
         times_hiked = max(workbook_count, 1 if workbook_completed else 0)
-        note_texts = [nonempty_text(note) for note in row["notes"]]
+        note_texts = (
+            [nonempty_text(note) for note in row["notes"]]
+            if include_private_notes
+            else [None, None, None]
+        )
         ascent_count = max(times_hiked, len([note for note in note_texts if note]))
         ascents = [
             {
@@ -181,6 +198,7 @@ def build_catalog(workbook_path: Path, coordinate_path: Path) -> dict[str, Any]:
                 "prominenceFeet": row["prominenceFeet"],
                 "peakbaggerAscents": row["peakbaggerAscents"],
                 "completed": times_hiked > 0,
+                "completionNumber": COMPLETION_NUMBERS.get(slug),
                 "rating": float(rating) if rating is not None else None,
                 "timesHiked": times_hiked,
                 "ascents": ascents,
@@ -193,7 +211,7 @@ def build_catalog(workbook_path: Path, coordinate_path: Path) -> dict[str, Any]:
     return {
         "$schema": "./northeast-115.schema.json",
         "name": "Northeast 115",
-        "description": "The Northeast 115 peak-bagging list and Aaron's ascent notes.",
+        "description": "A summit-by-summit log of the 4000-footers across New Hampshire, New York, Maine, and Vermont.",
         "peakbaggerListUrl": PEAKBAGGER_LIST_URL,
         "coordinateSourceUrl": COORDINATE_SOURCE_URL,
         "peaks": peaks,
@@ -209,9 +227,18 @@ def main() -> None:
         type=Path,
         default=Path("content/venture/trails/northeast-115.json"),
     )
+    parser.add_argument(
+        "--include-private-notes",
+        action="store_true",
+        help="Explicitly copy private workbook notes into the public catalog.",
+    )
     args = parser.parse_args()
 
-    catalog = build_catalog(args.workbook, args.coordinates)
+    catalog = build_catalog(
+        args.workbook,
+        args.coordinates,
+        include_private_notes=args.include_private_notes,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n")
 

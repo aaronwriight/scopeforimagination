@@ -47,7 +47,7 @@
     },
     "collections": {
       "type": "array",
-      "items": { "enum": ["northeast-115", "national-parks"] },
+      "items": { "enum": ["northeast-115", "national-parks", "travels"] },
       "uniqueItems": true
     },
     "bodyHtml": { "type": "string", "minLength": 1 }

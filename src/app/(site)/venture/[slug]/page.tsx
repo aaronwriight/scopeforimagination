@@ -8,6 +8,7 @@ import { formatVentureDate, getAllVentureEntries, getVentureEntry } from "@/lib/
 const collectionLabels = {
   "northeast-115": "northeast 115",
   "national-parks": "national parks",
+  travels: "travels",
 };
 
 export async function generateStaticParams() {
