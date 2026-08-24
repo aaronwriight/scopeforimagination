@@ -28,10 +28,11 @@
     "ascent": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ordinal", "date", "note", "entrySlug"],
+      "required": ["ordinal", "date", "trip", "note", "entrySlug"],
       "properties": {
         "ordinal": { "type": "integer", "minimum": 1 },
         "date": { "type": ["string", "null"], "format": "date" },
+        "trip": { "type": ["string", "null"], "minLength": 1 },
         "note": { "type": ["string", "null"] },
         "entrySlug": {
           "type": ["string", "null"],

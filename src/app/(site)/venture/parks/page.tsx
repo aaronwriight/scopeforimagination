@@ -5,8 +5,8 @@ import {
   formatNationalParkName,
   getAllNationalParks,
   getNationalParkStates,
+  nationalParkBoundaries,
   nationalParkBoundarySourceUrl,
-  visitedNationalParkBoundaries,
 } from "@/lib/venture-parks";
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default function VentureParksPage() {
       <p className="font-serif text-stone-500">A by-park index for visits and their memories</p>
       <NationalParksIndex
         parks={parks}
-        boundaries={visitedNationalParkBoundaries}
+        boundaries={nationalParkBoundaries}
         boundarySourceUrl={nationalParkBoundarySourceUrl}
       />
     </VentureShell>

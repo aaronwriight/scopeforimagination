@@ -18,10 +18,11 @@
     "visit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ordinal", "date"],
+      "required": ["ordinal", "date", "trip"],
       "properties": {
         "ordinal": { "type": "integer", "minimum": 1 },
         "date": { "type": ["string", "null"], "format": "date" },
+        "trip": { "type": ["string", "null"], "minLength": 1 },
         "entrySlug": {
           "type": "string",
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"

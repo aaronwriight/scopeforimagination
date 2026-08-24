@@ -1,12 +1,14 @@
 import travelsJson from "../../content/venture/travels/travels.json";
 
 const EXPECTED_DESTINATION_COUNT = 3;
+const EXPECTED_DESTINATION_ORDER = ["iceland", "turkiye", "cambodia"] as const;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export type TravelVisit = Readonly<{
   ordinal: number;
   date: string | null;
+  trip: string | null;
   entrySlug?: string;
 }>;
 
@@ -43,7 +45,7 @@ function parseVisit(value: unknown, destinationSlug: string, index: number): Tra
     throw new Error(`Invalid travel visit at ${destinationSlug}.visits[${index}]: expected an object.`);
   }
 
-  const allowedKeys = ["ordinal", "date", "entrySlug"] as const;
+  const allowedKeys = ["ordinal", "date", "trip", "entrySlug"] as const;
   if (!hasOnlyKeys(value, allowedKeys)) {
     throw new Error(`Invalid travel visit at ${destinationSlug}.visits[${index}]: unexpected property.`);
   }
@@ -53,6 +55,9 @@ function parseVisit(value: unknown, destinationSlug: string, index: number): Tra
   if (value.date !== null && !isIsoDate(value.date)) {
     throw new Error(`Invalid travel visit date at ${destinationSlug}.visits[${index}].`);
   }
+  if (value.trip !== null && (typeof value.trip !== "string" || value.trip.trim().length === 0)) {
+    throw new Error(`Invalid travel trip at ${destinationSlug}.visits[${index}].trip.`);
+  }
   if (value.entrySlug !== undefined && (typeof value.entrySlug !== "string" || !slugPattern.test(value.entrySlug))) {
     throw new Error(`Invalid travel entry slug at ${destinationSlug}.visits[${index}].entrySlug.`);
   }
@@ -60,6 +65,7 @@ function parseVisit(value: unknown, destinationSlug: string, index: number): Tra
   return Object.freeze({
     ordinal: value.ordinal as number,
     date: value.date as string | null,
+    trip: value.trip as string | null,
     ...(value.entrySlug === undefined ? {} : { entrySlug: value.entrySlug }),
   });
 }
@@ -131,9 +137,11 @@ function parseCatalog(value: unknown): TravelsCatalog {
     names.add(destination.name);
   }
 
-  for (let index = 1; index < destinations.length; index += 1) {
-    if (destinations[index - 1].name.localeCompare(destinations[index].name, "en") >= 0) {
-      throw new Error("Travel destinations must be sorted alphabetically by name.");
+  for (let index = 0; index < destinations.length; index += 1) {
+    if (destinations[index].slug !== EXPECTED_DESTINATION_ORDER[index]) {
+      throw new Error(
+        `Travel destinations must follow the editorial order: ${EXPECTED_DESTINATION_ORDER.join(" → ")}.`,
+      );
     }
   }
 

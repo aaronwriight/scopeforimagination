@@ -12,8 +12,12 @@ const ordinalNames = [
 ] as const;
 
 export function formatOccurrence(ordinal: number, noun: string): string {
-  const ordinalName = ordinalNames[ordinal - 1] ?? `${ordinal}${ordinalSuffix(ordinal)}`;
+  const ordinalName = ordinalNames[ordinal - 1] ?? formatOrdinal(ordinal);
   return `${ordinalName} ${noun}`;
+}
+
+export function formatOrdinal(value: number): string {
+  return `${value}${ordinalSuffix(value)}`;
 }
 
 function ordinalSuffix(value: number): string {

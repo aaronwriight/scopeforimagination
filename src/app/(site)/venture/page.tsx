@@ -2,18 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   VentureGlobe,
+  type VentureMapCountry,
   type VentureMapEntry,
-  type VentureMapRange,
-  type VentureMapRegion,
 } from "@/components/venture/venture-globe";
 import { VentureShell } from "@/components/site/site-content";
 import { getAllVentureEntries } from "@/lib/venture-entries";
 import {
   formatNationalParkName,
   getAllNationalParks,
-  visitedNationalParkBoundaries,
 } from "@/lib/venture-parks";
-import { getAllNortheastPeaks, getCompletedNortheastRangeAreas } from "@/lib/venture-trails";
+import { getAllNortheastPeaks } from "@/lib/venture-trails";
 import { getAllTravelDestinations } from "@/lib/venture-travels";
 
 export const metadata: Metadata = {
@@ -27,8 +25,13 @@ export default async function VenturePage() {
   const parks = getAllNationalParks();
   const travelDestinations = getAllTravelDestinations();
   const completedPeaks = peaks.filter((peak) => peak.completed);
-  const completedRangeAreas = getCompletedNortheastRangeAreas();
   const visitedParks = parks.filter((park) => park.visited);
+  const mapCountries: VentureMapCountry[] = [
+    { id: "840", title: "United States" },
+    { id: "352", title: "Iceland" },
+    { id: "792", title: "Türkiye" },
+    { id: "116", title: "Cambodia" },
+  ];
 
   const mapEntries: VentureMapEntry[] = [
     ...entries.map((entry) => ({
@@ -69,25 +72,12 @@ export default async function VenturePage() {
       kind: "travel" as const,
     })),
   ];
-  const mapRegions: VentureMapRegion[] = visitedNationalParkBoundaries.map((boundary) => ({
-    id: `park-region:${boundary.id}`,
-    title: boundary.properties.title,
-    href: boundary.properties.href,
-    geometry: boundary.geometry,
-  }));
-  const mapRanges: VentureMapRange[] = completedRangeAreas.map((range) => ({
-    id: `range:${range.name}`,
-    latitude: range.latitude,
-    longitude: range.longitude,
-    radiusDegrees: range.radiusDegrees,
-  }));
-
   return (
     <VentureShell title="venture">
       <p className="text-stone-500">an atlas of places worth remembering</p>
       <p>A field journal for peaks, parks, and stories gathered along the way.</p>
 
-      <VentureGlobe entries={mapEntries} regions={mapRegions} ranges={mapRanges} />
+      <VentureGlobe entries={mapEntries} countries={mapCountries} />
 
       <section className="not-prose grid gap-5 sm:grid-cols-3">
         <Link href="/venture/trails" className="border-t border-stone-300 pt-4 dark:border-stone-700">

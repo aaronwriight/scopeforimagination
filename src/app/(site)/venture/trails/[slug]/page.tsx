@@ -3,28 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VentureShell } from "@/components/site/site-content";
 import { CompletionStatus } from "@/components/venture/completion-status";
+import { formatOccurrence, formatOrdinal } from "@/lib/venture-format";
 import {
   getAllNortheastPeaks,
   getNortheastPeak,
   type TrailAscent,
 } from "@/lib/venture-trails";
-
-const ascentNames = [
-  "first",
-  "second",
-  "third",
-  "fourth",
-  "fifth",
-  "sixth",
-  "seventh",
-  "eighth",
-  "ninth",
-  "tenth",
-] as const;
-
-function ascentLabel(ordinal: number): string {
-  return `${ascentNames[ordinal - 1] ?? `#${ordinal}`} ascent`;
-}
 
 function formatAscentDate(date: string | null): string {
   if (!date) return "date pending";
@@ -58,6 +42,10 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
   const linkedAscents = peak.ascents.filter(
     (ascent): ascent is TrailAscent & { entrySlug: string } => ascent.entrySlug !== null,
   );
+  const firstAscent = peak.ascents.find((ascent) => ascent.ordinal === 1);
+  const trips = [...new Set(
+    peak.ascents.flatMap((ascent) => (ascent.trip === null ? [] : [ascent.trip])),
+  )];
 
   return (
     <VentureShell title={peak.name} showTitle={false}>
@@ -102,18 +90,24 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
             <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">ascents</dt>
             <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.timesHiked}</dd>
           </div>
-          {peak.completionNumber !== null && (
-            <div>
-              <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">completion number</dt>
-              <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">#{peak.completionNumber}</dd>
-            </div>
-          )}
-          {peak.rating !== null && (
-            <div>
-              <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">rating</dt>
-              <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.rating} / 10</dd>
-            </div>
-          )}
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">date first ascent</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+              {firstAscent ? formatAscentDate(firstAscent.date) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">no. completed</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+              {peak.completionNumber === null ? "—" : formatOrdinal(peak.completionNumber)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">trip</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+              {trips.length > 0 ? trips.join(" · ") : "trip pending"}
+            </dd>
+          </div>
           <div>
             <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">source</dt>
             <dd className="mt-1 font-serif">
@@ -125,30 +119,32 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
         </dl>
 
         <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">ascents</h2>
+          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">field notes</h2>
           {peak.ascents.length === 0 ? (
             <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
-              No ascents recorded yet.
+              No field notes recorded yet.
             </p>
           ) : (
             <div className="mt-5 border-t border-stone-300 dark:border-stone-700">
               {peak.ascents.map((ascent) => (
                 <div key={ascent.ordinal} className="border-b border-stone-300 py-6 dark:border-stone-700">
                   <p className="text-[0.65rem] lowercase tracking-widest text-[#6f8200]">
-                    {ascentLabel(ascent.ordinal)}
+                    {formatOccurrence(ascent.ordinal, "ascent")}
                   </p>
-                  <p className="mt-2 font-serif text-sm text-stone-500">{formatAscentDate(ascent.date)}</p>
+                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">date</dt>
+                      <dd className="mt-1 font-serif text-sm text-stone-500">{formatAscentDate(ascent.date)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">trip</dt>
+                      <dd className="mt-1 font-serif text-sm text-stone-500">{ascent.trip ?? "trip pending"}</dd>
+                    </div>
+                  </dl>
                 </div>
               ))}
             </div>
           )}
-        </section>
-
-        <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">field notes</h2>
-          <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
-            Field notes are private for now.
-          </p>
         </section>
 
         <section className="mt-10">
@@ -165,7 +161,7 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
                   href={`/venture/${ascent.entrySlug}`}
                   className="flex items-center justify-between gap-4 border-b border-stone-300 py-5 font-serif text-sm text-[#6f8200] dark:border-stone-700"
                 >
-                  <span>{ascentLabel(ascent.ordinal)}</span>
+                  <span>{formatOccurrence(ascent.ordinal, "ascent")}</span>
                   <span aria-hidden="true">read →</span>
                 </Link>
               ))}

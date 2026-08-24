@@ -20,11 +20,17 @@
     "visit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["date"],
+      "required": ["date", "trip"],
       "properties": {
         "date": {
           "oneOf": [
             { "type": "string", "format": "date" },
+            { "type": "null" }
+          ]
+        },
+        "trip": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
             { "type": "null" }
           ]
         },
@@ -46,6 +52,7 @@
         "latitude",
         "longitude",
         "visited",
+        "visitNumber",
         "visits",
         "sourceUrl"
       ],
@@ -63,6 +70,12 @@
         "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
         "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
         "visited": { "type": "boolean" },
+        "visitNumber": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1, "maximum": 63 },
+            { "type": "null" }
+          ]
+        },
         "visits": {
           "type": "array",
           "items": { "$ref": "#/$defs/visit" }

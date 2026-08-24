@@ -13,6 +13,7 @@ const stateAbbreviations = {
 export type TrailAscent = Readonly<{
   ordinal: number;
   date: string | null;
+  trip: string | null;
   note: string | null;
   entrySlug: string | null;
 }>;
@@ -86,7 +87,7 @@ function parseAscent(value: unknown, peakSlug: string, index: number): TrailAsce
     throw new Error(`Invalid ascent at ${peakSlug}.ascents[${index}].`);
   }
 
-  const allowedKeys = ["ordinal", "date", "note", "entrySlug"] as const;
+  const allowedKeys = ["ordinal", "date", "trip", "note", "entrySlug"] as const;
   if (!hasOnlyKeys(value, allowedKeys)) {
     throw new Error(`Unexpected ascent property at ${peakSlug}.ascents[${index}].`);
   }
@@ -95,6 +96,9 @@ function parseAscent(value: unknown, peakSlug: string, index: number): TrailAsce
   }
   if (value.date !== null && !isIsoDate(value.date)) {
     throw new Error(`Invalid ascent date at ${peakSlug}.ascents[${index}].`);
+  }
+  if (value.trip !== null && (typeof value.trip !== "string" || value.trip.trim().length === 0)) {
+    throw new Error(`Invalid ascent trip at ${peakSlug}.ascents[${index}].`);
   }
   if (value.note !== null && (typeof value.note !== "string" || value.note.trim().length === 0)) {
     throw new Error(`Invalid ascent note at ${peakSlug}.ascents[${index}].`);
@@ -106,6 +110,7 @@ function parseAscent(value: unknown, peakSlug: string, index: number): TrailAsce
   return Object.freeze({
     ordinal: value.ordinal as number,
     date: value.date as string | null,
+    trip: value.trip as string | null,
     note: value.note as string | null,
     entrySlug: value.entrySlug as string | null,
   });

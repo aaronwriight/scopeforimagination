@@ -44,6 +44,29 @@ COMPLETION_NUMBERS = {
     "phelps-mountain": 26,
 }
 
+ASCENT_DETAILS = {
+    ("upper-wolfjaw-mountain", 1): {
+        "date": "2026-08-11",
+        "trip": "La Vida August 2026 M1",
+    },
+    ("armstrong-mountain", 1): {
+        "date": "2026-08-11",
+        "trip": "La Vida August 2026 M1",
+    },
+    ("mount-haystack", 1): {
+        "date": "2026-08-12",
+        "trip": "La Vida August 2026 M1",
+    },
+    ("phelps-mountain", 1): {
+        "date": "2026-08-14",
+        "trip": "La Vida August 2026 M1",
+    },
+    ("algonquin-peak", 2): {
+        "date": "2026-08-15",
+        "trip": "La Vida August 2026 M1",
+    },
+}
+
 
 def normalize_name(value: str) -> str:
     value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
@@ -177,7 +200,8 @@ def build_catalog(
         ascents = [
             {
                 "ordinal": ordinal,
-                "date": None,
+                "date": ASCENT_DETAILS.get((slug, ordinal), {}).get("date"),
+                "trip": ASCENT_DETAILS.get((slug, ordinal), {}).get("trip"),
                 "note": note_texts[ordinal - 1] if ordinal <= len(note_texts) else None,
                 "entrySlug": None,
             }

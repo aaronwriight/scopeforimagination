@@ -41,21 +41,31 @@ export type VentureMapRange = {
   radiusDegrees: number;
 };
 
-const width = 960;
-const height = 540;
-const restingScale = 224;
-const minimumScale = 190;
-const maximumScale = 2800;
+export type VentureMapCountry = {
+  id: string;
+  title: string;
+};
+
+type VentureMapControl = "zoom-in" | "zoom-out" | "reset";
+
+const width = 1120;
+const height = 660;
+const restingScale = 270;
+const minimumScale = 220;
+const maximumScale = 6000;
+const restingRotation: [number, number, number] = [75, -35, 0];
 const markerGreen = "#859900";
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
 export function VentureGlobe({
   entries,
+  countries = [],
   regions = [],
   ranges = [],
 }: {
   entries: VentureMapEntry[];
+  countries?: VentureMapCountry[];
   regions?: VentureMapRegion[];
   ranges?: VentureMapRange[];
 }) {
@@ -73,11 +83,12 @@ export function VentureGlobe({
       .scale(restingScale)
       .clipAngle(90)
       .precision(0.2)
-      .rotate([75, -35, 0]);
+      .rotate(restingRotation);
     const path = geoPath(projection);
     const topology = world as unknown as Parameters<typeof feature>[0];
-    const countries = feature(topology, topology.objects.countries);
-    const countryFeatures = countries.type === "FeatureCollection" ? countries.features : [countries];
+    const countryCollection = feature(topology, topology.objects.countries);
+    const countryFeatures = countryCollection.type === "FeatureCollection" ? countryCollection.features : [countryCollection];
+    const highlightedCountryIds = new Set(countries.map((country) => country.id));
 
     svg
       .append("title")
@@ -90,40 +101,12 @@ export function VentureGlobe({
 
     const sphere = { type: "Sphere" } as GeoGeometryObjects;
     const graticule = geoGraticule10();
-    const peakGroups = new Map<string, VentureMapEntry[]>();
-    for (const entry of entries) {
-      if (entry.kind !== "peak" || !entry.group) continue;
-      peakGroups.set(entry.group, [...(peakGroups.get(entry.group) ?? []), entry]);
-    }
-    const inferredRangeRegions = [...peakGroups.entries()].map(([name, rangeEntries]) => {
-      const center: [number, number] = [
-        rangeEntries.reduce((total, entry) => total + entry.longitude, 0) / rangeEntries.length,
-        rangeEntries.reduce((total, entry) => total + entry.latitude, 0) / rangeEntries.length,
-      ];
-      const radius = clamp(
-        Math.max(
-          0.25,
-          ...rangeEntries.map(
-            (entry) => geoDistance(center, [entry.longitude, entry.latitude]) * (180 / Math.PI) + 0.18,
-          ),
-        ),
-        0.25,
-        2.5,
-      );
-
-      return {
-        id: `range:${name}`,
-        geometry: geoCircle().center(center).radius(radius)() as GeoGeometryObjects,
-      };
-    });
-    const rangeRegions = ranges.length > 0
-      ? ranges.map((range) => ({
-          id: range.id,
-          geometry: geoCircle()
-            .center([range.longitude, range.latitude])
-            .radius(range.radiusDegrees)() as GeoGeometryObjects,
-        }))
-      : inferredRangeRegions;
+    const rangeRegions = ranges.map((range) => ({
+      id: range.id,
+      geometry: geoCircle()
+        .center([range.longitude, range.latitude])
+        .radius(range.radiusDegrees)() as GeoGeometryObjects,
+    }));
 
     const spherePath = svg
       .append("path")
@@ -145,9 +128,11 @@ export function VentureGlobe({
       .selectAll("path")
       .data(countryFeatures)
       .join("path")
-      .attr("fill", "#f4f2ec")
-      .attr("stroke", "#d6d3d1")
-      .attr("stroke-width", 0.65);
+      .attr("fill", (country) => highlightedCountryIds.has(String(country.id)) ? markerGreen : "#f4f2ec")
+      .attr("fill-opacity", (country) => highlightedCountryIds.has(String(country.id)) ? 0.2 : 1)
+      .attr("stroke", (country) => highlightedCountryIds.has(String(country.id)) ? markerGreen : "#d6d3d1")
+      .attr("stroke-opacity", (country) => highlightedCountryIds.has(String(country.id)) ? 0.7 : 1)
+      .attr("stroke-width", (country) => highlightedCountryIds.has(String(country.id)) ? 1.1 : 0.65);
 
     const rangePaths = svg
       .append("g")
@@ -302,6 +287,19 @@ export function VentureGlobe({
       draw();
     };
 
+    const resetView = () => {
+      projection.scale(restingScale).rotate(restingRotation);
+      draw();
+    };
+
+    const handleMapControl = (event: Event) => {
+      const action = (event as CustomEvent<VentureMapControl>).detail;
+      if (action === "zoom-in") zoomBy(1.5);
+      else if (action === "zoom-out") zoomBy(1 / 1.5);
+      else if (action === "reset") resetView();
+    };
+    element.addEventListener("venture-map-control", handleMapControl);
+
     svg
       .on("focusin.pause", () => {
         paused = true;
@@ -313,13 +311,13 @@ export function VentureGlobe({
         "wheel.zoom",
         (event: WheelEvent) => {
           event.preventDefault();
-          zoomBy(Math.exp(-event.deltaY * 0.0015));
+          zoomBy(Math.exp(-event.deltaY * 0.0022));
         },
         { passive: false },
       )
       .on("dblclick.zoom", (event: MouseEvent) => {
         event.preventDefault();
-        zoomBy(projection.scale() < restingScale * 2 ? 4 : restingScale / projection.scale());
+        zoomBy(2.2);
       })
       .on("keydown.rotate", (event: KeyboardEvent) => {
         if (event.key === "ArrowLeft") rotateFromKeyboard(-8, 0);
@@ -329,8 +327,7 @@ export function VentureGlobe({
         else if (event.key === "+" || event.key === "=") zoomBy(1.35);
         else if (event.key === "-" || event.key === "_") zoomBy(1 / 1.35);
         else if (event.key === "0") {
-          projection.scale(restingScale);
-          draw();
+          resetView();
         }
         else return;
         event.preventDefault();
@@ -346,9 +343,10 @@ export function VentureGlobe({
         "drag",
         (event: D3DragEvent<SVGSVGElement, unknown, unknown>) => {
           const current = projection.rotate();
+          const sensitivity = clamp((restingScale / projection.scale()) * 0.3, 0.02, 0.32);
           projection.rotate([
-            current[0] + event.dx * 0.28,
-            clamp(current[1] - event.dy * 0.24, -75, 75),
+            current[0] + event.dx * sensitivity,
+            clamp(current[1] - event.dy * sensitivity, -75, 75),
             current[2],
           ]);
           draw();
@@ -376,32 +374,48 @@ export function VentureGlobe({
     return () => {
       spinTimer.stop();
       reducedMotionQuery.removeEventListener("change", updateMotionPreference);
+      element.removeEventListener("venture-map-control", handleMapControl);
       svg.on(".pause", null).on(".rotate", null).on(".zoom", null).on(".drag", null);
       svg.selectAll("*").remove();
     };
-  }, [entries, ranges, regions]);
+  }, [countries, entries, ranges, regions]);
+
+  const controlMap = (action: VentureMapControl) => {
+    svgRef.current?.dispatchEvent(new CustomEvent<VentureMapControl>("venture-map-control", { detail: action }));
+  };
 
   return (
     <div className="not-prose w-full">
       <div className="relative w-full overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
         <svg
           ref={svgRef}
-          className="block aspect-[16/9] w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none"
+          className="block aspect-[56/33] w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none"
           viewBox={`0 0 ${width} ${height}`}
           preserveAspectRatio="xMidYMid meet"
           role="application"
           tabIndex={0}
           aria-label="Interactive globe of Venture places. Drag or use arrow keys to rotate, scroll or use plus and minus to zoom, then select a marker to open its entry."
         />
+        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm" aria-label="Map controls">
+          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
+          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
+          <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest no-underline hover:bg-stone-100" onClick={() => controlMap("reset")}>reset</button>
+        </div>
         {entries.length === 0 && (
           <p className="pointer-events-none absolute inset-x-6 bottom-5 m-0 text-center font-serif text-xs italic text-stone-500">
             adventures will surface here as entries are added
           </p>
         )}
       </div>
-      <p className="m-0 mt-2 text-center text-xs text-stone-500">
-        drag to rotate · scroll or double-click to zoom · select a green marker to open its page
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-center text-xs text-stone-500">
+        <span>drag to rotate · scroll or use controls to zoom · select a marker to open its page</span>
+        {countries.length > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#859900]/30" aria-hidden="true" />
+            visited country
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,96 +1,160 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { MusicTagline } from "@/components/site/music-tagline";
 import type { MusicCredit } from "@/lib/music-credit";
-import { formatVentureDate } from "@/lib/venture-entries";
+
+export type VentureAdventureKind = "peak" | "park" | "travel" | "journal";
+
+export type VentureAdventureRecord = Readonly<{
+  id: string;
+  label: string;
+  date: string | null;
+  trip: string | null;
+  journalHref?: string;
+}>;
 
 export type VentureAdventureItem = Readonly<{
   id: string;
   title: string;
   href: string;
-  date: string | null;
+  kind: VentureAdventureKind;
   location: string;
-  occurrenceLabel: string;
-  journalHref?: string;
+  records: readonly VentureAdventureRecord[];
   excerpt?: string;
   music?: MusicCredit;
 }>;
 
-function formatMonth(month: string): string {
-  return new Date(`${month}-01T12:00:00`).toLocaleDateString("en-US", {
+type OrganizeBy = "type" | "trip";
+
+const kindOrder: readonly VentureAdventureKind[] = ["peak", "park", "travel", "journal"];
+const kindLabels: Record<VentureAdventureKind, string> = {
+  peak: "peaks",
+  park: "national parks",
+  travel: "travels",
+  journal: "journal entries",
+};
+
+function formatAdventureDate(date: string): string {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
     month: "long",
+    day: "numeric",
+    year: "numeric",
   });
+}
+
+function uniqueTrips(item: VentureAdventureItem): string[] {
+  return [...new Set(item.records.flatMap((record) => record.trip ? [record.trip] : []))].sort((first, second) =>
+    first.localeCompare(second, "en"),
+  );
+}
+
+function tripGroup(item: VentureAdventureItem): string {
+  const trips = uniqueTrips(item);
+  if (trips.length === 0) return "trip to add";
+  if (trips.length === 1) return trips[0];
+  return "multiple trips";
+}
+
+function dateSummary(item: VentureAdventureItem): string {
+  const dates = [...new Set(item.records.flatMap((record) => record.date ? [record.date] : []))].sort();
+  if (dates.length === 0) return "dates to add";
+  if (dates.length === 1) return `known date: ${formatAdventureDate(dates[0])}`;
+  return `known dates: ${formatAdventureDate(dates[0])} – ${formatAdventureDate(dates[dates.length - 1])}`;
 }
 
 function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
   return (
     <div className="border-t border-stone-300 dark:border-stone-700">
-      {items.map((item) => (
-        <article key={item.id} className="border-b border-stone-300 py-5 dark:border-stone-700">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h3 className="m-0 font-serif text-base font-normal leading-tight text-stone-900 dark:text-stone-100">
-              <Link href={item.href}>{item.title}</Link>
-            </h3>
-            <span className="text-[0.65rem] lowercase tracking-widest text-[#859900]">{item.occurrenceLabel}</span>
-          </div>
-          <p className="mt-1 text-xs leading-6 text-stone-500">
-            {item.date ? formatVentureDate(item.date) : "date to add"} · {item.location}
-          </p>
-          <MusicTagline music={item.music} className="mt-1" />
-          {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{item.excerpt}</p>}
-          {item.journalHref && (
-            <Link href={item.journalHref} className="mt-2 inline-block text-xs text-[#6f8200]">
-              read the journal entry →
-            </Link>
-          )}
-        </article>
-      ))}
+      {items.map((item) => {
+        const trips = uniqueTrips(item);
+        const journalHrefs = [...new Set(item.records.flatMap((record) => record.journalHref ? [record.journalHref] : []))];
+
+        return (
+          <article key={item.id} className="border-b border-stone-300 py-5 dark:border-stone-700">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h3 className="m-0 font-serif text-base font-normal leading-tight text-stone-900 dark:text-stone-100">
+                <Link href={item.href}>{item.title}</Link>
+              </h3>
+              <span className="text-[0.65rem] lowercase tracking-widest text-[#859900]">
+                {item.records.length} {item.records.length === 1 ? "field note" : "field notes"}
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-6 text-stone-500">{item.location} · {dateSummary(item)}</p>
+            <p className="mt-0.5 text-xs leading-6 text-stone-500">
+              trip: {trips.length > 0 ? trips.join(" · ") : "to add"}
+            </p>
+            <MusicTagline music={item.music} className="mt-1" />
+            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{item.excerpt}</p>}
+            {journalHrefs.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f8200]">
+                {journalHrefs.map((journalHref, index) => (
+                  <Link key={journalHref} href={journalHref}>
+                    {journalHrefs.length === 1 ? "read the journal entry" : `read journal entry ${index + 1}`} →
+                  </Link>
+                ))}
+              </div>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
 }
 
 export function VentureAdventureList({ items }: { items: readonly VentureAdventureItem[] }) {
+  const [organizeBy, setOrganizeBy] = useState<OrganizeBy>("type");
+
+  const groups = useMemo(() => {
+    const sortedItems = [...items].sort((first, second) => first.title.localeCompare(second.title, "en"));
+    if (organizeBy === "type") {
+      return kindOrder
+        .map((kind) => ({ label: kindLabels[kind], items: sortedItems.filter((item) => item.kind === kind) }))
+        .filter((group) => group.items.length > 0);
+    }
+
+    const labels = [...new Set(sortedItems.map(tripGroup))].sort((first, second) => {
+      if (first === "trip to add") return 1;
+      if (second === "trip to add") return -1;
+      if (first === "multiple trips") return 1;
+      if (second === "multiple trips") return -1;
+      return first.localeCompare(second, "en");
+    });
+    return labels.map((label) => ({ label, items: sortedItems.filter((item) => tripGroup(item) === label) }));
+  }, [items, organizeBy]);
+
   if (items.length === 0) {
     return <p className="font-serif text-sm italic text-stone-500">No adventures recorded yet.</p>;
   }
 
-  const dated = items.filter((item) => item.date !== null).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-  const pending = items
-    .filter((item) => item.date === null)
-    .sort((a, b) => a.title.localeCompare(b.title, "en") || a.occurrenceLabel.localeCompare(b.occurrenceLabel, "en"));
-  const years = [...new Set(dated.map((item) => item.date!.slice(0, 4)))];
-
   return (
-    <div className="space-y-16">
-      {years.map((year) => {
-        const yearItems = dated.filter((item) => item.date!.startsWith(year));
-        const months = [...new Set(yearItems.map((item) => item.date!.slice(0, 7)))];
+    <div>
+      <div className="mb-10 grid gap-3 border-y border-stone-300 py-4 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-end dark:border-stone-700">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+          organize index by
+          <select
+            value={organizeBy}
+            onChange={(event) => setOrganizeBy(event.target.value as OrganizeBy)}
+            className="mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-700 outline-none focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
+          >
+            <option value="type">peak / park / travels</option>
+            <option value="trip">trip</option>
+          </select>
+        </label>
+        <p className="m-0 text-xs text-stone-500 sm:text-right">
+          {items.length} {items.length === 1 ? "place" : "places"} · repeated ascents and visits stay together
+        </p>
+      </div>
 
-        return (
-          <section key={year}>
-            <h2 className="mb-6 font-serif text-sm font-normal tracking-widest text-stone-500">{year}</h2>
-            <div className="space-y-10">
-              {months.map((month) => (
-                <section key={month}>
-                  <h3 className="mb-4 font-serif text-xs font-normal lowercase tracking-widest text-stone-500">
-                    {formatMonth(month)}
-                  </h3>
-                  <AdventureRows items={yearItems.filter((item) => item.date!.startsWith(month))} />
-                </section>
-              ))}
-            </div>
+      <div className="space-y-14">
+        {groups.map((group) => (
+          <section key={group.label}>
+            <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">{group.label}</h2>
+            <AdventureRows items={group.items} />
           </section>
-        );
-      })}
-
-      {pending.length > 0 && (
-        <section>
-          <h2 className="mb-2 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">dates to add</h2>
-          <p className="mb-5 max-w-2xl font-serif text-sm italic leading-6 text-stone-500">
-            These adventures are recorded; their dates are waiting to be added.
-          </p>
-          <AdventureRows items={pending} />
-        </section>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

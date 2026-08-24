@@ -10,6 +10,7 @@ export type VentureEntry = {
   title: string;
   slug: string;
   date: string;
+  trip: string | null;
   location: string;
   latitude: number;
   longitude: number;
@@ -34,6 +35,7 @@ function isVentureEntry(value: unknown): value is VentureEntry {
     !reservedVentureSlugs.has(entry.slug) &&
     typeof entry.date === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(entry.date) &&
+    (entry.trip === null || (typeof entry.trip === "string" && entry.trip.trim().length > 0)) &&
     typeof entry.location === "string" &&
     typeof entry.latitude === "number" &&
     entry.latitude >= -90 &&

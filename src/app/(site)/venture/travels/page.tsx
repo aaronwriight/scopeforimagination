@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { VentureShell } from "@/components/site/site-content";
+import { InternationalTravelsMap } from "@/components/venture/international-travels-map";
 import { getAllTravelDestinations } from "@/lib/venture-travels";
 
 export const metadata: Metadata = {
@@ -14,6 +15,8 @@ export default function VentureTravelsPage() {
   return (
     <VentureShell title="travels">
       <p className="font-serif text-stone-500">A place-by-place record of journeys farther afield.</p>
+
+      <InternationalTravelsMap destinations={destinations} />
 
       <div className="not-prose mt-10 border-t border-stone-300 dark:border-stone-700">
         {destinations.map((destination, index) => (

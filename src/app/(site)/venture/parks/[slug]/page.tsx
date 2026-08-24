@@ -2,12 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VentureShell } from "@/components/site/site-content";
+import { formatOccurrence, formatOrdinal } from "@/lib/venture-format";
 import { formatNationalParkName, getAllNationalParks, getNationalPark } from "@/lib/venture-parks";
 
-const visitOrdinals = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
-
-function visitLabel(index: number): string {
-  return `${visitOrdinals[index] ?? `${index + 1}th`} visit`;
+function formatVisitDate(date: string | null): string {
+  if (!date) return "date pending";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00.000Z`));
 }
 
 export function generateStaticParams() {
@@ -34,6 +39,9 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
   const linkedVisits = park.visits
     .map((visit, index) => ({ visit, index }))
     .filter(({ visit }) => Boolean(visit.entrySlug));
+  const trips = [...new Set(park.visits.flatMap((visit) => (visit.trip ? [visit.trip] : [])))];
+  const firstVisitDate = park.visits[0]?.date ?? null;
+  const pendingOrEmpty = park.visited ? "pending" : "—";
 
   return (
     <VentureShell title={displayName} showTitle={false}>
@@ -47,37 +55,72 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
             {displayName}
           </h1>
           <p className="mt-3 font-serif text-base italic leading-6 text-stone-500">{park.stateOrTerritory}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.68rem] lowercase tracking-widest text-stone-500">
-            <span className={park.visited ? "text-[#859900]" : undefined}>
-              {park.visited ? "visited" : "not yet visited"}
-            </span>
-            <span aria-hidden="true">·</span>
-            <a href={park.sourceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
-              official NPS page ↗
-            </a>
-          </div>
         </header>
 
+        <dl className="grid gap-x-8 gap-y-5 border-b border-stone-300 py-7 text-sm sm:grid-cols-2 lg:grid-cols-3 dark:border-stone-700">
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">visits</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{park.visits.length}</dd>
+          </div>
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">date first visit</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+              {firstVisitDate ? formatVisitDate(firstVisitDate) : park.visited ? "date pending" : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">no. visited</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+              {park.visitNumber === null ? pendingOrEmpty : formatOrdinal(park.visitNumber)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">trip</dt>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+              {trips.length > 0 ? trips.join(" · ") : park.visited ? "trip pending" : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">source</dt>
+            <dd className="mt-1 font-serif">
+              <a href={park.sourceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
+                official NPS page ↗
+              </a>
+            </dd>
+          </div>
+        </dl>
+
         <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">visits</h2>
+          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">field notes</h2>
           {park.visits.length === 0 ? (
             <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
-              Visit record coming soon.
+              Field notes will begin with the first visit.
             </p>
           ) : (
             <div className="mt-5 border-t border-stone-300 dark:border-stone-700">
               {park.visits.map((visit, index) => (
                 <article key={`${visit.date ?? "visit"}-${index}`} className="border-b border-stone-300 py-6 dark:border-stone-700">
-                  <p className="text-[0.65rem] lowercase tracking-widest text-[#859900]">
-                    {visitLabel(index)} · {visit.date ?? "date pending"}
-                  </p>
-                  {visit.fieldNote && (
-                    <div className="mt-4">
-                      <h3 className="text-[0.65rem] lowercase tracking-widest text-stone-500">field note</h3>
-                      <p className="mt-2 max-w-3xl font-serif text-sm leading-7 text-stone-700 dark:text-stone-300">
-                        {visit.fieldNote}
-                      </p>
+                  <h3 className="m-0 text-[0.65rem] font-normal lowercase tracking-widest text-[#6f8200]">
+                    {formatOccurrence(index + 1, "visit")}
+                  </h3>
+                  <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">date</dt>
+                      <dd className="mt-1 font-serif text-stone-700 dark:text-stone-300">
+                        {formatVisitDate(visit.date)}
+                      </dd>
                     </div>
+                    <div>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">trip</dt>
+                      <dd className="mt-1 font-serif text-stone-700 dark:text-stone-300">
+                        {visit.trip ?? "trip pending"}
+                      </dd>
+                    </div>
+                  </dl>
+                  {visit.fieldNote && (
+                    <p className="mt-4 max-w-3xl font-serif text-sm leading-7 text-stone-700 dark:text-stone-300">
+                      {visit.fieldNote}
+                    </p>
                   )}
                 </article>
               ))}
@@ -99,7 +142,7 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
                   href={`/venture/${visit.entrySlug}`}
                   className="flex items-baseline justify-between gap-4 border-b border-stone-300 py-5 font-serif text-sm text-stone-700 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-300"
                 >
-                  <span>{visitLabel(index)}</span>
+                  <span>{formatOccurrence(index + 1, "visit")}</span>
                   <span className="text-xs text-[#6f8200]">read the journal entry →</span>
                 </Link>
               ))}

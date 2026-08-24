@@ -45,6 +45,9 @@ export default async function VentureEntryPage({ params }: { params: Promise<{ s
           <p className="mt-3 text-xs leading-6 text-stone-500">
             <time dateTime={entry.date}>{formatVentureDate(entry.date)}</time> • {entry.location}
           </p>
+          <p className="mt-1 text-xs leading-6 text-stone-500">
+            trip: {entry.trip ?? "to add"}
+          </p>
           <MusicTagline music={entry.music} className="mt-1" />
           {(entry.collections.length > 0 || entry.tags.length > 0) && (
             <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest text-[#6f8200]">

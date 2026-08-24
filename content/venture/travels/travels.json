@@ -2,19 +2,6 @@
   "$schema": "./travels.schema.json",
   "destinations": [
     {
-      "slug": "cambodia",
-      "name": "Cambodia",
-      "region": "Southeast Asia",
-      "latitude": 12.5657,
-      "longitude": 104.991,
-      "visits": [
-        {
-          "ordinal": 1,
-          "date": null
-        }
-      ]
-    },
-    {
       "slug": "iceland",
       "name": "Iceland",
       "region": "Northern Europe",
@@ -23,11 +10,13 @@
       "visits": [
         {
           "ordinal": 1,
-          "date": null
+          "date": null,
+          "trip": null
         },
         {
           "ordinal": 2,
-          "date": null
+          "date": null,
+          "trip": null
         }
       ]
     },
@@ -40,7 +29,22 @@
       "visits": [
         {
           "ordinal": 1,
-          "date": null
+          "date": null,
+          "trip": null
+        }
+      ]
+    },
+    {
+      "slug": "cambodia",
+      "name": "Cambodia",
+      "region": "Southeast Asia",
+      "latitude": 12.5657,
+      "longitude": 104.991,
+      "visits": [
+        {
+          "ordinal": 1,
+          "date": null,
+          "trip": null
         }
       ]
     }

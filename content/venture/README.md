@@ -8,6 +8,8 @@ The place catalogs live separately from the journal entries:
 - `parks/national-parks.json` contains all 63 parks and repeatable visit records. Unknown dates are stored as `null` rather than invented.
 - `travels/travels.json` contains the temporary international-travel branch. Every visit requires a date field; use `null` until the date is known, and add the optional `entrySlug` only when a full Venture entry exists.
 
+Every ascent, park visit, travel visit, and standalone Venture entry also carries a `trip` field. Use `null` until the surrounding trip name is known.
+
 Every peak and park has a canonical page. The atlas marker and the corresponding row on the trails or parks index use that same URL; a place page can then link to one or more full journal entries through `entrySlug`.
 
 To add an entry, create `content/venture/entries/my-adventure.json` with this shape:
@@ -18,6 +20,7 @@ To add an entry, create `content/venture/entries/my-adventure.json` with this sh
   "title": "Adventure title",
   "slug": "adventure-title",
   "date": "2026-08-24",
+  "trip": "Trip or expedition name",
   "location": "Place, State",
   "latitude": 44.2706,
   "longitude": -71.3033,
