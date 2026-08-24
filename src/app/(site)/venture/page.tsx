@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { VentureGlobe } from "@/components/venture/venture-globe";
+import { VentureGlobe, type VentureMapEntry } from "@/components/venture/venture-globe";
 import { VentureShell } from "@/components/site/site-content";
-import { formatVentureDate, getAllVentureEntries } from "@/lib/venture-entries";
+import { getAllVentureEntries } from "@/lib/venture-entries";
+import { getAllNationalParks } from "@/lib/venture-parks";
+import { getAllNortheastPeaks } from "@/lib/venture-trails";
 
 export const metadata: Metadata = {
   title: "venture | aaron wright",
@@ -11,19 +13,43 @@ export const metadata: Metadata = {
 
 export default async function VenturePage() {
   const entries = await getAllVentureEntries();
-  const mapEntries = entries.map(({ title, slug, location, latitude, longitude }) => ({
-    title,
-    slug,
-    location,
-    latitude,
-    longitude,
-  }));
+  const peaks = getAllNortheastPeaks();
+  const parks = getAllNationalParks();
+  const completedPeaks = peaks.filter((peak) => peak.completed);
+  const visitedParks = parks.filter((park) => park.visited);
+
+  const mapEntries: VentureMapEntry[] = [
+    ...entries.map((entry) => ({
+      id: `entry:${entry.slug}`,
+      title: entry.title,
+      href: `/venture/${entry.slug}`,
+      location: entry.location,
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+    })),
+    ...completedPeaks.map((peak) => ({
+      id: `trail:${peak.slug}`,
+      title: peak.name,
+      href: `/venture/trails/${peak.slug}`,
+      location: `${peak.range}, ${peak.state}`,
+      latitude: peak.latitude,
+      longitude: peak.longitude,
+    })),
+    ...visitedParks.map((park) => ({
+      id: `park:${park.slug}`,
+      title: park.name,
+      href: `/venture/parks/${park.slug}`,
+      location: park.stateOrTerritory,
+      latitude: park.latitude,
+      longitude: park.longitude,
+    })),
+  ];
 
   return (
     <VentureShell title="venture">
       <p className="text-stone-500">an atlas of places worth remembering</p>
       <p>
-        Venture is a field journal for hikes, trips, and the stories gathered along the way—including a path toward the Northeast 115 4,000-footers
+        Venture is a field journal for hikes, trips, and the stories gathered along the way—including a path toward the Northeast 115
         and all 63 U.S. national parks.
       </p>
 
@@ -34,39 +60,26 @@ export default async function VenturePage() {
         </div>
       </section>
 
-      <section className="not-prose grid gap-3 sm:grid-cols-2">
-        <div className="border-t border-stone-300 pt-3 dark:border-stone-700">
-          <p className="m-0 text-xs lowercase tracking-widest text-[#6f8200]">northeast 115</p>
-          <p className="mt-1 font-serif text-sm text-stone-600 dark:text-stone-400">the 4,000-footers</p>
-        </div>
-        <div className="border-t border-stone-300 pt-3 dark:border-stone-700">
-          <p className="m-0 text-xs lowercase tracking-widest text-[#6f8200]">63 national parks</p>
-          <p className="mt-1 font-serif text-sm text-stone-600 dark:text-stone-400">one park at a time</p>
-        </div>
+      <section className="not-prose grid gap-5 sm:grid-cols-2">
+        <Link href="/venture/trails" className="border-t border-stone-300 pt-4 dark:border-stone-700">
+          <p className="m-0 text-xs lowercase tracking-widest text-[#859900]">northeast 115</p>
+          <p className="mt-1 font-serif text-sm text-stone-600 dark:text-stone-400">
+            {completedPeaks.length} / {peaks.length} summits recorded
+          </p>
+          <p className="mt-3 text-xs text-stone-500">browse trails →</p>
+        </Link>
+        <Link href="/venture/parks" className="border-t border-stone-300 pt-4 dark:border-stone-700">
+          <p className="m-0 text-xs lowercase tracking-widest text-[#859900]">63 national parks</p>
+          <p className="mt-1 font-serif text-sm text-stone-600 dark:text-stone-400">
+            {visitedParks.length > 0 ? `${visitedParks.length} parks recorded` : "the park log is ready"}
+          </p>
+          <p className="mt-3 text-xs text-stone-500">browse parks →</p>
+        </Link>
       </section>
 
-      <section>
-        <p className="m-0 font-medium">field notes</p>
-        {entries.length === 0 ? (
-          <p className="border-t border-stone-300 pt-5 font-serif italic text-stone-500 dark:border-stone-700">
-            No entries yet. The atlas is ready for the first adventure.
-          </p>
-        ) : (
-          <div className="not-prose mt-3 border-t border-stone-300 dark:border-stone-700">
-            {entries.map((entry) => (
-              <article key={entry.slug} className="border-b border-stone-300 py-5 dark:border-stone-700">
-                <h2 className="font-serif text-lg font-normal text-stone-900 dark:text-stone-100">
-                  <Link href={`/venture/${entry.slug}`}>{entry.title}</Link>
-                </h2>
-                <p className="mt-1 text-xs text-stone-500">
-                  {formatVentureDate(entry.date)} • {entry.location}
-                </p>
-                <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{entry.excerpt}</p>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <p className="text-xs text-stone-500">
+        Looking for the stories? <Link href="/venture/index">Open the field-note index →</Link>
+      </p>
     </VentureShell>
   );
 }

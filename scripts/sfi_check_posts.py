@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import html as html_module
 import json
 import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -57,13 +59,41 @@ def validate_time(value: str, path: Path, errors: list[str]) -> None:
         errors.append(f"{path}: time must use 24-hour HH:MM")
 
 
-def validate_post(path: Path, expected_entry: str, errors: list[str]) -> None:
+def validate_music(value: object, path: Path, errors: list[str]) -> None:
+    if not isinstance(value, dict):
+        errors.append(f"{path}: music must be an object")
+        return
+
+    unknown_fields = sorted(set(value) - {"title", "artist", "url"})
+    if unknown_fields:
+        errors.append(f"{path}: music contains unsupported fields: {', '.join(unknown_fields)}")
+
+    for field in ["title", "artist"]:
+        if not isinstance(value.get(field), str) or not str(value.get(field)).strip():
+            errors.append(f"{path}: music.{field} must be a non-empty string")
+
+    if "url" in value:
+        music_url = value["url"]
+        if not isinstance(music_url, str) or not music_url.strip():
+            errors.append(f"{path}: music.url must be a non-empty http(s) URL")
+        else:
+            normalized_url = music_url.strip()
+            parsed_url = urlparse(normalized_url)
+            if (
+                any(character.isspace() for character in normalized_url)
+                or parsed_url.scheme not in {"http", "https"}
+                or not parsed_url.netloc
+            ):
+                errors.append(f"{path}: music.url must be an absolute http(s) URL")
+
+
+def validate_post(path: Path, expected_entry: str, errors: list[str]) -> dict[str, object] | None:
     value = load_json(path, errors)
     if value is None:
-        return
+        return None
     if not isinstance(value, dict):
         errors.append(f"{path}: expected a JSON object")
-        return
+        return None
 
     for field in REQUIRED_POST_STRINGS:
         if not isinstance(value.get(field), str) or not str(value.get(field)).strip():
@@ -84,6 +114,9 @@ def validate_post(path: Path, expected_entry: str, errors: list[str]) -> None:
     if not isinstance(tags, list) or not all(isinstance(tag, str) and tag.strip() for tag in tags):
         errors.append(f"{path}: tags must be a list of non-empty strings")
 
+    if "music" in value:
+        validate_music(value["music"], path, errors)
+
     body_html = value.get("bodyHtml")
     if isinstance(body_html, str):
         if "<script" in body_html.lower():
@@ -91,8 +124,10 @@ def validate_post(path: Path, expected_entry: str, errors: list[str]) -> None:
         if re.search(r"\[[^\]]+\]", body_html):
             errors.append(f"{path}: bodyHtml still appears to contain bracketed draft prompts")
 
+    return value
 
-def validate_newsletter(path: Path, expected_entry: str, errors: list[str]) -> None:
+
+def validate_newsletter(path: Path, expected_entry: str, post: dict[str, object] | None, errors: list[str]) -> None:
     value = load_json(path, errors)
     if value is None:
         return
@@ -120,6 +155,19 @@ def validate_newsletter(path: Path, expected_entry: str, errors: list[str]) -> N
         if "{{{RESEND_UNSUBSCRIBE_URL}}}" not in text:
             errors.append(f"{path}: text must contain Resend unsubscribe placeholder")
 
+    music = post.get("music") if post else None
+    if isinstance(music, dict):
+        music_values = [str(music.get("title") or "").strip(), str(music.get("artist") or "").strip()]
+        music_url = str(music.get("url") or "").strip()
+        if music_url:
+            music_values.append(music_url)
+
+        for music_value in filter(None, music_values):
+            if isinstance(html, str) and html_module.escape(music_value, quote=True) not in html:
+                errors.append(f"{path}: html must include the post music value `{music_value}`")
+            if isinstance(text, str) and music_value not in text:
+                errors.append(f"{path}: text must include the post music value `{music_value}`")
+
 
 def post_paths(posts_dir: Path, entry: str | None) -> list[Path]:
     if entry:
@@ -143,8 +191,8 @@ def main() -> int:
             errors.append(f"{post_path}: filename must be a four-digit entry number")
             continue
 
-        validate_post(post_path, entry, errors)
-        validate_newsletter(newsletters_dir / f"{entry}.json", entry, errors)
+        post = validate_post(post_path, entry, errors)
+        validate_newsletter(newsletters_dir / f"{entry}.json", entry, post, errors)
 
     if errors:
         for error in errors:

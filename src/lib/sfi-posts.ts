@@ -1,5 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import type { MusicCredit } from "@/lib/music-credit";
+import { isMusicCredit } from "@/lib/music-credit";
 
 export type SfiPortableTextBlock = Record<string, unknown> & { _type: string };
 
@@ -10,6 +12,7 @@ export type SfiPost = {
   time: string;
   location: string;
   entry: string;
+  music?: MusicCredit;
   tags: string[];
   bodyHtml?: string;
   body?: SfiPortableTextBlock[];
@@ -25,6 +28,7 @@ type SanityScopePost = {
   entry?: string;
   publishedAt?: string;
   location?: string;
+  music?: unknown;
   tags?: string[];
   body?: SfiPortableTextBlock[];
   bodyHtml?: string;
@@ -42,6 +46,7 @@ function isSfiPost(value: unknown): value is SfiPost {
     typeof post.time === "string" &&
     typeof post.location === "string" &&
     typeof post.entry === "string" &&
+    (post.music === undefined || isMusicCredit(post.music)) &&
     Array.isArray(post.tags) &&
     post.tags.every((tag) => typeof tag === "string") &&
     typeof post.bodyHtml === "string"
@@ -69,6 +74,7 @@ function sanityPostToSfiPost(post: SanityScopePost): SfiPost | null {
 
   const [date, timeWithZone = "00:00"] = post.publishedAt.split("T");
   const time = timeWithZone.slice(0, 5);
+  const music = isMusicCredit(post.music) ? post.music : undefined;
 
   return {
     title: post.title || "scope for imagination",
@@ -77,6 +83,7 @@ function sanityPostToSfiPost(post: SanityScopePost): SfiPost | null {
     time,
     location: post.location || "Cambridge, MA",
     entry: post.entry,
+    ...(music ? { music } : {}),
     tags: Array.isArray(post.tags) ? post.tags.filter((tag): tag is string => typeof tag === "string") : [],
     body: hasPortableBody ? post.body : undefined,
     bodyHtml,
@@ -116,6 +123,7 @@ async function getSanitySfiPosts(): Promise<SfiPost[]> {
         entry,
         publishedAt,
         location,
+        music { title, artist, url },
         tags,
         excerpt,
         body,

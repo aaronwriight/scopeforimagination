@@ -36,6 +36,9 @@ const sectionLinks = {
   ],
   venture: [
     ["atlas", "/venture"],
+    ["index", "/venture/index"],
+    ["parks", "/venture/parks"],
+    ["trails", "/venture/trails"],
     ["home", "/"],
   ],
   wiki: [

@@ -8,7 +8,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -42,6 +42,16 @@ def display_date(date_value: str) -> str:
     return f"{int(month)}.{int(day)}.{year[-2:]}"
 
 
+def is_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return (
+        bool(value)
+        and not any(character.isspace() for character in value)
+        and parsed.scheme in {"http", "https"}
+        and bool(parsed.netloc)
+    )
+
+
 def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
     title = str(post.get("title") or "scope for imagination")
     subtitle = str(post.get("subtitle") or "").strip()
@@ -54,6 +64,22 @@ def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
     )
     entry_url = "[[ENTRY_URL]]"
     unsubscribe_url = "{{{RESEND_UNSUBSCRIBE_URL}}}"
+    details_text = f"{display_date(str(post['date']))} • {post['location']} • {entry}"
+    music_html = ""
+
+    music = post.get("music")
+    if isinstance(music, dict):
+        music_title = str(music.get("title") or "").strip()
+        music_artist = str(music.get("artist") or "").strip()
+        music_url = str(music.get("url") or "").strip()
+        if music_title and music_artist:
+            music_label = f"<em>{html_escape(music_title)}</em>, {html_escape(music_artist)}"
+            if is_http_url(music_url):
+                music_label = f'<a href="{html_escape(music_url)}">{music_label}</a>'
+            music_html = f"<p>{music_label}</p>"
+            details_text += f"\n{music_title}, {music_artist}"
+            if is_http_url(music_url):
+                details_text += f" — {music_url}"
 
     email_html = (
         "<p>Hello {{{contact.first_name|there}}},</p>"
@@ -61,13 +87,14 @@ def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
         f"<h1>{html_escape(title)}</h1>"
         f"<p><em>{html_escape(subtitle)}</em></p>"
         f"<p>{display_date(str(post['date']))} • {html_escape(str(post['location']))} • {entry}</p>"
+        f"{music_html}"
         f'<p><a href="{entry_url}">Read entry {entry} →</a></p>'
         f'<p><small><a href="{unsubscribe_url}">Unsubscribe</a></small></p>'
     )
     email_text = (
         "Hello {{{contact.first_name|there}}},\n\n"
         "There is a new entry in Scope for Imagination.\n\n"
-        f"{subject}\n{display_date(str(post['date']))} • {post['location']} • {entry}\n\n"
+        f"{subject}\n{details_text}\n\n"
         f"Read entry {entry}: {entry_url}\n\n"
         f"Unsubscribe: {unsubscribe_url}\n"
     )
@@ -95,7 +122,7 @@ def sanity_query(entry: str) -> dict[str, object] | None:
     api_version = os.environ.get("NEXT_PUBLIC_SANITY_API_VERSION") or SANITY_API_VERSION
     query = (
         f'*[_type == "scopePost" && status == "published" && entry == "{entry}"][0]{{'
-        'title,subtitle,entry,publishedAt,location,excerpt,'
+        'title,subtitle,entry,publishedAt,location,excerpt,music{title,artist,url},'
         '"subject": newsletter.subject,'
         '"previewText": newsletter.previewText'
         "}"
@@ -119,6 +146,7 @@ def sanity_query(entry: str) -> dict[str, object] | None:
         "date": date_value,
         "location": post.get("location") or "Cambridge, MA",
         "entry": post["entry"],
+        "music": post.get("music"),
         "excerpt": post.get("excerpt") or "",
         "subject": post.get("subject") or "",
         "previewText": post.get("previewText") or "",

@@ -12,7 +12,7 @@ from datetime import date, datetime, time
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
 try:
@@ -74,6 +74,26 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def is_music(value: object) -> bool:
+    if not isinstance(value, dict) or not set(value).issubset({"title", "artist", "url"}):
+        return False
+    if not isinstance(value.get("title"), str) or not str(value["title"]).strip():
+        return False
+    if not isinstance(value.get("artist"), str) or not str(value["artist"]).strip():
+        return False
+    if "url" not in value:
+        return True
+    if not isinstance(value["url"], str) or not str(value["url"]).strip():
+        return False
+    normalized_url = str(value["url"]).strip()
+    parsed_url = urlparse(normalized_url)
+    return (
+        not any(character.isspace() for character in normalized_url)
+        and parsed_url.scheme in {"http", "https"}
+        and bool(parsed_url.netloc)
+    )
+
+
 def is_local_post(value: object) -> bool:
     if not isinstance(value, dict):
         return False
@@ -83,7 +103,10 @@ def is_local_post(value: object) -> bool:
         return False
 
     tags = value.get("tags")
-    return isinstance(tags, list) and all(isinstance(tag, str) for tag in tags)
+    if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
+        return False
+
+    return "music" not in value or is_music(value["music"])
 
 
 def load_post(posts_dir: Path, entry: str) -> dict[str, object]:
@@ -143,6 +166,15 @@ def build_document(post: dict[str, object], arguments: argparse.Namespace) -> di
         "excerpt": excerpt,
         "bodyHtml": body_html,
     }
+    music = post.get("music")
+    if isinstance(music, dict):
+        sanity_music = {
+            "title": str(music["title"]).strip(),
+            "artist": str(music["artist"]).strip(),
+        }
+        if music.get("url"):
+            sanity_music["url"] = str(music["url"]).strip()
+        document["music"] = sanity_music
 
     return document
 

@@ -49,7 +49,7 @@ export function PersonalDropdowns() {
               <li><Link href="https://open.spotify.com/album/4nYVLUVhQb9bD7l1QlYoFS"><em>Vice City Magic</em></Link>, Mustard Service</li>
               <li><Link href="https://open.spotify.com/track/2aGNR8A6GnHqoM78T31CCC"><em>High Highs to Low Lows</em></Link>, Lolo Zouaï</li>
               <li><Link href="https://open.spotify.com/album/27SQuR7jPiGkJJXl8njEqY"><em>Jean</em></Link>, Yebba</li>
-              <li><Link href="https://open.spotify.com/album/4J8jmljF3FvpyhPjyB1fae"><em>Cape God</em></Link>, Allie X</li>
+              <li><Link href="https://open.spotify.com/album/5czKm6HdhwZ8AXFLpcWxTE"><em>Cape God [Deluxe]</em></Link>, Allie X</li>
               <li><Link href="https://open.spotify.com/album/5RUma3H9uzDLXxwT7JzTel"><em>Essex Honey</em></Link>, Blood Orange</li>
               <li><Link href="https://open.spotify.com/album/25ktFe8igqIwv9aRbkdnTS"><em>Desire, I Want To Turn Into You: Everasking Edition</em></Link>, Caroline Polachek</li>
               <li><Link href="https://open.spotify.com/album/4f3yGbwInBCKTfop0dLrkC"><em>I Miss You, I Do</em></Link>, Arny Margret</li>

@@ -13,6 +13,7 @@ pnpm sfi:draft --subtitle="Post subtitle" --tags="musings"
 ```
 
 This creates the next numbered file in `content/scope-for-imagination/drafts/` and prints the publish/check commands for that entry.
+To pair the entry with a song, add `--music-title` and `--music-artist`; `--music-url` can optionally link the song. The generated publish command carries those values forward.
 
 2. Edit the draft, replacing or removing every bracketed prompt.
 3. Generate the local post JSON and newsletter template with the command printed by `pnpm sfi:draft`, for example:
@@ -55,6 +56,7 @@ Each local post follows the same shape:
 - `location`
 - `entry`, four digits
 - `tags`
+- optional `music` object with `title`, `artist`, and an optional absolute `http(s)` `url`
 - `bodyHtml`
 
 The machine-readable version of this contract lives in `content/scope-for-imagination/post.schema.json`.
@@ -62,9 +64,13 @@ The machine-readable version of this contract lives in `content/scope-for-imagin
 Every post header follows the same structure:
 
 ```text
-scope for imagination: post subtitle
+scope for imagination
+post subtitle
 6.20.26 • 19:28 • Cambridge, MA • 0001
+[song title], artist
 ```
+
+The music line is omitted when an entry has no song. When a URL is supplied, the line links to it.
 
 `pnpm sfi:check` validates this local contract and the paired newsletter template.
 
@@ -82,6 +88,8 @@ Optional arguments for `pnpm sfi:new`:
 - `--time=19:28` sets the entry time using a 24-hour clock; it defaults to the current time.
 - `--entry=0001` overrides the automatically assigned four-digit entry number.
 - `--replace --entry=0001` replaces an existing numbered entry.
+- `--music-title="Song title" --music-artist="Artist"` adds the optional music line. Both values are required together.
+- `--music-url="https://example.com/song"` optionally links that line and requires the title and artist flags.
 
 Images embedded in a Word document are extracted to `public/images/scope-for-imagination/<entry-number>/` and remain in their original position in the post.
 
@@ -95,6 +103,7 @@ The Sanity Studio schema mirrors the local contract, with a few authoring conven
 - `slug`, usually generated from the entry number
 - `publishedAt`
 - `location`
+- optional `music` with song title, artist, and link
 - `status`, set to `published` when ready
 - `tags`
 - `excerpt`
@@ -108,3 +117,4 @@ pnpm sfi:upload --entry=0002 --publish
 ```
 
 The upload command is optional and requires `SANITY_API_WRITE_TOKEN`. The local site does not require it.
+Generated newsletter templates include the same optional music line in both HTML and plain text.

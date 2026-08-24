@@ -39,6 +39,26 @@
       },
       "uniqueItems": true
     },
+    "music": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "artist"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artist": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        }
+      }
+    },
     "bodyHtml": {
       "type": "string",
       "minLength": 1

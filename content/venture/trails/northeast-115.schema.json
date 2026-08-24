@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aaronwriight.vercel.app/schemas/northeast-115.json",
+  "title": "Venture Northeast 115 Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "description",
+    "peakbaggerListUrl",
+    "coordinateSourceUrl",
+    "peaks"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "const": "Northeast 115" },
+    "description": { "type": "string", "minLength": 1 },
+    "peakbaggerListUrl": { "type": "string", "format": "uri" },
+    "coordinateSourceUrl": { "type": "string", "format": "uri" },
+    "peaks": {
+      "type": "array",
+      "minItems": 115,
+      "maxItems": 115,
+      "items": { "$ref": "#/$defs/peak" }
+    }
+  },
+  "$defs": {
+    "ascent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinal", "date", "note", "entrySlug"],
+      "properties": {
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "date": { "type": ["string", "null"], "format": "date" },
+        "note": { "type": ["string", "null"] },
+        "entrySlug": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      }
+    },
+    "peak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "slug",
+        "name",
+        "elevationFeet",
+        "state",
+        "stateAbbreviation",
+        "range",
+        "prominenceFeet",
+        "peakbaggerAscents",
+        "completed",
+        "rating",
+        "timesHiked",
+        "ascents",
+        "latitude",
+        "longitude",
+        "sourceUrl"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1, "maximum": 115 },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "elevationFeet": { "type": "integer", "minimum": 1 },
+        "state": { "enum": ["Maine", "New Hampshire", "New York", "Vermont"] },
+        "stateAbbreviation": { "enum": ["ME", "NH", "NY", "VT"] },
+        "range": { "type": "string", "minLength": 1 },
+        "prominenceFeet": { "type": "integer", "minimum": 0 },
+        "peakbaggerAscents": { "type": "integer", "minimum": 0 },
+        "completed": { "type": "boolean" },
+        "rating": { "type": ["number", "null"], "minimum": 0, "maximum": 10 },
+        "timesHiked": { "type": "integer", "minimum": 0 },
+        "ascents": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ascent" }
+        },
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "sourceUrl": { "type": "string", "format": "uri" }
+      }
+    }
+  }
+}

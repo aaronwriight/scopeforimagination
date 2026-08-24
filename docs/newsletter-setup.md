@@ -66,6 +66,8 @@ The recommended blog workflow is local-first:
 pnpm sfi:draft --subtitle="Post subtitle" --tags="musings"
 ```
 
+An entry can optionally include a music tagline. Supply `--music-title` and `--music-artist` together, plus an optional absolute `http(s)` `--music-url`; the draft command carries them into the generated publish command.
+
 2. Edit the generated draft in `content/scope-for-imagination/drafts/`.
 3. Generate the local post JSON and paired newsletter template:
 
@@ -78,6 +80,8 @@ pnpm sfi:new \
   --location="Cambridge, MA" \
   --entry=0002
 ```
+
+When music metadata is present, the generated HTML and plain-text newsletter templates place the song line directly beneath the entry date/location/number line.
 
 4. Check the local post contract:
 

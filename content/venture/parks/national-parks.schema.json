@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aaronwriight.vercel.app/schemas/national-parks.json",
+  "title": "Venture National Parks Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["coordinateSourceUrl", "coordinateSourceNote", "parks"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "coordinateSourceUrl": { "type": "string", "format": "uri" },
+    "coordinateSourceNote": { "type": "string", "minLength": 1 },
+    "parks": {
+      "type": "array",
+      "minItems": 63,
+      "maxItems": 63,
+      "items": { "$ref": "#/$defs/park" }
+    }
+  },
+  "$defs": {
+    "visit": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "notes": { "type": "string", "minLength": 1 },
+        "entrySlug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      }
+    },
+    "park": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slug",
+        "npsCode",
+        "name",
+        "stateOrTerritory",
+        "latitude",
+        "longitude",
+        "visited",
+        "visits",
+        "sourceUrl"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "npsCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{4}$"
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "stateOrTerritory": { "type": "string", "minLength": 1 },
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "visited": { "type": "boolean" },
+        "visits": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/visit" }
+        },
+        "sourceUrl": { "type": "string", "format": "uri" }
+      }
+    }
+  }
+}

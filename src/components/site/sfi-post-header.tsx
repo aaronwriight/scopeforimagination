@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MusicTagline } from "@/components/site/music-tagline";
 import type { SfiPost } from "@/lib/sfi-posts";
 import { formatSfiHeaderDate, getSfiTagColor } from "@/lib/sfi-posts";
 
@@ -44,6 +45,8 @@ export function SfiPostHeader({
           </time>{" "}
           • {post.location} • {post.entry}
         </p>
+
+        <MusicTagline music={post.music} />
 
         {post.tags.length > 0 && (
           <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest">

@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -63,21 +65,56 @@ def next_entry(posts_dir: Path, drafts_dir: Path) -> str:
     return str(max(entries, default=0) + 1).zfill(4)
 
 
+def validate_http_url(value: str) -> str:
+    normalized = value.strip()
+    parsed = urlparse(normalized)
+    if any(character.isspace() for character in normalized) or parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise argparse.ArgumentTypeError("music links must use an absolute http(s) URL")
+    return normalized
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a new local SFI HTML draft.")
     parser.add_argument("--subtitle", required=True, help="working subtitle for the post")
     parser.add_argument("--tags", default="musings", help="comma-separated tags for the eventual post")
     parser.add_argument("--location", default="Cambridge, MA", help="location shown in the eventual post header")
     parser.add_argument("--title", default="scope for imagination", help="post title")
+    parser.add_argument("--music-title", help="optional song title shown with the post")
+    parser.add_argument("--music-artist", help="artist for --music-title")
+    parser.add_argument("--music-url", type=validate_http_url, help="optional http(s) link to the song")
     parser.add_argument("--entry", type=normalize_entry, help="four-digit entry number; defaults to the next draft/post number")
     parser.add_argument("--replace", action="store_true", help="replace the draft file if it already exists")
     parser.add_argument("--drafts-dir", type=Path, default=DEFAULT_DRAFTS_DIR, help=argparse.SUPPRESS)
     parser.add_argument("--posts-dir", type=Path, default=DEFAULT_POSTS_DIR, help=argparse.SUPPRESS)
-    return parser.parse_args()
+    arguments = parser.parse_args()
+
+    arguments.music_title = arguments.music_title.strip() if arguments.music_title else None
+    arguments.music_artist = arguments.music_artist.strip() if arguments.music_artist else None
+    if bool(arguments.music_title) != bool(arguments.music_artist):
+        parser.error("--music-title and --music-artist must be provided together")
+    if arguments.music_url and not arguments.music_title:
+        parser.error("--music-url requires --music-title and --music-artist")
+
+    return arguments
 
 
-def draft_template(title: str, subtitle: str, entry: str, tags: str, location: str) -> str:
+def draft_template(
+    title: str,
+    subtitle: str,
+    entry: str,
+    tags: str,
+    location: str,
+    music_title: str | None,
+    music_artist: str | None,
+    music_url: str | None,
+) -> str:
     today = date.today().isoformat()
+    music_metadata = ""
+    if music_title and music_artist:
+        music_metadata = f"\n      music title: {music_title}\n      music artist: {music_artist}"
+        if music_url:
+            music_metadata += f"\n      music url: {music_url}"
+
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -91,7 +128,7 @@ def draft_template(title: str, subtitle: str, entry: str, tags: str, location: s
       subtitle: {subtitle}
       date: {today}
       location: {location}
-      tags: {tags}
+      tags: {tags}{music_metadata}
     -->
 
     <p>[Open with the moment, image, question, or feeling that made you want to write.]</p>
@@ -131,7 +168,16 @@ def main() -> int:
 
     drafts_dir.mkdir(parents=True, exist_ok=True)
     draft_path.write_text(
-        draft_template(arguments.title, arguments.subtitle, entry, arguments.tags, arguments.location),
+        draft_template(
+            arguments.title,
+            arguments.subtitle,
+            entry,
+            arguments.tags,
+            arguments.location,
+            arguments.music_title,
+            arguments.music_artist,
+            arguments.music_url,
+        ),
         encoding="utf-8",
     )
 
@@ -139,15 +185,26 @@ def main() -> int:
     print(f"created {relative_path}")
     print()
     print("When it is ready, publish it with:")
-    print(
-        "pnpm sfi:new "
-        f'--doc="{relative_path}" '
-        f'--title="{arguments.title}" '
-        f'--subtitle="{arguments.subtitle}" '
-        f'--tags="{arguments.tags}" '
-        f'--location="{arguments.location}" '
-        f"--entry={entry}"
-    )
+    publish_command = [
+        "pnpm",
+        "sfi:new",
+        f"--doc={relative_path}",
+        f"--title={arguments.title}",
+        f"--subtitle={arguments.subtitle}",
+        f"--tags={arguments.tags}",
+        f"--location={arguments.location}",
+    ]
+    if arguments.music_title and arguments.music_artist:
+        publish_command.extend(
+            [
+                f"--music-title={arguments.music_title}",
+                f"--music-artist={arguments.music_artist}",
+            ]
+        )
+        if arguments.music_url:
+            publish_command.append(f"--music-url={arguments.music_url}")
+    publish_command.append(f"--entry={entry}")
+    print(shlex.join(publish_command))
     print(f"pnpm sfi:check --entry={entry}")
     return 0
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MusicTagline } from "@/components/site/music-tagline";
 import { VentureShell } from "@/components/site/site-content";
 import { formatVentureDate, getAllVentureEntries, getVentureEntry } from "@/lib/venture-entries";
 
@@ -33,8 +34,8 @@ export default async function VentureEntryPage({ params }: { params: Promise<{ s
   return (
     <VentureShell title={entry.title} showTitle={false}>
       <article className="not-prose w-full max-w-none">
-        <Link href="/venture" className="text-xs lowercase tracking-widest text-stone-500">
-          ← venture
+        <Link href="/venture/index" className="text-xs lowercase tracking-widest text-stone-500">
+          ← index
         </Link>
 
         <header className="mt-10 border-b border-stone-300 pb-7 dark:border-stone-700">
@@ -43,6 +44,7 @@ export default async function VentureEntryPage({ params }: { params: Promise<{ s
           <p className="mt-3 text-xs leading-6 text-stone-500">
             <time dateTime={entry.date}>{formatVentureDate(entry.date)}</time> • {entry.location}
           </p>
+          <MusicTagline music={entry.music} className="mt-1" />
           {(entry.collections.length > 0 || entry.tags.length > 0) && (
             <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest text-[#6f8200]">
               {entry.collections.map((collection) => (

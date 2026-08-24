@@ -13,6 +13,7 @@ import zipfile
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
 
@@ -57,6 +58,14 @@ def validate_time(value: str) -> str:
         raise argparse.ArgumentTypeError("times must use 24-hour HH:MM format") from error
 
 
+def validate_http_url(value: str) -> str:
+    normalized = value.strip()
+    parsed = urlparse(normalized)
+    if any(character.isspace() for character in normalized) or parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise argparse.ArgumentTypeError("music links must use an absolute http(s) URL")
+    return normalized
+
+
 def normalize_entry(value: str) -> str:
     if not value.isdigit() or int(value) < 1:
         raise argparse.ArgumentTypeError("entry numbers must be positive integers")
@@ -84,6 +93,22 @@ def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
     entry_url = "[[ENTRY_URL]]"
     unsubscribe_url = "{{{RESEND_UNSUBSCRIBE_URL}}}"
     subject = f"{title}: {subtitle}"
+    details_text = f"{display_date} • {post['location']} • {entry}"
+    music_html = ""
+
+    music = post.get("music")
+    if isinstance(music, dict):
+        music_title = str(music.get("title") or "").strip()
+        music_artist = str(music.get("artist") or "").strip()
+        music_url = str(music.get("url") or "").strip()
+        if music_title and music_artist:
+            music_label = f"<em>{html.escape(music_title)}</em>, {html.escape(music_artist)}"
+            if music_url:
+                music_label = f'<a href="{html.escape(music_url, quote=True)}">{music_label}</a>'
+            music_html = f"<p>{music_label}</p>"
+            details_text += f"\n{music_title}, {music_artist}"
+            if music_url:
+                details_text += f" — {music_url}"
 
     email_html = (
         "<p>Hello {{{contact.first_name|there}}},</p>"
@@ -91,13 +116,14 @@ def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
         f"<h1>{html.escape(title)}</h1>"
         f"<p><em>{html.escape(subtitle)}</em></p>"
         f"<p>{display_date} • {html.escape(str(post['location']))} • {entry}</p>"
+        f"{music_html}"
         f'<p><a href="{entry_url}">Read entry {entry} →</a></p>'
         f'<p><small><a href="{unsubscribe_url}">Unsubscribe</a></small></p>'
     )
     email_text = (
         "Hello {{{contact.first_name|there}}},\n\n"
         "There is a new entry in Scope for Imagination.\n\n"
-        f"{subject}\n{display_date} • {post['location']} • {entry}\n\n"
+        f"{subject}\n{details_text}\n\n"
         f"Read entry {entry}: {entry_url}\n\n"
         f"Unsubscribe: {unsubscribe_url}\n"
     )
@@ -276,12 +302,24 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--date", default=date.today().isoformat(), type=validate_date, help="publication date in YYYY-MM-DD format")
     parser.add_argument("--time", default=datetime.now().strftime("%H:%M"), type=validate_time, help="entry time in 24-hour HH:MM format")
     parser.add_argument("--location", required=True, help="location shown in the entry header")
+    parser.add_argument("--music-title", help="optional song title shown with the post")
+    parser.add_argument("--music-artist", help="artist for --music-title")
+    parser.add_argument("--music-url", type=validate_http_url, help="optional http(s) link to the song")
     parser.add_argument("--entry", type=normalize_entry, help="entry number; defaults to the next available four-digit number")
     parser.add_argument("--replace", action="store_true", help="replace the post matching --entry")
     parser.add_argument("--posts-dir", type=Path, default=DEFAULT_POSTS_DIR, help=argparse.SUPPRESS)
     parser.add_argument("--images-dir", type=Path, default=DEFAULT_IMAGES_DIR, help=argparse.SUPPRESS)
     parser.add_argument("--newsletters-dir", type=Path, default=DEFAULT_NEWSLETTERS_DIR, help=argparse.SUPPRESS)
-    return parser.parse_args()
+    arguments = parser.parse_args()
+
+    arguments.music_title = arguments.music_title.strip() if arguments.music_title else None
+    arguments.music_artist = arguments.music_artist.strip() if arguments.music_artist else None
+    if bool(arguments.music_title) != bool(arguments.music_artist):
+        parser.error("--music-title and --music-artist must be provided together")
+    if arguments.music_url and not arguments.music_title:
+        parser.error("--music-url requires --music-title and --music-artist")
+
+    return arguments
 
 
 def main() -> int:
@@ -320,7 +358,7 @@ def main() -> int:
         source = document.read_text(encoding="utf-8")
         body_html = body_from_html(source) if suffix in {".html", ".htm"} else paragraphs_from_text(source)
 
-    post = {
+    post: dict[str, object] = {
         "title": arguments.title.strip(),
         "subtitle": arguments.subtitle.strip(),
         "date": arguments.date,
@@ -328,8 +366,16 @@ def main() -> int:
         "location": arguments.location.strip(),
         "entry": entry,
         "tags": parse_tags(arguments.tags),
-        "bodyHtml": body_html,
     }
+    if arguments.music_title and arguments.music_artist:
+        music: dict[str, str] = {
+            "title": arguments.music_title,
+            "artist": arguments.music_artist,
+        }
+        if arguments.music_url:
+            music["url"] = arguments.music_url
+        post["music"] = music
+    post["bodyHtml"] = body_html
 
     posts_directory.mkdir(parents=True, exist_ok=True)
     post_path.write_text(json.dumps(post, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

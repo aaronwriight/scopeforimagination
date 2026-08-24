@@ -48,6 +48,33 @@ const scopePost = {
       initialValue: "Cambridge, MA",
     },
     {
+      name: "music",
+      title: "Music",
+      type: "object",
+      description: "An optional song paired with the entry.",
+      fields: [
+        {
+          name: "title",
+          title: "Song title",
+          type: "string",
+          validation: (Rule) => Rule.required(),
+        },
+        {
+          name: "artist",
+          title: "Artist",
+          type: "string",
+          validation: (Rule) => Rule.required(),
+        },
+        {
+          name: "url",
+          title: "Link",
+          type: "url",
+          description: "Optional link to the song.",
+          validation: (Rule) => Rule.uri({ scheme: ["http", "https"] }),
+        },
+      ],
+    },
+    {
       name: "status",
       title: "Status",
       type: "string",

@@ -25,6 +25,20 @@
     "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
     "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
     "excerpt": { "type": "string", "minLength": 1 },
+    "music": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "artist"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "artist": { "type": "string", "minLength": 1 },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        }
+      }
+    },
     "tags": {
       "type": "array",
       "contains": { "const": "venture" },

@@ -19,3 +19,15 @@ Then validate and preview it:
 ```sh
 pnpm sfi:check --entry=0002
 ```
+
+For future entries with a music tagline, pass the song metadata when creating the draft:
+
+```sh
+pnpm sfi:draft \
+  --subtitle="Post subtitle" \
+  --music-title="Song title" \
+  --music-artist="Artist" \
+  --music-url="https://example.com/song"
+```
+
+The URL is optional, but the title and artist must be provided together. The draft command includes the same flags in the `sfi:new` command it prints.
