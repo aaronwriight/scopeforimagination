@@ -11,6 +11,8 @@ const nextConfig = {
   },
   experimental: {
     taint: true,
+    webpackBuildWorker: true,
+    webpackMemoryOptimizations: true,
   },
   webpack(config, { dev }) {
     // Vercel restores `.next/cache` before every build. This site's production
