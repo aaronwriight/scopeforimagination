@@ -55,7 +55,7 @@ export function VentureAtlas({
   peaks: readonly NortheastPeak[];
   rangeAreas: readonly NortheastRangeArea[];
 }) {
-  const [view, setView] = useState<AtlasView | null>(null);
+  const [view, setView] = useState<AtlasView>("travels");
 
   return (
     <section className="not-prose w-full" aria-label="Venture atlas">
@@ -98,7 +98,7 @@ export function VentureAtlas({
             variant="atlas"
           />
         )}
-        {(view === null || view === "travels") && (
+        {view === "travels" && (
           <InternationalTravelsMap destinations={destinations} variant="atlas" />
         )}
       </div>
