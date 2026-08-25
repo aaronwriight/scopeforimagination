@@ -1,17 +1,16 @@
 "use client";
 
+import { drag, type D3DragEvent } from "d3-drag";
 import {
-  drag,
   geoCircle,
   geoDistance,
   geoGraticule10,
   geoOrthographic,
   geoPath,
-  select,
-  timer,
-  type D3DragEvent,
   type GeoGeometryObjects,
-} from "d3";
+} from "d3-geo";
+import { select } from "d3-selection";
+import { timer } from "d3-timer";
 import { useEffect, useRef } from "react";
 import { feature } from "topojson-client";
 import world from "world-atlas/countries-110m.json";

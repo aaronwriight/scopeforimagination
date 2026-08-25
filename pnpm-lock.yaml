@@ -32,9 +32,24 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.0.8
         version: 4.1.6
-      d3:
-        specifier: ^7.9.0
-        version: 7.9.0
+      d3-drag:
+        specifier: ^3.0.0
+        version: 3.0.0
+      d3-geo:
+        specifier: ^3.1.1
+        version: 3.1.1
+      d3-polygon:
+        specifier: ^3.0.1
+        version: 3.0.1
+      d3-selection:
+        specifier: ^3.0.0
+        version: 3.0.0
+      d3-timer:
+        specifier: ^3.0.1
+        version: 3.0.1
+      d3-zoom:
+        specifier: ^3.0.0
+        version: 3.0.0
       dms-conversion:
         specifier: ^3.1.3
         version: 3.1.3
@@ -87,9 +102,24 @@ importers:
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.16(tailwindcss@4.1.6)
-      '@types/d3':
-        specifier: ^7.4.3
-        version: 7.4.3
+      '@types/d3-drag':
+        specifier: ^3.0.7
+        version: 3.0.7
+      '@types/d3-geo':
+        specifier: ^3.1.1
+        version: 3.1.1
+      '@types/d3-polygon':
+        specifier: ^3.0.2
+        version: 3.0.2
+      '@types/d3-selection':
+        specifier: ^3.0.11
+        version: 3.0.11
+      '@types/d3-timer':
+        specifier: ^3.0.2
+        version: 3.0.2
+      '@types/d3-zoom':
+        specifier: ^3.0.8
+        version: 3.0.8
       '@types/node':
         specifier: ^22.15.17
         version: 22.15.17

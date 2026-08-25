@@ -4,8 +4,8 @@ import { VentureAtlas } from "@/components/venture/venture-atlas";
 import {
   formatNationalParkName,
   getAllNationalParks,
+  getNationalParkBoundaries,
   getNationalParkStates,
-  nationalParkBoundaries,
   nationalParkBoundarySourceUrl,
 } from "@/lib/venture-parks";
 import {
@@ -30,6 +30,7 @@ export default function VenturePage() {
       states: getNationalParkStates(park),
     }));
   const travelDestinations = getAllTravelDestinations();
+  const parkBoundaries = getNationalParkBoundaries();
 
   return (
     <VentureShell title="venture">
@@ -39,7 +40,7 @@ export default function VenturePage() {
       <VentureAtlas
         destinations={travelDestinations}
         parks={visitedParks}
-        parkBoundaries={nationalParkBoundaries}
+        parkBoundaries={parkBoundaries}
         parkBoundarySourceUrl={nationalParkBoundarySourceUrl}
         peaks={completedPeaks}
         rangeAreas={rangeAreas}

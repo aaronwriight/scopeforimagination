@@ -4,14 +4,15 @@ import {
   geoBounds,
   geoMercator,
   geoPath,
-  pointer,
-  select,
+  type GeoPermissibleObjects,
+} from "d3-geo";
+import { pointer, select } from "d3-selection";
+import {
   zoom,
   zoomIdentity,
-  type GeoPermissibleObjects,
   type ZoomBehavior,
   type ZoomTransform,
-} from "d3";
+} from "d3-zoom";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";

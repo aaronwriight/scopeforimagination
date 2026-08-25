@@ -4,8 +4,8 @@ import { NationalParksIndex } from "@/components/venture/national-parks-index";
 import {
   formatNationalParkName,
   getAllNationalParks,
+  getNationalParkBoundaries,
   getNationalParkStates,
-  nationalParkBoundaries,
   nationalParkBoundarySourceUrl,
 } from "@/lib/venture-parks";
 
@@ -20,13 +20,14 @@ export default function VentureParksPage() {
     displayName: formatNationalParkName(park.name),
     states: getNationalParkStates(park),
   }));
+  const boundaries = getNationalParkBoundaries();
 
   return (
     <VentureShell title="national parks">
       <p className="font-serif text-stone-500">A by-park index for visits and their memories</p>
       <NationalParksIndex
         parks={parks}
-        boundaries={nationalParkBoundaries}
+        boundaries={boundaries}
         boundarySourceUrl={nationalParkBoundarySourceUrl}
       />
     </VentureShell>

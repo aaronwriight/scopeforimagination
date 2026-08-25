@@ -4,14 +4,16 @@ import {
   geoBounds,
   geoMercator,
   geoPath,
-  polygonContains,
-  select,
-  zoom,
-  zoomIdentity,
   type GeoGeometryObjects,
   type GeoProjection,
+} from "d3-geo";
+import { polygonContains } from "d3-polygon";
+import { select } from "d3-selection";
+import {
+  zoom,
+  zoomIdentity,
   type ZoomTransform,
-} from "d3";
+} from "d3-zoom";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { feature, mesh } from "topojson-client";

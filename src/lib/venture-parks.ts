@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import nationalParksJson from "../../content/venture/parks/national-parks.json";
-import nationalParkBoundariesJson from "../../content/venture/parks/visited-national-park-boundaries.json";
 
 const EXPECTED_NATIONAL_PARK_COUNT = 63;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -406,16 +407,39 @@ function parseBoundaryCollection(
 const catalog = parseCatalog(nationalParksJson as unknown);
 const parksBySlug = new Map(catalog.parks.map((park) => [park.slug, park]));
 const parksByNpsCode = new Map(catalog.parks.map((park) => [park.npsCode, park]));
-const boundaryCollection = parseBoundaryCollection(nationalParkBoundariesJson as unknown, parksByNpsCode);
+let boundaryCollectionCache: NationalParkBoundaryCollection | null = null;
+
+function getBoundaryCollection(): NationalParkBoundaryCollection {
+  if (boundaryCollectionCache) return boundaryCollectionCache;
+
+  const boundaryPath = join(
+    process.cwd(),
+    "content",
+    "venture",
+    "parks",
+    "visited-national-park-boundaries.json",
+  );
+  const boundaryJson = JSON.parse(readFileSync(boundaryPath, "utf8")) as unknown;
+  boundaryCollectionCache = parseBoundaryCollection(boundaryJson, parksByNpsCode);
+  return boundaryCollectionCache;
+}
 
 export const nationalParkCoordinateSourceUrl = catalog.coordinateSourceUrl;
 export const nationalParkCoordinateSourceNote = catalog.coordinateSourceNote;
-export const nationalParkBoundarySourceUrl = boundaryCollection.sourceUrl;
-export const nationalParkBoundarySourceNote = boundaryCollection.sourceNote;
-export const nationalParkBoundaries = boundaryCollection.features;
-export const visitedNationalParkBoundaries = Object.freeze(
-  boundaryCollection.features.filter((boundary) => boundary.properties.visited),
-);
+export const nationalParkBoundarySourceUrl =
+  "https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Land_Resources_Division_Boundary_and_Tract_Data_Service/FeatureServer/2";
+export const nationalParkBoundarySourceNote =
+  "National Park Service boundary polygons for all 63 national parks, simplified to 0.025 degrees for offline web display. The source currently marks Acadia and New River Gorge as Legacy; the remaining 61 park records are Official.";
+
+export function getNationalParkBoundaries(): readonly NationalParkBoundaryFeature[] {
+  return getBoundaryCollection().features;
+}
+
+export function getVisitedNationalParkBoundaries(): readonly NationalParkBoundaryFeature[] {
+  return Object.freeze(
+    getBoundaryCollection().features.filter((boundary) => boundary.properties.visited),
+  );
+}
 
 export function getAllNationalParks(): readonly NationalPark[] {
   return catalog.parks;

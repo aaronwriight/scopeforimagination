@@ -1,4 +1,4 @@
-import type { GeoProjection } from "d3";
+import type { GeoProjection } from "d3-geo";
 
 type ReliefTextureLevel = Readonly<{
   data: Uint8ClampedArray;
