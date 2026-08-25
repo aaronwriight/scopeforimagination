@@ -77,8 +77,6 @@ export default async function VenturePage() {
       <p className="text-stone-500">an atlas of places worth remembering</p>
       <p>A field journal for peaks, parks, and stories gathered along the way.</p>
 
-      <VentureGlobe entries={mapEntries} countries={mapCountries} />
-
       <section className="not-prose grid gap-5 sm:grid-cols-3">
         <Link href="/venture/trails" className="border-t border-stone-300 pt-4 dark:border-stone-700">
           <p className="m-0 text-xs lowercase tracking-widest text-[#859900]">northeast 115</p>
@@ -94,9 +92,7 @@ export default async function VenturePage() {
         </Link>
       </section>
 
-      <p className="text-xs text-stone-500">
-        Looking for the stories? <Link href="/venture/index">Open the adventure index →</Link>
-      </p>
+      <VentureGlobe entries={mapEntries} countries={mapCountries} />
     </VentureShell>
   );
 }

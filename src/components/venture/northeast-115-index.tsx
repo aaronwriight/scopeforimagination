@@ -1,12 +1,14 @@
 "use client";
 
 import {
-  geoCircle,
+  geoBounds,
   geoMercator,
   geoPath,
+  pointer,
   select,
   zoom,
   zoomIdentity,
+  type GeoPermissibleObjects,
   type ZoomBehavior,
   type ZoomTransform,
 } from "d3";
@@ -15,15 +17,96 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
 import statesAtlas from "us-atlas/states-10m.json";
 import { CompletionStatus } from "@/components/venture/completion-status";
+import northeastRangeBoundaries from "@/data/venture-northeast-ranges.json";
 import type { NortheastPeak, NortheastRangeArea } from "@/lib/venture-trails";
 
 const mapWidth = 960;
 const mapHeight = 600;
 const markerGreen = "#859900";
 const northeastStateIds = new Set(["23", "33", "36", "50"]);
+const hillshadeServiceUrl = "https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer";
+const minimumTerrainTileZoom = 7;
+const maximumTerrainTileZoom = 11;
+const maximumMapScale = 12;
+const zoomStep = 1.3;
 
-type SortOrder = "ascending" | "descending";
+type SortOption = "alphabetical-ascending" | "alphabetical-descending" | "elevation-descending" | "elevation-ascending";
 type MapControl = "zoom-in" | "zoom-out" | "reset";
+type TerrainTile = Readonly<{
+  id: string;
+  href: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}>;
+type RangeCoordinate = readonly [number, number];
+type RangePolygonCoordinates = readonly (readonly RangeCoordinate[])[];
+type RangeBoundaryFeature = Readonly<{
+  type: "Feature";
+  properties: Readonly<{ name: string }>;
+  geometry:
+    | Readonly<{ type: "Polygon"; coordinates: RangePolygonCoordinates }>
+    | Readonly<{ type: "MultiPolygon"; coordinates: readonly RangePolygonCoordinates[] }>;
+}>;
+
+function ringSignedArea(ring: readonly RangeCoordinate[]): number {
+  return ring.reduce((area, coordinate, index) => {
+    const nextCoordinate = ring[(index + 1) % ring.length];
+    return area + coordinate[0] * nextCoordinate[1] - nextCoordinate[0] * coordinate[1];
+  }, 0) / 2;
+}
+
+function rewindPolygonForD3(coordinates: RangePolygonCoordinates): RangeCoordinate[][] {
+  return coordinates.map((ring, ringIndex) => {
+    const isClockwise = ringSignedArea(ring) < 0;
+    const shouldBeClockwise = ringIndex === 0;
+    return isClockwise === shouldBeClockwise ? [...ring] : [...ring].reverse();
+  });
+}
+
+function rewindRangeBoundaryForD3(boundary: RangeBoundaryFeature): RangeBoundaryFeature {
+  if (boundary.geometry.type === "Polygon") {
+    return {
+      ...boundary,
+      geometry: {
+        type: "Polygon",
+        coordinates: rewindPolygonForD3(boundary.geometry.coordinates),
+      },
+    };
+  }
+
+  return {
+    ...boundary,
+    geometry: {
+      type: "MultiPolygon",
+      coordinates: boundary.geometry.coordinates.map(rewindPolygonForD3),
+    },
+  };
+}
+
+const rangeBoundaryFeatures = (
+  northeastRangeBoundaries.features as unknown as readonly RangeBoundaryFeature[]
+).map(rewindRangeBoundaryForD3);
+
+function longitudeToTileX(longitude: number, zoomLevel: number): number {
+  return ((longitude + 180) / 360) * 2 ** zoomLevel;
+}
+
+function latitudeToTileY(latitude: number, zoomLevel: number): number {
+  const clampedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+  const radians = (clampedLatitude * Math.PI) / 180;
+  return ((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2) * 2 ** zoomLevel;
+}
+
+function tileXToLongitude(tileX: number, zoomLevel: number): number {
+  return (tileX / 2 ** zoomLevel) * 360 - 180;
+}
+
+function tileYToLatitude(tileY: number, zoomLevel: number): number {
+  const mercatorY = Math.PI * (1 - (2 * tileY) / 2 ** zoomLevel);
+  return (Math.atan(Math.sinh(mercatorY)) * 180) / Math.PI;
+}
 
 function NortheastMap({
   peaks,
@@ -37,7 +120,7 @@ function NortheastMap({
   const [mapTransform, setMapTransform] = useState<ZoomTransform>(zoomIdentity);
   const [activePeak, setActivePeak] = useState<string | null>(null);
 
-  const { northeastStates, path, projection } = useMemo(() => {
+  const { northeastStates, path, projection, stateBounds } = useMemo(() => {
     const topology = statesAtlas as unknown as Parameters<typeof feature>[0];
     const states = feature(topology, topology.objects.states);
     const allStates = states.type === "FeatureCollection" ? states.features : [states];
@@ -58,15 +141,87 @@ function NortheastMap({
       northeastStates: selectedStates,
       path: geoPath(nextProjection),
       projection: nextProjection,
+      stateBounds: geoBounds(selectedStateCollection),
     };
   }, []);
+
+  const terrainTiles = useMemo(() => {
+    const zoomLevel = Math.min(
+      maximumTerrainTileZoom,
+      minimumTerrainTileZoom + Math.max(0, Math.floor(Math.log2(mapTransform.k) + 0.5)),
+    );
+    const inverseTopLeft: [number, number] = [
+      (0 - mapTransform.x) / mapTransform.k,
+      (0 - mapTransform.y) / mapTransform.k,
+    ];
+    const inverseBottomRight: [number, number] = [
+      (mapWidth - mapTransform.x) / mapTransform.k,
+      (mapHeight - mapTransform.y) / mapTransform.k,
+    ];
+    const topLeftCoordinates = projection.invert?.(inverseTopLeft);
+    const bottomRightCoordinates = projection.invert?.(inverseBottomRight);
+    if (!topLeftCoordinates || !bottomRightCoordinates) return [];
+
+    const [[stateWest, stateSouth], [stateEast, stateNorth]] = stateBounds;
+    const visibleWest = Math.max(stateWest, Math.min(topLeftCoordinates[0], bottomRightCoordinates[0]));
+    const visibleEast = Math.min(stateEast, Math.max(topLeftCoordinates[0], bottomRightCoordinates[0]));
+    const visibleSouth = Math.max(stateSouth, Math.min(topLeftCoordinates[1], bottomRightCoordinates[1]));
+    const visibleNorth = Math.min(stateNorth, Math.max(topLeftCoordinates[1], bottomRightCoordinates[1]));
+    if (visibleWest >= visibleEast || visibleSouth >= visibleNorth) return [];
+
+    const tileLimit = 2 ** zoomLevel - 1;
+    const tilePadding = mapTransform.k > 1 ? 1 : 0;
+    const minimumTileX = Math.max(0, Math.floor(longitudeToTileX(visibleWest, zoomLevel)) - tilePadding);
+    const maximumTileX = Math.min(tileLimit, Math.floor(longitudeToTileX(visibleEast, zoomLevel)) + tilePadding);
+    const minimumTileY = Math.max(0, Math.floor(latitudeToTileY(visibleNorth, zoomLevel)) - tilePadding);
+    const maximumTileY = Math.min(tileLimit, Math.floor(latitudeToTileY(visibleSouth, zoomLevel)) + tilePadding);
+    const tiles: TerrainTile[] = [];
+
+    for (let tileY = minimumTileY; tileY <= maximumTileY; tileY += 1) {
+      for (let tileX = minimumTileX; tileX <= maximumTileX; tileX += 1) {
+        const topLeft = projection([
+          tileXToLongitude(tileX, zoomLevel),
+          tileYToLatitude(tileY, zoomLevel),
+        ]);
+        const bottomRight = projection([
+          tileXToLongitude(tileX + 1, zoomLevel),
+          tileYToLatitude(tileY + 1, zoomLevel),
+        ]);
+        if (!topLeft || !bottomRight) continue;
+
+        tiles.push({
+          id: `${zoomLevel}:${tileX}:${tileY}`,
+          href: `${hillshadeServiceUrl}/tile/${zoomLevel}/${tileY}/${tileX}`,
+          x: topLeft[0] - 0.25,
+          y: topLeft[1] - 0.25,
+          width: bottomRight[0] - topLeft[0] + 0.5,
+          height: bottomRight[1] - topLeft[1] + 0.5,
+        });
+      }
+    }
+
+    return tiles;
+  }, [mapTransform, projection, stateBounds]);
+
+  const visibleRangeBoundaries = useMemo(() => {
+    const activeRanges = new Map(rangeAreas.map((area) => [area.name, area]));
+
+    return rangeBoundaryFeatures.flatMap((boundary) => {
+      const area = activeRanges.get(boundary.properties.name);
+      return area ? [{ boundary, area }] : [];
+    });
+  }, [rangeAreas]);
 
   useEffect(() => {
     const element = svgRef.current;
     if (!element) return;
 
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 16])
+      .scaleExtent([1, maximumMapScale])
+      .wheelDelta((event: WheelEvent) => {
+        const deltaFactor = event.deltaMode === 1 ? 0.015 : event.deltaMode === 2 ? 0.35 : 0.001;
+        return -event.deltaY * deltaFactor * (event.ctrlKey ? 2 : 1);
+      })
       .extent([
         [0, 0],
         [mapWidth, mapHeight],
@@ -78,7 +233,17 @@ function NortheastMap({
       .on("zoom", (event) => setMapTransform(event.transform));
 
     zoomBehaviorRef.current = zoomBehavior;
-    select(element).call(zoomBehavior);
+    const selection = select(element);
+    selection
+      .call(zoomBehavior)
+      .on("dblclick.zoom", (event: MouseEvent) => {
+        event.preventDefault();
+        selection.call(
+          zoomBehavior.scaleBy,
+          event.shiftKey ? 1 / zoomStep : zoomStep,
+          pointer(event, element),
+        );
+      });
 
     return () => {
       select(element).on(".zoom", null);
@@ -92,8 +257,8 @@ function NortheastMap({
     if (!element || !zoomBehavior) return;
 
     const selection = select(element);
-    if (control === "zoom-in") selection.call(zoomBehavior.scaleBy, 1.6);
-    else if (control === "zoom-out") selection.call(zoomBehavior.scaleBy, 1 / 1.6);
+    if (control === "zoom-in") selection.call(zoomBehavior.scaleBy, zoomStep);
+    else if (control === "zoom-out") selection.call(zoomBehavior.scaleBy, 1 / zoomStep);
     else selection.call(zoomBehavior.transform, zoomIdentity);
   };
 
@@ -128,48 +293,70 @@ function NortheastMap({
         >
           <title id="northeast-map-title">Northeast 115 peak map</title>
           <desc id="northeast-map-description">
-            An interactive map of Maine, New Hampshire, New York, and Vermont with Northeast 115 peaks and recorded mountain ranges highlighted.
+            An interactive map of Maine, New Hampshire, New York, and Vermont with hillshaded terrain relief, Northeast 115 peaks, and recorded mountain ranges highlighted.
           </desc>
 
-          <g transform={mapTransform.toString()}>
-            <g aria-label="Northeast states">
+          <defs>
+            <clipPath id="northeast-states-clip">
               {northeastStates.map((state, index) => (
-              <path
-                  key={String(state.id ?? index)}
-                  d={path(state) ?? undefined}
-                  fill={markerGreen}
-                  fillOpacity={0.09}
-                  stroke={markerGreen}
-                  strokeOpacity={0.42}
-                  strokeWidth={1.3}
-                  vectorEffect="non-scaling-stroke"
-              />
+                <path key={String(state.id ?? index)} d={path(state) ?? undefined} />
+              ))}
+            </clipPath>
+          </defs>
+
+          <g transform={mapTransform.toString()}>
+            <g clipPath="url(#northeast-states-clip)" aria-label="Esri World Hillshade terrain relief">
+              {terrainTiles.map((tile) => (
+                <image
+                  key={tile.id}
+                  href={tile.href}
+                  x={tile.x}
+                  y={tile.y}
+                  width={tile.width}
+                  height={tile.height}
+                  opacity={0.52}
+                  preserveAspectRatio="none"
+                  pointerEvents="none"
+                  style={{ mixBlendMode: "multiply" }}
+                />
               ))}
             </g>
 
-            <g aria-label="Ranges containing recorded summits">
-              {rangeAreas.map((area) => {
-                const circle = geoCircle()
-                  .center([area.longitude, area.latitude])
-                  .radius(area.radiusDegrees)();
+            <g
+              clipPath="url(#northeast-states-clip)"
+              aria-label="Mountain ranges containing recorded summits"
+            >
+              {visibleRangeBoundaries.map(({ boundary, area }) => (
+                <path
+                  key={area.name}
+                  d={path(boundary as unknown as GeoPermissibleObjects) ?? undefined}
+                  fill={markerGreen}
+                  fillOpacity={0.12}
+                  stroke={markerGreen}
+                  strokeOpacity={0.58}
+                  strokeWidth={1.15}
+                  vectorEffect="non-scaling-stroke"
+                  pointerEvents="none"
+                >
+                  <title>
+                    {area.name}: {area.completedPeakCount} recorded {area.completedPeakCount === 1 ? "summit" : "summits"}
+                  </title>
+                </path>
+              ))}
+            </g>
 
-                return (
-                  <path
-                    key={area.name}
-                    d={path(circle) ?? undefined}
-                    fill={markerGreen}
-                    fillOpacity={0.16}
-                    stroke={markerGreen}
-                    strokeOpacity={0.52}
-                    strokeWidth={1.1}
-                    vectorEffect="non-scaling-stroke"
-                  >
-                    <title>
-                      {area.name}: {area.completedPeakCount} recorded {area.completedPeakCount === 1 ? "summit" : "summits"}
-                    </title>
-                  </path>
-                );
-              })}
+            <g aria-label="Northeast state boundaries">
+              {northeastStates.map((state, index) => (
+                <path
+                  key={String(state.id ?? index)}
+                  d={path(state) ?? undefined}
+                  fill="none"
+                  stroke="#d6d3d1"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                  pointerEvents="none"
+                />
+              ))}
             </g>
 
             <g aria-label="Northeast 115 peaks">
@@ -254,9 +441,19 @@ function NortheastMap({
           not yet climbed
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-4 border border-[#859900]/40 bg-[#859900]/10" aria-hidden="true" />
-          Northeast states &amp; ranges with recorded summits
+          <span className="h-2.5 w-4 border border-[#859900]/60 bg-[#859900]/10" aria-hidden="true" />
+          ranges with recorded summits
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-px w-4 bg-stone-300" aria-hidden="true" />
+          state boundaries
+        </span>
+        <a href={hillshadeServiceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
+          terrain relief: Esri World Hillshade ↗
+        </a>
+        <a href="https://doi.org/10.48601/earthenv-t9k2-1407" target="_blank" rel="noreferrer" className="text-[#6f8200]">
+          range boundaries: GMBA v2 ↗
+        </a>
         <span>drag to pan · scroll to zoom · select a marker to open its page</span>
       </figcaption>
     </figure>
@@ -272,7 +469,7 @@ export function Northeast115Index({
 }) {
   const [state, setState] = useState("all");
   const [range, setRange] = useState("all");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("ascending");
+  const [sortOption, setSortOption] = useState<SortOption>("alphabetical-ascending");
 
   const states = useMemo(
     () => [...new Set(peaks.map((peak) => peak.state))].sort(),
@@ -282,16 +479,42 @@ export function Northeast115Index({
     () => [...new Set(peaks.map((peak) => peak.range))].sort(),
     [peaks],
   );
-  const visiblePeaks = useMemo(
+  const filteredPeaks = useMemo(
     () =>
       peaks
         .filter((peak) => state === "all" || peak.state === state)
-        .filter((peak) => range === "all" || peak.range === range)
-        .toSorted((first, second) => {
-          const comparison = first.name.localeCompare(second.name);
-          return sortOrder === "ascending" ? comparison : -comparison;
+        .filter((peak) => range === "all" || peak.range === range),
+    [peaks, range, state],
+  );
+  const filteredRangeAreas = useMemo(
+    () =>
+      rangeAreas.flatMap((area) => {
+        const matchingPeaks = filteredPeaks.filter((peak) => peak.range === area.name);
+        const completedPeakCount = matchingPeaks.filter((peak) => peak.completed).length;
+        if (matchingPeaks.length === 0 || completedPeakCount === 0) return [];
+
+        return [{
+          ...area,
+          peakCount: matchingPeaks.length,
+          completedPeakCount,
+          stateAbbreviations: [...new Set(matchingPeaks.map((peak) => peak.stateAbbreviation))].sort(),
+        }];
+      }),
+    [filteredPeaks, rangeAreas],
+  );
+  const visiblePeaks = useMemo(
+    () =>
+      filteredPeaks.toSorted((first, second) => {
+          if (sortOption === "elevation-descending") {
+            return second.elevationFeet - first.elevationFeet || first.name.localeCompare(second.name);
+          }
+          if (sortOption === "elevation-ascending") {
+            return first.elevationFeet - second.elevationFeet || first.name.localeCompare(second.name);
+          }
+          const alphabeticalComparison = first.name.localeCompare(second.name);
+          return sortOption === "alphabetical-ascending" ? alphabeticalComparison : -alphabeticalComparison;
         }),
-    [peaks, range, sortOrder, state],
+    [filteredPeaks, sortOption],
   );
 
   const controlClassName =
@@ -299,7 +522,7 @@ export function Northeast115Index({
 
   return (
     <>
-      <NortheastMap peaks={peaks} rangeAreas={rangeAreas} />
+      <NortheastMap peaks={filteredPeaks} rangeAreas={filteredRangeAreas} />
 
       <div className="not-prose mt-10 grid gap-4 sm:grid-cols-3">
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
@@ -323,12 +546,14 @@ export function Northeast115Index({
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
           sort
           <select
-            value={sortOrder}
-            onChange={(event) => setSortOrder(event.target.value as SortOrder)}
+            value={sortOption}
+            onChange={(event) => setSortOption(event.target.value as SortOption)}
             className={controlClassName}
           >
-            <option value="ascending">A–Z</option>
-            <option value="descending">Z–A</option>
+            <option value="alphabetical-ascending">A–Z</option>
+            <option value="alphabetical-descending">Z–A</option>
+            <option value="elevation-descending">elevation: high–low</option>
+            <option value="elevation-ascending">elevation: low–high</option>
           </select>
         </label>
       </div>

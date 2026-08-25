@@ -1,13 +1,15 @@
 "use client";
 
 import {
-  geoAlbersUsa,
+  geoBounds,
   geoMercator,
   geoPath,
+  polygonContains,
   select,
   zoom,
   zoomIdentity,
   type GeoGeometryObjects,
+  type GeoProjection,
   type ZoomTransform,
 } from "d3";
 import Link from "next/link";
@@ -15,18 +17,49 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { feature, mesh } from "topojson-client";
 import us from "us-atlas/states-10m.json";
 import { CompletionStatus } from "@/components/venture/completion-status";
-import type { NationalPark, NationalParkBoundaryFeature } from "@/lib/venture-parks";
+import type {
+  NationalPark,
+  NationalParkBoundaryFeature,
+  NationalParkBoundaryGeometry,
+} from "@/lib/venture-parks";
 
 const mapWidth = 1200;
 const mapHeight = 720;
 const markerGreen = "#859900";
-const territoryInsets = [
-  { npsCode: "NPSA", label: "american samoa", x: 874, y: 548, width: 145, height: 132 },
-  { npsCode: "VIIS", label: "u.s. virgin islands", x: 1027, y: 548, width: 145, height: 132 },
+const hillshadeServiceUrl = "https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer";
+const insetRegions = [
+  { id: "alaska", label: "alaska", x: 35, y: 548, width: 320, height: 140 },
+  { id: "hawaii", label: "hawaii", x: 365, y: 568, width: 185, height: 120 },
+  { id: "american-samoa", label: "american samoa", x: 744, y: 568, width: 190, height: 120 },
+  { id: "virgin-islands", label: "u.s. virgin islands", x: 946, y: 568, width: 218, height: 120 },
 ] as const;
+
+const excludedConusStateIds = new Set(["02", "15", "60", "66", "69", "72", "78"]);
 
 type SortOrder = "ascending" | "descending";
 type MapControl = "zoom-in" | "zoom-out" | "reset";
+type MapRegionId = "conus" | "alaska" | "hawaii" | "american-samoa" | "virgin-islands";
+type TerrainTile = Readonly<{
+  id: string;
+  href: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}>;
+
+type MapRegion = Readonly<{
+  id: MapRegionId;
+  label: string | null;
+  stateIds: ReadonlySet<string>;
+  stateFeatures: readonly GeoGeometryObjects[];
+  projection: GeoProjection;
+  minimumTileZoom: number;
+  maximumTileZoom: number;
+  longitudeRanges: readonly (readonly [number, number])[];
+  latitudeRange: readonly [number, number];
+  projectedExtent: readonly [readonly [number, number], readonly [number, number]];
+}>;
 
 export type NationalParkIndexItem = NationalPark &
   Readonly<{
@@ -36,10 +69,182 @@ export type NationalParkIndexItem = NationalPark &
 
 type ParkMapDatum = Readonly<{
   park: NationalParkIndexItem;
-  boundary: NationalParkBoundaryFeature;
   pathData: string;
   position: readonly [number, number];
 }>;
+
+type BoundaryPosition = [number, number];
+type BoundaryRing = BoundaryPosition[];
+type BoundaryPolygon = BoundaryRing[];
+
+function normalizedStateId(value: string | number | undefined): string {
+  return String(value ?? "").padStart(2, "0");
+}
+
+function longitudeToTileX(longitude: number, zoomLevel: number): number {
+  return ((longitude + 180) / 360) * 2 ** zoomLevel;
+}
+
+function latitudeToTileY(latitude: number, zoomLevel: number): number {
+  const clampedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+  const radians = (clampedLatitude * Math.PI) / 180;
+  return ((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2) * 2 ** zoomLevel;
+}
+
+function tileXToLongitude(tileX: number, zoomLevel: number): number {
+  return (tileX / 2 ** zoomLevel) * 360 - 180;
+}
+
+function tileYToLatitude(tileY: number, zoomLevel: number): number {
+  const mercatorY = Math.PI * (1 - (2 * tileY) / 2 ** zoomLevel);
+  return (Math.atan(Math.sinh(mercatorY)) * 180) / Math.PI;
+}
+
+function signedRingArea(ring: readonly BoundaryPosition[]): number {
+  let area = 0;
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    const current = ring[index];
+    const next = ring[index + 1];
+    area += current[0] * next[1] - next[0] * current[1];
+  }
+  return area / 2;
+}
+
+function orientRing(ring: readonly BoundaryPosition[], clockwise: boolean): BoundaryRing {
+  const isClockwise = signedRingArea(ring) < 0;
+  const positions = ring.map(([longitude, latitude]): BoundaryPosition => [longitude, latitude]);
+  return isClockwise === clockwise ? positions : positions.reverse();
+}
+
+/**
+ * The NPS ArcGIS GeoJSON occasionally emits interior rings as standalone
+ * MultiPolygon members. D3 treats those counter-clockwise rings as the
+ * complement of the park, which fills the projection instead of the hole.
+ * Reattach each orphan ring to its smallest containing footprint before
+ * generating SVG paths.
+ */
+function normalizeBoundaryGeometry(geometry: NationalParkBoundaryGeometry): NationalParkBoundaryGeometry {
+  if (geometry.type === "Polygon") {
+    const [outerRing, ...holeRings] = geometry.coordinates;
+    return {
+      type: "Polygon",
+      coordinates: [
+        orientRing(outerRing, true),
+        ...holeRings.map((ring) => orientRing(ring, false)),
+      ],
+    };
+  }
+
+  const polygons: BoundaryPolygon[] = [];
+  const orphanRings: BoundaryRing[] = [];
+
+  for (const polygon of geometry.coordinates) {
+    const [outerRing, ...holeRings] = polygon;
+    if (signedRingArea(outerRing) < 0) {
+      polygons.push([
+        orientRing(outerRing, true),
+        ...holeRings.map((ring) => orientRing(ring, false)),
+      ]);
+    } else {
+      orphanRings.push(outerRing, ...holeRings);
+    }
+  }
+
+  for (const orphanRing of orphanRings) {
+    const hole = orientRing(orphanRing, false);
+    const containingPolygon = polygons
+      .map((polygon, index) => ({
+        index,
+        area: Math.abs(signedRingArea(polygon[0])),
+      }))
+      .filter(({ index }) => polygonContains(polygons[index][0], hole[0]))
+      .sort((first, second) => first.area - second.area)[0];
+
+    if (containingPolygon) {
+      polygons[containingPolygon.index].push(hole);
+    } else {
+      // Defensive fallback: an uncontained ring is a footprint, not a hole.
+      polygons.push([orientRing(orphanRing, true)]);
+    }
+  }
+
+  return { type: "MultiPolygon", coordinates: polygons };
+}
+
+function terrainTilesForRegion(region: MapRegion, transform: ZoomTransform): TerrainTile[] {
+  const zoomLevel = Math.min(
+    region.maximumTileZoom,
+    region.minimumTileZoom + Math.max(0, Math.floor(Math.log2(transform.k))),
+  );
+  const visibleLeft = (0 - transform.x) / transform.k;
+  const visibleTop = (0 - transform.y) / transform.k;
+  const visibleRight = (mapWidth - transform.x) / transform.k;
+  const visibleBottom = (mapHeight - transform.y) / transform.k;
+  const regionLeft = Math.max(region.projectedExtent[0][0], visibleLeft);
+  const regionTop = Math.max(region.projectedExtent[0][1], visibleTop);
+  const regionRight = Math.min(region.projectedExtent[1][0], visibleRight);
+  const regionBottom = Math.min(region.projectedExtent[1][1], visibleBottom);
+  if (regionLeft >= regionRight || regionTop >= regionBottom) return [];
+
+  const tileLimit = 2 ** zoomLevel - 1;
+  const tilePadding = transform.k > 1 ? 1 : 0;
+  const minimumTileY = Math.max(
+    0,
+    Math.floor(latitudeToTileY(region.latitudeRange[1], zoomLevel)) - tilePadding,
+  );
+  const maximumTileY = Math.min(
+    tileLimit,
+    Math.floor(latitudeToTileY(region.latitudeRange[0], zoomLevel)) + tilePadding,
+  );
+  const tiles = new Map<string, TerrainTile>();
+
+  for (const [west, east] of region.longitudeRanges) {
+    const minimumTileX = Math.max(0, Math.floor(longitudeToTileX(west, zoomLevel)) - tilePadding);
+    const maximumTileX = Math.min(tileLimit, Math.floor(longitudeToTileX(east, zoomLevel)) + tilePadding);
+
+    for (let tileY = minimumTileY; tileY <= maximumTileY; tileY += 1) {
+      for (let tileX = minimumTileX; tileX <= maximumTileX; tileX += 1) {
+        const longitudeLeft = tileXToLongitude(tileX, zoomLevel);
+        const longitudeRight = tileXToLongitude(tileX + 1, zoomLevel);
+        const latitudeTop = tileYToLatitude(tileY, zoomLevel);
+        const latitudeBottom = tileYToLatitude(tileY + 1, zoomLevel);
+        const corners = [
+          region.projection([longitudeLeft, latitudeTop]),
+          region.projection([longitudeRight, latitudeTop]),
+          region.projection([longitudeLeft, latitudeBottom]),
+          region.projection([longitudeRight, latitudeBottom]),
+        ].filter((corner): corner is [number, number] => corner !== null);
+        if (corners.length !== 4) continue;
+
+        const tileLeft = Math.min(...corners.map((corner) => corner[0]));
+        const tileTop = Math.min(...corners.map((corner) => corner[1]));
+        const tileRight = Math.max(...corners.map((corner) => corner[0]));
+        const tileBottom = Math.max(...corners.map((corner) => corner[1]));
+        if (
+          tileRight < regionLeft ||
+          tileLeft > regionRight ||
+          tileBottom < regionTop ||
+          tileTop > regionBottom ||
+          tileRight - tileLeft > (region.projectedExtent[1][0] - region.projectedExtent[0][0]) * 1.5
+        ) {
+          continue;
+        }
+
+        const id = `${region.id}:${zoomLevel}:${tileX}:${tileY}`;
+        tiles.set(id, {
+          id,
+          href: `${hillshadeServiceUrl}/tile/${zoomLevel}/${tileY}/${tileX}`,
+          x: tileLeft - 0.35,
+          y: tileTop - 0.35,
+          width: tileRight - tileLeft + 0.7,
+          height: tileBottom - tileTop + 0.7,
+        });
+      }
+    }
+  }
+
+  return [...tiles.values()];
+}
 
 function NationalParksMap({
   parks,
@@ -60,53 +265,141 @@ function NationalParksMap({
     svg.selectAll("*").remove();
 
     const topology = us as unknown as Parameters<typeof feature>[0];
-    const nation = feature(topology, topology.objects.nation);
-    const states = feature(topology, topology.objects.states);
+    const statesObject = topology.objects.states;
+    const states = feature(topology, statesObject);
     const stateFeatures = states.type === "FeatureCollection" ? states.features : [states];
-    const stateBorders = mesh(
-      topology,
-      topology.objects.states as Parameters<typeof mesh>[1],
-      (first, second) => first !== second,
+    const conusStateIds = new Set(
+      stateFeatures
+        .map((state) => normalizedStateId(state.id as string | number | undefined))
+        .filter((stateId) => !excludedConusStateIds.has(stateId)),
     );
-    const projection = geoAlbersUsa().fitExtent(
-      [
-        [35, 30],
-        [mapWidth - 35, mapHeight - 34],
-      ],
-      nation,
-    );
-    const basePath = geoPath(projection);
-    const parksBySlug = new Map(parks.map((park) => [park.slug, park]));
-    const boundariesByCode = new Map(boundaries.map((boundary) => [boundary.properties.npsCode, boundary]));
-    const insetProjections = new Map<string, ReturnType<typeof geoMercator>>();
 
-    for (const inset of territoryInsets) {
-      const boundary = boundariesByCode.get(inset.npsCode);
-      if (!boundary) continue;
-      insetProjections.set(
-        inset.npsCode,
-        geoMercator().fitExtent(
-          [
-            [inset.x + 12, inset.y + 25],
-            [inset.x + inset.width - 12, inset.y + inset.height - 12],
-          ],
-          boundary as unknown as GeoGeometryObjects,
-        ),
+    const createRegion = ({
+      id,
+      label,
+      stateIds,
+      projectedExtent,
+      minimumTileZoom,
+      maximumTileZoom,
+      longitudeRanges,
+      rotate,
+    }: {
+      id: MapRegionId;
+      label: string | null;
+      stateIds: ReadonlySet<string>;
+      projectedExtent: readonly [readonly [number, number], readonly [number, number]];
+      minimumTileZoom: number;
+      maximumTileZoom: number;
+      longitudeRanges: readonly (readonly [number, number])[];
+      rotate?: readonly [number, number, number];
+    }): MapRegion => {
+      const selectedStates = stateFeatures.filter((state) =>
+        stateIds.has(normalizedStateId(state.id as string | number | undefined)),
       );
-    }
+      const stateCollection = {
+        type: "FeatureCollection" as const,
+        features: selectedStates,
+      };
+      const projection = geoMercator();
+      if (rotate) projection.rotate([...rotate]);
+      projection.fitExtent(
+        [
+          [projectedExtent[0][0], projectedExtent[0][1]],
+          [projectedExtent[1][0], projectedExtent[1][1]],
+        ],
+        stateCollection,
+      );
+      const bounds = geoBounds(stateCollection);
 
-    const projectionFor = (npsCode: string) => insetProjections.get(npsCode) ?? projection;
+      return {
+        id,
+        label,
+        stateIds,
+        stateFeatures: selectedStates as unknown as readonly GeoGeometryObjects[],
+        projection,
+        minimumTileZoom,
+        maximumTileZoom,
+        longitudeRanges,
+        latitudeRange: [bounds[0][1], bounds[1][1]],
+        projectedExtent,
+      };
+    };
+
+    const regions: readonly MapRegion[] = [
+      createRegion({
+        id: "conus",
+        label: null,
+        stateIds: conusStateIds,
+        projectedExtent: [[35, 30], [1165, 535]],
+        minimumTileZoom: 4,
+        maximumTileZoom: 8,
+        longitudeRanges: [[-125, -66]],
+      }),
+      createRegion({
+        id: "alaska",
+        label: "alaska",
+        stateIds: new Set(["02"]),
+        projectedExtent: [[48, 572], [342, 678]],
+        minimumTileZoom: 3,
+        maximumTileZoom: 8,
+        longitudeRanges: [[-180, -129], [172, 180]],
+        rotate: [152, 0, 0],
+      }),
+      createRegion({
+        id: "hawaii",
+        label: "hawaii",
+        stateIds: new Set(["15"]),
+        projectedExtent: [[378, 592], [537, 675]],
+        minimumTileZoom: 6,
+        maximumTileZoom: 10,
+        longitudeRanges: [[-161, -154]],
+      }),
+      createRegion({
+        id: "american-samoa",
+        label: "american samoa",
+        stateIds: new Set(["60"]),
+        projectedExtent: [[757, 592], [921, 675]],
+        minimumTileZoom: 8,
+        maximumTileZoom: 12,
+        longitudeRanges: [[-171, -169]],
+      }),
+      createRegion({
+        id: "virgin-islands",
+        label: "u.s. virgin islands",
+        stateIds: new Set(["78"]),
+        projectedExtent: [[959, 592], [1151, 675]],
+        minimumTileZoom: 8,
+        maximumTileZoom: 12,
+        longitudeRanges: [[-66, -64]],
+      }),
+    ];
+    const regionsById = new Map(regions.map((region) => [region.id, region]));
+    const regionForPark = (park: NationalParkIndexItem): MapRegion => {
+      if (park.npsCode === "NPSA") return regionsById.get("american-samoa")!;
+      if (park.npsCode === "VIIS") return regionsById.get("virgin-islands")!;
+      if (park.states.includes("Alaska")) return regionsById.get("alaska")!;
+      if (park.states.includes("Hawaii")) return regionsById.get("hawaii")!;
+      return regionsById.get("conus")!;
+    };
+    const parksBySlug = new Map(parks.map((park) => [park.slug, park]));
+    const geometriesByCode = new Map(
+      boundaries.map((boundary) => [
+        boundary.properties.npsCode,
+        normalizeBoundaryGeometry(boundary.geometry),
+      ]),
+    );
     const parkData = boundaries
       .map((boundary): ParkMapDatum | null => {
         const park = parksBySlug.get(boundary.properties.slug);
         if (!park) return null;
-        const parkProjection = projectionFor(park.npsCode);
-        const position = parkProjection([park.longitude, park.latitude]);
-        const pathData = geoPath(parkProjection)(boundary as unknown as GeoGeometryObjects);
+        const geometry = geometriesByCode.get(park.npsCode);
+        if (!geometry) return null;
+        const region = regionForPark(park);
+        const position = region.projection([park.longitude, park.latitude]);
+        const pathData = geoPath(region.projection)(geometry as GeoGeometryObjects);
         if (!position || !pathData) return null;
         return {
           park,
-          boundary,
           pathData,
           position: [position[0], position[1]],
         };
@@ -118,36 +411,17 @@ function NationalParksMap({
     svg
       .append("desc")
       .text(
-        "All national park boundaries are shaded. Visited parks are solarized green. Hover or focus a park marker for its name, select it to open its page, and drag or scroll to explore.",
+        "A hillshaded terrain map with state borders and all national park boundaries. Visited parks are solarized green. Hover or focus a park marker for its name, select it to open its page, and drag or scroll to explore.",
       );
 
     const viewport = svg.append("g");
-
-    viewport
-      .append("g")
-      .attr("aria-hidden", "true")
-      .selectAll("path")
-      .data(stateFeatures)
-      .join("path")
-      .attr("d", (state) => basePath(state))
-      .attr("fill", "#f4f2ec")
-      .attr("stroke", "none");
-
-    viewport
-      .append("path")
-      .datum(stateBorders)
-      .attr("d", basePath)
-      .attr("fill", "none")
-      .attr("stroke", "#c9c5bc")
-      .attr("stroke-width", 0.9)
-      .attr("vector-effect", "non-scaling-stroke")
-      .attr("aria-hidden", "true");
+    const defs = svg.append("defs");
 
     const insetGroups = viewport
       .append("g")
       .attr("aria-hidden", "true")
       .selectAll("g")
-      .data(territoryInsets)
+      .data(insetRegions)
       .join("g");
 
     insetGroups
@@ -156,7 +430,7 @@ function NationalParksMap({
       .attr("y", (inset) => inset.y)
       .attr("width", (inset) => inset.width)
       .attr("height", (inset) => inset.height)
-      .attr("fill", "#faf9f6")
+      .attr("fill", "#ffffff")
       .attr("stroke", "#d6d3d1")
       .attr("stroke-width", 0.8)
       .attr("vector-effect", "non-scaling-stroke");
@@ -169,6 +443,94 @@ function NationalParksMap({
       .attr("font-size", 9)
       .attr("letter-spacing", "0.08em")
       .text((inset) => inset.label);
+
+    for (const region of regions) {
+      defs
+        .append("clipPath")
+        .attr("id", `national-parks-terrain-${region.id}`)
+        .selectAll("path")
+        .data(region.stateFeatures)
+        .join("path")
+        .attr("d", (state) => geoPath(region.projection)(state));
+    }
+
+    viewport
+      .append("g")
+      .attr("aria-hidden", "true")
+      .selectAll("path")
+      .data(regions.flatMap((region) =>
+        region.stateFeatures.map((state) => ({ region, state })),
+      ))
+      .join("path")
+      .attr("d", ({ region, state }) => geoPath(region.projection)(state))
+      .attr("fill", "#ffffff")
+      .attr("stroke", "none");
+
+    const terrainLayers = viewport
+      .append("g")
+      .attr("aria-label", "Esri World Hillshade terrain relief")
+      .selectAll("g")
+      .data(regions)
+      .join("g")
+      .attr("data-region", (region) => region.id)
+      .attr("clip-path", (region) => `url(#national-parks-terrain-${region.id})`);
+
+    const updateTerrain = (transform: ZoomTransform) => {
+      terrainLayers.each(function updateRegionTerrain(region) {
+        select(this)
+          .selectAll<SVGImageElement, TerrainTile>("image")
+          .data(terrainTilesForRegion(region, transform), (tile) => tile.id)
+          .join("image")
+          .attr("href", (tile) => tile.href)
+          .attr("x", (tile) => tile.x)
+          .attr("y", (tile) => tile.y)
+          .attr("width", (tile) => tile.width)
+          .attr("height", (tile) => tile.height)
+          .attr("opacity", 0.52)
+          .attr("preserveAspectRatio", "none")
+          .attr("pointer-events", "none")
+          .style("mix-blend-mode", "multiply");
+      });
+    };
+
+    updateTerrain(zoomIdentity);
+
+    const stateBorderLayer = viewport.append("g").attr("aria-label", "State borders and coastlines");
+    for (const region of regions) {
+      const internalBorders = mesh(
+        topology,
+        statesObject as Parameters<typeof mesh>[1],
+        (first, second) =>
+          first !== second &&
+          region.stateIds.has(normalizedStateId(first.id as string | number | undefined)) &&
+          region.stateIds.has(normalizedStateId(second.id as string | number | undefined)),
+      );
+      const outerBorders = mesh(
+        topology,
+        statesObject as Parameters<typeof mesh>[1],
+        (first, second) =>
+          first === second &&
+          region.stateIds.has(normalizedStateId(first.id as string | number | undefined)),
+      );
+
+      stateBorderLayer
+        .append("path")
+        .datum(internalBorders)
+        .attr("d", geoPath(region.projection))
+        .attr("fill", "none")
+        .attr("stroke", "#d6d3d1")
+        .attr("stroke-width", 0.78)
+        .attr("vector-effect", "non-scaling-stroke");
+
+      stateBorderLayer
+        .append("path")
+        .datum(outerBorders)
+        .attr("d", geoPath(region.projection))
+        .attr("fill", "none")
+        .attr("stroke", "#d6d3d1")
+        .attr("stroke-width", 0.78)
+        .attr("vector-effect", "non-scaling-stroke");
+    }
 
     const parkLinks = viewport
       .append("g")
@@ -186,10 +548,10 @@ function NationalParksMap({
       .append("path")
       .attr("d", (datum) => datum.pathData)
       .attr("fill", markerGreen)
-      .attr("fill-opacity", (datum) => (datum.park.visited ? 0.58 : 0.14))
+      .attr("fill-opacity", (datum) => (datum.park.visited ? 0.68 : 0.28))
       .attr("stroke", markerGreen)
-      .attr("stroke-opacity", (datum) => (datum.park.visited ? 1 : 0.4))
-      .attr("stroke-width", (datum) => (datum.park.visited ? 1.45 : 0.75))
+      .attr("stroke-opacity", (datum) => (datum.park.visited ? 1 : 0.62))
+      .attr("stroke-width", (datum) => (datum.park.visited ? 1.45 : 0.9))
       .attr("vector-effect", "non-scaling-stroke");
 
     const markers = parkLinks.append("g").attr("class", "park-marker");
@@ -251,7 +613,12 @@ function NationalParksMap({
     updateMarkers(zoomIdentity);
 
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 24])
+      .scaleExtent([1, 12])
+      .wheelDelta((event) => {
+        if (event.deltaMode === 1) return -event.deltaY * 0.025;
+        if (event.deltaMode === 2) return -event.deltaY * 0.45;
+        return -event.deltaY * 0.0011;
+      })
       .extent([
         [0, 0],
         [mapWidth, mapHeight],
@@ -264,25 +631,38 @@ function NationalParksMap({
       .on("zoom", (event) => {
         viewport.attr("transform", event.transform.toString());
         updateMarkers(event.transform);
+        updateTerrain(event.transform);
       })
       .on("end", () => svg.style("cursor", "grab"));
 
-    svg.call(zoomBehavior).style("cursor", "grab");
+    svg
+      .call(zoomBehavior)
+      .style("cursor", "grab")
+      .on("dblclick.zoom", null)
+      .on("dblclick.friendly", (event: MouseEvent) => {
+        event.preventDefault();
+        const bounds = element.getBoundingClientRect();
+        const point: [number, number] = [
+          ((event.clientX - bounds.left) / bounds.width) * mapWidth,
+          ((event.clientY - bounds.top) / bounds.height) * mapHeight,
+        ];
+        svg.call(zoomBehavior.scaleBy, event.shiftKey ? 1 / 1.35 : 1.35, point);
+      });
 
     const handleControl = (event: Event) => {
       const action = (event as CustomEvent<MapControl>).detail;
-      if (action === "zoom-in") svg.call(zoomBehavior.scaleBy, 1.65);
-      else if (action === "zoom-out") svg.call(zoomBehavior.scaleBy, 1 / 1.65);
+      if (action === "zoom-in") svg.call(zoomBehavior.scaleBy, 1.3);
+      else if (action === "zoom-out") svg.call(zoomBehavior.scaleBy, 1 / 1.3);
       else if (action === "reset") svg.call(zoomBehavior.transform, zoomIdentity);
     };
 
     const handleKeyboard = (event: KeyboardEvent) => {
-      if (event.key === "+" || event.key === "=") svg.call(zoomBehavior.scaleBy, 1.5);
-      else if (event.key === "-" || event.key === "_") svg.call(zoomBehavior.scaleBy, 1 / 1.5);
-      else if (event.key === "ArrowLeft") svg.call(zoomBehavior.translateBy, 70, 0);
-      else if (event.key === "ArrowRight") svg.call(zoomBehavior.translateBy, -70, 0);
-      else if (event.key === "ArrowUp") svg.call(zoomBehavior.translateBy, 0, 55);
-      else if (event.key === "ArrowDown") svg.call(zoomBehavior.translateBy, 0, -55);
+      if (event.key === "+" || event.key === "=") svg.call(zoomBehavior.scaleBy, 1.25);
+      else if (event.key === "-" || event.key === "_") svg.call(zoomBehavior.scaleBy, 1 / 1.25);
+      else if (event.key === "ArrowLeft") svg.call(zoomBehavior.translateBy, 45, 0);
+      else if (event.key === "ArrowRight") svg.call(zoomBehavior.translateBy, -45, 0);
+      else if (event.key === "ArrowUp") svg.call(zoomBehavior.translateBy, 0, 40);
+      else if (event.key === "ArrowDown") svg.call(zoomBehavior.translateBy, 0, -40);
       else if (event.key === "0") svg.call(zoomBehavior.transform, zoomIdentity);
       else return;
       event.preventDefault();
@@ -293,7 +673,7 @@ function NationalParksMap({
 
     return () => {
       element.removeEventListener("national-parks-map-control", handleControl);
-      svg.on(".zoom", null).on(".keyboard", null);
+      svg.on(".zoom", null).on(".friendly", null).on(".keyboard", null);
       svg.selectAll("*").remove();
     };
   }, [boundaries, parks]);
@@ -350,9 +730,12 @@ function NationalParksMap({
           visited
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#859900]/20" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#859900]/30" aria-hidden="true" />
           not yet visited
         </span>
+        <a href={hillshadeServiceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
+          terrain relief: Esri World Hillshade ↗
+        </a>
         <a href={boundarySourceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
           park boundaries: NPS ↗
         </a>
@@ -394,6 +777,10 @@ export function NationalParksIndex({
       ),
     [parks],
   );
+  const mapParks = useMemo(
+    () => parks.filter((park) => state === "all" || park.states.includes(state)),
+    [parks, state],
+  );
   const visibleParks = useMemo(
     () =>
       parks
@@ -410,7 +797,7 @@ export function NationalParksIndex({
 
   return (
     <>
-      <NationalParksMap parks={parks} boundaries={boundaries} boundarySourceUrl={boundarySourceUrl} />
+      <NationalParksMap parks={mapParks} boundaries={boundaries} boundarySourceUrl={boundarySourceUrl} />
 
       <div className="not-prose mt-10 grid gap-4 sm:grid-cols-2">
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
