@@ -7,16 +7,16 @@ import type { NationalParkIndexItem } from "@/components/venture/national-parks-
 import type { NationalParkBoundaryFeature } from "@/lib/venture-parks";
 import type { NortheastPeak, NortheastRangeArea } from "@/lib/venture-trails";
 
-type AtlasView = "travels" | "parks" | "peaks";
+type AtlasView = "peaks" | "parks" | "travels";
 
 const atlasViews: readonly Readonly<{
   id: AtlasView;
   label: string;
   description: string;
 }>[] = [
-  { id: "travels", label: "travels", description: "countries & journeys" },
-  { id: "parks", label: "national parks", description: "parks across the united states" },
   { id: "peaks", label: "northeast 115", description: "peaks and ranges across the northeast" },
+  { id: "parks", label: "national parks", description: "parks across the united states" },
+  { id: "travels", label: "travels", description: "countries & journeys" },
 ];
 
 function AtlasMapLoading() {
@@ -55,7 +55,7 @@ export function VentureAtlas({
   peaks: readonly NortheastPeak[];
   rangeAreas: readonly NortheastRangeArea[];
 }) {
-  const [view, setView] = useState<AtlasView>("travels");
+  const [view, setView] = useState<AtlasView>("peaks");
 
   return (
     <section className="not-prose w-full" aria-label="Venture atlas">
@@ -87,8 +87,8 @@ export function VentureAtlas({
       </div>
 
       <div className="mt-6">
-        {view === "travels" && (
-          <InternationalTravelsMap destinations={destinations} variant="atlas" />
+        {view === "peaks" && (
+          <Northeast115Map peaks={peaks} rangeAreas={rangeAreas} variant="atlas" />
         )}
         {view === "parks" && (
           <NationalParksMap
@@ -98,8 +98,8 @@ export function VentureAtlas({
             variant="atlas"
           />
         )}
-        {view === "peaks" && (
-          <Northeast115Map peaks={peaks} rangeAreas={rangeAreas} variant="atlas" />
+        {view === "travels" && (
+          <InternationalTravelsMap destinations={destinations} variant="atlas" />
         )}
       </div>
     </section>
