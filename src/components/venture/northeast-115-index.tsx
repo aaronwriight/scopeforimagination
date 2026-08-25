@@ -31,6 +31,7 @@ const maximumMapScale = 12;
 const zoomStep = 1.3;
 
 type SortOption = "alphabetical-ascending" | "alphabetical-descending" | "elevation-descending" | "elevation-ascending";
+type CompletionFilter = "all" | "completed" | "not-completed";
 type MapControl = "zoom-in" | "zoom-out" | "reset";
 type TerrainTile = Readonly<{
   id: string;
@@ -108,12 +109,14 @@ function tileYToLatitude(tileY: number, zoomLevel: number): number {
   return (Math.atan(Math.sinh(mercatorY)) * 180) / Math.PI;
 }
 
-function NortheastMap({
+export function Northeast115Map({
   peaks,
   rangeAreas,
+  variant = "index",
 }: {
   peaks: readonly NortheastPeak[];
   rangeAreas: readonly NortheastRangeArea[];
+  variant?: "index" | "atlas";
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -270,11 +273,11 @@ function NortheastMap({
   };
 
   return (
-    <figure className="not-prose m-0 mt-9 w-full">
+    <figure className={`not-prose m-0 w-full ${variant === "index" ? "mt-9" : ""}`}>
       <div className="relative overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
         <svg
           ref={svgRef}
-          className="block h-auto w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none"
+          className={`block w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none ${variant === "atlas" ? "aspect-[56/33]" : "h-auto"}`}
           viewBox={`0 0 ${mapWidth} ${mapHeight}`}
           role="application"
           tabIndex={0}
@@ -324,7 +327,7 @@ function NortheastMap({
 
             <g
               clipPath="url(#northeast-states-clip)"
-              aria-label="Mountain ranges containing recorded summits"
+              aria-label="Mountain ranges represented by the Northeast 115"
             >
               {visibleRangeBoundaries.map(({ boundary, area }) => (
                 <path
@@ -339,7 +342,7 @@ function NortheastMap({
                   pointerEvents="none"
                 >
                   <title>
-                    {area.name}: {area.completedPeakCount} recorded {area.completedPeakCount === 1 ? "summit" : "summits"}
+                    {area.name}: {area.completedPeakCount} of {area.peakCount} climbed
                   </title>
                 </path>
               ))}
@@ -436,13 +439,15 @@ function NortheastMap({
           <span className="h-2.5 w-2.5 rounded-full bg-[#859900]" aria-hidden="true" />
           climbed
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-stone-300" aria-hidden="true" />
-          not yet climbed
-        </span>
+        {variant === "index" && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-stone-300" aria-hidden="true" />
+            not yet climbed
+          </span>
+        )}
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-4 border border-[#859900]/60 bg-[#859900]/10" aria-hidden="true" />
-          ranges with recorded summits
+          Northeast 115 ranges
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-px w-4 bg-stone-300" aria-hidden="true" />
@@ -469,6 +474,7 @@ export function Northeast115Index({
 }) {
   const [state, setState] = useState("all");
   const [range, setRange] = useState("all");
+  const [completion, setCompletion] = useState<CompletionFilter>("all");
   const [sortOption, setSortOption] = useState<SortOption>("alphabetical-ascending");
 
   const states = useMemo(
@@ -479,27 +485,23 @@ export function Northeast115Index({
     () => [...new Set(peaks.map((peak) => peak.range))].sort(),
     [peaks],
   );
+  const completedPeakCount = useMemo(
+    () => peaks.filter((peak) => peak.completed).length,
+    [peaks],
+  );
   const filteredPeaks = useMemo(
     () =>
       peaks
         .filter((peak) => state === "all" || peak.state === state)
-        .filter((peak) => range === "all" || peak.range === range),
-    [peaks, range, state],
+        .filter((peak) => range === "all" || peak.range === range)
+        .filter((peak) => completion === "all" || peak.completed === (completion === "completed")),
+    [completion, peaks, range, state],
   );
   const filteredRangeAreas = useMemo(
     () =>
-      rangeAreas.flatMap((area) => {
-        const matchingPeaks = filteredPeaks.filter((peak) => peak.range === area.name);
-        const completedPeakCount = matchingPeaks.filter((peak) => peak.completed).length;
-        if (matchingPeaks.length === 0 || completedPeakCount === 0) return [];
-
-        return [{
-          ...area,
-          peakCount: matchingPeaks.length,
-          completedPeakCount,
-          stateAbbreviations: [...new Set(matchingPeaks.map((peak) => peak.stateAbbreviation))].sort(),
-        }];
-      }),
+      rangeAreas.filter((area) =>
+        filteredPeaks.some((peak) => peak.range === area.name),
+      ),
     [filteredPeaks, rangeAreas],
   );
   const visiblePeaks = useMemo(
@@ -519,12 +521,24 @@ export function Northeast115Index({
 
   const controlClassName =
     "mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-700 outline-none transition-colors focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300";
+  const controlsAreDefault =
+    state === "all" &&
+    range === "all" &&
+    completion === "all" &&
+    sortOption === "alphabetical-ascending";
+
+  const resetControls = () => {
+    setState("all");
+    setRange("all");
+    setCompletion("all");
+    setSortOption("alphabetical-ascending");
+  };
 
   return (
     <>
-      <NortheastMap peaks={filteredPeaks} rangeAreas={filteredRangeAreas} />
+      <Northeast115Map peaks={filteredPeaks} rangeAreas={filteredRangeAreas} />
 
-      <div className="not-prose mt-10 grid gap-4 sm:grid-cols-3">
+      <div className="not-prose mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
           state
           <select value={state} onChange={(event) => setState(event.target.value)} className={controlClassName}>
@@ -544,6 +558,18 @@ export function Northeast115Index({
           </select>
         </label>
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+          completion
+          <select
+            value={completion}
+            onChange={(event) => setCompletion(event.target.value as CompletionFilter)}
+            className={controlClassName}
+          >
+            <option value="all">all peaks</option>
+            <option value="completed">completed</option>
+            <option value="not-completed">not completed</option>
+          </select>
+        </label>
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
           sort
           <select
             value={sortOption}
@@ -558,8 +584,23 @@ export function Northeast115Index({
         </label>
       </div>
 
-      <p className="not-prose mt-4 text-xs tabular-nums text-stone-500" aria-live="polite">
-        {visiblePeaks.length} {visiblePeaks.length === 1 ? "peak" : "peaks"}
+      <div className="not-prose mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={resetControls}
+          disabled={controlsAreDefault}
+          className="cursor-pointer font-serif text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-[#6f8200] disabled:cursor-default disabled:opacity-40 disabled:hover:text-stone-500"
+        >
+          reset filters &amp; sort
+        </button>
+      </div>
+
+      <p
+        className="not-prose mt-4 flex items-center justify-between gap-4 text-xs tabular-nums text-stone-500"
+        aria-live="polite"
+      >
+        <span>{visiblePeaks.length} {visiblePeaks.length === 1 ? "peak" : "peaks"}</span>
+        <span>{completedPeakCount} completed</span>
       </p>
 
       <div className="not-prose mt-5 border-t border-stone-300 dark:border-stone-700">

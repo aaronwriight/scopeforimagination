@@ -43,9 +43,6 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
     (ascent): ascent is TrailAscent & { entrySlug: string } => ascent.entrySlug !== null,
   );
   const firstAscent = peak.ascents.find((ascent) => ascent.ordinal === 1);
-  const trips = [...new Set(
-    peak.ascents.flatMap((ascent) => (ascent.trip === null ? [] : [ascent.trip])),
-  )];
 
   return (
     <VentureShell title={peak.name} showTitle={false}>
@@ -88,7 +85,7 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
           </div>
           <div>
             <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">ascents</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.timesHiked}</dd>
+            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.timesHiked ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">date first ascent</dt>
@@ -105,7 +102,7 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
           <div>
             <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">trip</dt>
             <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
-              {trips.length > 0 ? trips.join(" · ") : "trip pending"}
+              {firstAscent?.trip ?? (peak.completed ? "trip pending" : "—")}
             </dd>
           </div>
           <div>

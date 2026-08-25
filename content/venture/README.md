@@ -1,5 +1,7 @@
 # Venture entries
 
+For the complete author workflow and a trip-post example, start with [`docs/writing-and-publishing.md`](../../docs/writing-and-publishing.md).
+
 Venture is an adventure journal for hikes, trips, the Northeast 115, and the 63 U.S. national parks. The live site reads JSON field notes from `content/venture/entries/` and places every entry on the interactive globe using its latitude and longitude.
 
 The place catalogs live separately from the journal entries:
@@ -41,7 +43,7 @@ The `music` object is optional. Omit it entirely when an entry has no song attac
 To re-import the Northeast 115 workbook, run:
 
 ```bash
-python3 scripts/import_northeast_115.py /path/to/Northeast\ 115.xlsx /path/to/wilderlist-response.json
+python3 scripts/import_northeast_115.py /path/to/northeast_115.xlsx
 ```
 
-The importer requires `openpyxl`. The second argument is a saved response for the public Wilderlist Northeast 111 list; coordinates are stored locally and are never fetched at runtime. Workbook notes remain private by default; only pass `--include-private-notes` when you deliberately want them copied into the public catalog.
+The importer requires `openpyxl` and reads columns by their header names. With no second argument, it preserves the current catalog's stable slugs, coordinates, Peakbagger URLs, and linked entry slugs. To refresh coordinates, optionally supply a saved response for the public Wilderlist Northeast 111 list as the second argument; coordinates are stored locally and are never fetched at runtime. `NA` ascent dates become `null`, and a blank personal-ascent count remains unknown rather than creating a placeholder record. Workbook narrative columns remain private by default; only pass `--include-private-notes` when you deliberately want them copied into the public catalog.

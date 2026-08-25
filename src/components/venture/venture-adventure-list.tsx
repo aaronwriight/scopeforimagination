@@ -50,13 +50,6 @@ function uniqueTrips(item: VentureAdventureItem): string[] {
   );
 }
 
-function tripGroup(item: VentureAdventureItem): string {
-  const trips = uniqueTrips(item);
-  if (trips.length === 0) return "trip to add";
-  if (trips.length === 1) return trips[0];
-  return "multiple trips";
-}
-
 function dateSummary(item: VentureAdventureItem): string {
   const dates = [...new Set(item.records.flatMap((record) => record.date ? [record.date] : []))].sort();
   if (dates.length === 0) return "dates to add";
@@ -114,14 +107,22 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
         .filter((group) => group.items.length > 0);
     }
 
-    const labels = [...new Set(sortedItems.map(tripGroup))].sort((first, second) => {
+    const itemsByTrip = new Map<string, VentureAdventureItem[]>();
+    for (const item of sortedItems) {
+      const trips = uniqueTrips(item);
+      for (const trip of trips.length > 0 ? trips : ["trip to add"]) {
+        const tripItems = itemsByTrip.get(trip) ?? [];
+        tripItems.push(item);
+        itemsByTrip.set(trip, tripItems);
+      }
+    }
+
+    const labels = [...itemsByTrip.keys()].sort((first, second) => {
       if (first === "trip to add") return 1;
       if (second === "trip to add") return -1;
-      if (first === "multiple trips") return 1;
-      if (second === "multiple trips") return -1;
       return first.localeCompare(second, "en");
     });
-    return labels.map((label) => ({ label, items: sortedItems.filter((item) => tripGroup(item) === label) }));
+    return labels.map((label) => ({ label, items: itemsByTrip.get(label) ?? [] }));
   }, [items, organizeBy]);
 
   if (items.length === 0) {

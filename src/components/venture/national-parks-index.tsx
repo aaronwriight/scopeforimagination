@@ -37,6 +37,7 @@ const insetRegions = [
 const excludedConusStateIds = new Set(["02", "15", "60", "66", "69", "72", "78"]);
 
 type SortOrder = "ascending" | "descending";
+type CompletionFilter = "all" | "completed" | "not-completed";
 type MapControl = "zoom-in" | "zoom-out" | "reset";
 type MapRegionId = "conus" | "alaska" | "hawaii" | "american-samoa" | "virgin-islands";
 type TerrainTile = Readonly<{
@@ -69,8 +70,12 @@ export type NationalParkIndexItem = NationalPark &
 
 type ParkMapDatum = Readonly<{
   park: NationalParkIndexItem;
-  pathData: string;
   position: readonly [number, number];
+}>;
+
+type ParkBoundaryMapDatum = Readonly<{
+  boundary: NationalParkBoundaryFeature;
+  pathData: string;
 }>;
 
 type BoundaryPosition = [number, number];
@@ -246,14 +251,16 @@ function terrainTilesForRegion(region: MapRegion, transform: ZoomTransform): Ter
   return [...tiles.values()];
 }
 
-function NationalParksMap({
+export function NationalParksMap({
   parks,
   boundaries,
   boundarySourceUrl,
+  variant = "index",
 }: {
   parks: readonly NationalParkIndexItem[];
   boundaries: readonly NationalParkBoundaryFeature[];
   boundarySourceUrl: string;
+  variant?: "index" | "atlas";
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -381,37 +388,44 @@ function NationalParksMap({
       if (park.states.includes("Hawaii")) return regionsById.get("hawaii")!;
       return regionsById.get("conus")!;
     };
-    const parksBySlug = new Map(parks.map((park) => [park.slug, park]));
-    const geometriesByCode = new Map(
-      boundaries.map((boundary) => [
-        boundary.properties.npsCode,
-        normalizeBoundaryGeometry(boundary.geometry),
-      ]),
-    );
-    const parkData = boundaries
-      .map((boundary): ParkMapDatum | null => {
-        const park = parksBySlug.get(boundary.properties.slug);
-        if (!park) return null;
-        const geometry = geometriesByCode.get(park.npsCode);
-        if (!geometry) return null;
+    const regionForBoundary = (boundary: NationalParkBoundaryFeature): MapRegion => {
+      if (boundary.properties.npsCode === "NPSA") return regionsById.get("american-samoa")!;
+      if (boundary.properties.npsCode === "VIIS") return regionsById.get("virgin-islands")!;
+      if (boundary.properties.location.includes("Alaska")) return regionsById.get("alaska")!;
+      if (boundary.properties.location.includes("Hawaii")) return regionsById.get("hawaii")!;
+      return regionsById.get("conus")!;
+    };
+    const boundaryData = boundaries
+      .map((boundary): ParkBoundaryMapDatum | null => {
+        const region = regionForBoundary(boundary);
+        const geometry = normalizeBoundaryGeometry(boundary.geometry);
+        const pathData = geoPath(region.projection)(geometry as GeoGeometryObjects);
+        if (!pathData) return null;
+        return { boundary, pathData };
+      })
+      .filter((datum): datum is ParkBoundaryMapDatum => datum !== null)
+      .sort(
+        (first, second) =>
+          Number(first.boundary.properties.visited) - Number(second.boundary.properties.visited),
+      );
+    const parkData = parks
+      .map((park): ParkMapDatum | null => {
         const region = regionForPark(park);
         const position = region.projection([park.longitude, park.latitude]);
-        const pathData = geoPath(region.projection)(geometry as GeoGeometryObjects);
-        if (!position || !pathData) return null;
+        if (!position) return null;
         return {
           park,
-          pathData,
           position: [position[0], position[1]],
         };
       })
       .filter((datum): datum is ParkMapDatum => datum !== null)
       .sort((first, second) => Number(first.park.visited) - Number(second.park.visited));
 
-    svg.append("title").text("Interactive map of all 63 United States national parks");
+    svg.append("title").text("Interactive map of United States national parks");
     svg
       .append("desc")
       .text(
-        "A hillshaded terrain map with state borders and all national park boundaries. Visited parks are solarized green. Hover or focus a park marker for its name, select it to open its page, and drag or scroll to explore.",
+        "A hillshaded terrain map with state borders and national park boundaries shaded in solarized green. Visited parks are more prominent. Hover or focus a park marker for its name, select it to open its page, and drag or scroll to explore.",
       );
 
     const viewport = svg.append("g");
@@ -532,9 +546,35 @@ function NationalParksMap({
         .attr("vector-effect", "non-scaling-stroke");
     }
 
+    const boundaryLinks = viewport
+      .append("g")
+      .attr("aria-label", "National park boundaries")
+      .selectAll<SVGAElement, ParkBoundaryMapDatum>("a")
+      .data(boundaryData, (datum) => datum.boundary.properties.slug)
+      .join("a")
+      .attr("href", (datum) => datum.boundary.properties.href)
+      .attr("aria-label", (datum) =>
+        `${datum.boundary.properties.title}, ${datum.boundary.properties.location}, ${datum.boundary.properties.visited ? "visited" : "not yet visited"}`,
+      )
+      .attr("class", "group outline-none");
+
+    boundaryLinks
+      .append("path")
+      .attr("d", (datum) => datum.pathData)
+      .attr("fill", markerGreen)
+      .attr("fill-opacity", (datum) => (datum.boundary.properties.visited ? 0.68 : 0.28))
+      .attr("stroke", markerGreen)
+      .attr("stroke-opacity", (datum) => (datum.boundary.properties.visited ? 1 : 0.62))
+      .attr("stroke-width", (datum) => (datum.boundary.properties.visited ? 1.45 : 0.9))
+      .attr("vector-effect", "non-scaling-stroke");
+
+    boundaryLinks
+      .append("title")
+      .text((datum) => `${datum.boundary.properties.title} — ${datum.boundary.properties.location}`);
+
     const parkLinks = viewport
       .append("g")
-      .attr("aria-label", "National parks")
+      .attr("aria-label", "National park markers")
       .selectAll<SVGAElement, ParkMapDatum>("a")
       .data(parkData, (datum) => datum.park.slug)
       .join("a")
@@ -543,16 +583,6 @@ function NationalParksMap({
         `${datum.park.displayName}, ${datum.park.stateOrTerritory}, ${datum.park.visited ? "visited" : "not yet visited"}`,
       )
       .attr("class", "group outline-none");
-
-    parkLinks
-      .append("path")
-      .attr("d", (datum) => datum.pathData)
-      .attr("fill", markerGreen)
-      .attr("fill-opacity", (datum) => (datum.park.visited ? 0.68 : 0.28))
-      .attr("stroke", markerGreen)
-      .attr("stroke-opacity", (datum) => (datum.park.visited ? 1 : 0.62))
-      .attr("stroke-width", (datum) => (datum.park.visited ? 1.45 : 0.9))
-      .attr("vector-effect", "non-scaling-stroke");
 
     const markers = parkLinks.append("g").attr("class", "park-marker");
 
@@ -676,18 +706,18 @@ function NationalParksMap({
       svg.on(".zoom", null).on(".friendly", null).on(".keyboard", null);
       svg.selectAll("*").remove();
     };
-  }, [boundaries, parks]);
+  }, [boundaries, parks, variant]);
 
   const controlMap = (action: MapControl) => {
     svgRef.current?.dispatchEvent(new CustomEvent<MapControl>("national-parks-map-control", { detail: action }));
   };
 
   return (
-    <figure className="not-prose m-0 mt-9 w-full">
+    <figure className={`not-prose m-0 w-full ${variant === "index" ? "mt-9" : ""}`}>
       <div className="relative overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
         <svg
           ref={svgRef}
-          className="block aspect-[5/3] w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none"
+          className={`block w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none ${variant === "atlas" ? "aspect-[56/33]" : "aspect-[5/3]"}`}
           viewBox={`0 0 ${mapWidth} ${mapHeight}`}
           preserveAspectRatio="xMidYMid meet"
           role="application"
@@ -762,6 +792,7 @@ export function NationalParksIndex({
   boundarySourceUrl: string;
 }) {
   const [state, setState] = useState("all");
+  const [completion, setCompletion] = useState<CompletionFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("ascending");
 
   const states = useMemo(
@@ -777,29 +808,45 @@ export function NationalParksIndex({
       ),
     [parks],
   );
+  const visitedParkCount = useMemo(() => parks.filter((park) => park.visited).length, [parks]);
   const mapParks = useMemo(
-    () => parks.filter((park) => state === "all" || park.states.includes(state)),
-    [parks, state],
+    () =>
+      parks
+        .filter((park) => state === "all" || park.states.includes(state))
+        .filter((park) => completion === "all" || park.visited === (completion === "completed")),
+    [completion, parks, state],
   );
+  const mapBoundaries = useMemo(() => {
+    const visibleParkSlugs = new Set(mapParks.map((park) => park.slug));
+    return boundaries.filter((boundary) => visibleParkSlugs.has(boundary.properties.slug));
+  }, [boundaries, mapParks]);
   const visibleParks = useMemo(
     () =>
       parks
         .filter((park) => state === "all" || park.states.includes(state))
+        .filter((park) => completion === "all" || park.visited === (completion === "completed"))
         .toSorted((first, second) => {
           const comparison = first.displayName.localeCompare(second.displayName);
           return sortOrder === "ascending" ? comparison : -comparison;
         }),
-    [parks, sortOrder, state],
+    [completion, parks, sortOrder, state],
   );
 
   const controlClassName =
     "mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-700 outline-none transition-colors focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300";
+  const controlsAreDefault = state === "all" && completion === "all" && sortOrder === "ascending";
+
+  const resetControls = () => {
+    setState("all");
+    setCompletion("all");
+    setSortOrder("ascending");
+  };
 
   return (
     <>
-      <NationalParksMap parks={mapParks} boundaries={boundaries} boundarySourceUrl={boundarySourceUrl} />
+      <NationalParksMap parks={mapParks} boundaries={mapBoundaries} boundarySourceUrl={boundarySourceUrl} />
 
-      <div className="not-prose mt-10 grid gap-4 sm:grid-cols-2">
+      <div className="not-prose mt-10 grid gap-4 sm:grid-cols-3">
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
           state
           <select value={state} onChange={(event) => setState(event.target.value)} className={controlClassName}>
@@ -807,6 +854,18 @@ export function NationalParksIndex({
             {states.map((stateName) => (
               <option key={stateName} value={stateName}>{stateName}</option>
             ))}
+          </select>
+        </label>
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+          completion
+          <select
+            value={completion}
+            onChange={(event) => setCompletion(event.target.value as CompletionFilter)}
+            className={controlClassName}
+          >
+            <option value="all">all parks</option>
+            <option value="completed">completed</option>
+            <option value="not-completed">not completed</option>
           </select>
         </label>
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
@@ -822,8 +881,23 @@ export function NationalParksIndex({
         </label>
       </div>
 
-      <p className="not-prose mt-4 text-xs tabular-nums text-stone-500" aria-live="polite">
-        {visibleParks.length} {visibleParks.length === 1 ? "park" : "parks"}
+      <div className="not-prose mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={resetControls}
+          disabled={controlsAreDefault}
+          className="cursor-pointer font-serif text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-[#6f8200] disabled:cursor-default disabled:opacity-40 disabled:hover:text-stone-500"
+        >
+          reset filters &amp; sort
+        </button>
+      </div>
+
+      <p
+        className="not-prose mt-4 flex items-center justify-between gap-4 text-xs tabular-nums text-stone-500"
+        aria-live="polite"
+      >
+        <span>{visibleParks.length} {visibleParks.length === 1 ? "park" : "parks"}</span>
+        <span>{visitedParkCount} visited</span>
       </p>
 
       <div className="not-prose mt-5 border-t border-stone-300 dark:border-stone-700">

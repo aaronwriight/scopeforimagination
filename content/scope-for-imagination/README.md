@@ -1,5 +1,7 @@
 # Scope for Imagination posts
 
+For the day-to-day author workflow, including local preview, publishing, newsletters, and how SFI relates to Venture, start with [`docs/writing-and-publishing.md`](../../docs/writing-and-publishing.md).
+
 The primary workflow is repo-native: write a draft here, generate a numbered local post JSON file, preview it locally, and commit it with the rest of the site. Sanity's `Scope for Imagination Post` schema is available as a useful structure/checklist and optional publishing target, but it does not have to be the final destination.
 
 The live site reads local JSON files in `content/scope-for-imagination/posts/*.json`. It can also read published Sanity `Scope for Imagination Post` documents. If the same four-digit `entry` exists in both places, the local JSON file wins.

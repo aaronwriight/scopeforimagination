@@ -43,3 +43,6 @@ public/studio
 .sentryclirc
 
 public/rss.xml
+
+# private Venture source workbooks
+/content/venture/*.xlsx

@@ -111,14 +111,14 @@
       "prominenceFeet": 4914,
       "peakbaggerAscents": 2824,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 6,
       "rating": 9.0,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "duo trip August 2024",
           "note": null,
           "entrySlug": null
         }
@@ -157,21 +157,21 @@
       "prominenceFeet": 3348,
       "peakbaggerAscents": 4078,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 12,
       "rating": 8.0,
       "timesHiked": 2,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "EvLab staff retreat 2024",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 2,
           "date": null,
-          "trip": null,
+          "trip": "duo trip 2024",
           "note": null,
           "entrySlug": null
         }
@@ -191,14 +191,14 @@
       "prominenceFeet": 2107,
       "peakbaggerAscents": 2262,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 2,
       "rating": 10.0,
       "timesHiked": 2,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "La Vida photography 2022",
           "note": null,
           "entrySlug": null
         },
@@ -225,21 +225,21 @@
       "prominenceFeet": 197,
       "peakbaggerAscents": 3617,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 11,
       "rating": 7.4,
       "timesHiked": 2,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "EvLab staff retreat 2024",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 2,
           "date": null,
-          "trip": null,
+          "trip": "duo trip 2024",
           "note": null,
           "entrySlug": null
         }
@@ -259,7 +259,7 @@
       "prominenceFeet": 805,
       "peakbaggerAscents": 1098,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 22,
       "rating": 9.4,
       "timesHiked": 1,
       "ascents": [
@@ -286,14 +286,14 @@
       "prominenceFeet": 568,
       "peakbaggerAscents": 1060,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 7,
       "rating": 9.6,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "duo trip August 2024",
           "note": null,
           "entrySlug": null
         }
@@ -351,21 +351,21 @@
       "prominenceFeet": 2852,
       "peakbaggerAscents": 1145,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 3,
       "rating": 10.0,
       "timesHiked": 2,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "La Vida June 2024 S1 M1",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 2,
           "date": null,
-          "trip": null,
+          "trip": "La Vida July 2024 S3 M1",
           "note": null,
           "entrySlug": null
         }
@@ -442,14 +442,14 @@
       "prominenceFeet": 109,
       "peakbaggerAscents": 924,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 8,
       "rating": 5.0,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "duo trip August 2024",
           "note": null,
           "entrySlug": null
         }
@@ -640,21 +640,21 @@
       "prominenceFeet": 2977,
       "peakbaggerAscents": 2024,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 5,
       "rating": 8.0,
       "timesHiked": 2,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "La Vida June 2024 S2 M3",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 2,
           "date": null,
-          "trip": null,
+          "trip": "gear scavenge August 2024",
           "note": null,
           "entrySlug": null
         }
@@ -693,14 +693,14 @@
       "prominenceFeet": 265,
       "peakbaggerAscents": 804,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 10,
       "rating": 10.0,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "duo trip August 2024",
           "note": null,
           "entrySlug": null
         }
@@ -815,7 +815,7 @@
       "prominenceFeet": 447,
       "peakbaggerAscents": 2796,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 15,
       "rating": null,
       "timesHiked": 1,
       "ascents": [
@@ -842,7 +842,7 @@
       "prominenceFeet": 127,
       "peakbaggerAscents": 1361,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 21,
       "rating": 10.0,
       "timesHiked": 1,
       "ascents": [
@@ -1116,18 +1116,10 @@
       "prominenceFeet": 462,
       "peakbaggerAscents": 2447,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 14,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": null,
+      "ascents": [],
       "latitude": 44.1089549,
       "longitude": -71.6278588,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6915"
@@ -1161,19 +1153,11 @@
       "range": "Franconia Area",
       "prominenceFeet": 1700,
       "peakbaggerAscents": 2233,
-      "completed": true,
+      "completed": false,
       "completionNumber": null,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": 0,
+      "ascents": [],
       "latitude": 44.1961768,
       "longitude": -71.4345219,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6930"
@@ -1246,18 +1230,10 @@
       "prominenceFeet": 236,
       "peakbaggerAscents": 1874,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 13,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": null,
+      "ascents": [],
       "latitude": 44.17974,
       "longitude": -71.521355,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6922"
@@ -1406,7 +1382,7 @@
       "prominenceFeet": 292,
       "peakbaggerAscents": 1422,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 20,
       "rating": 8.8,
       "timesHiked": 1,
       "ascents": [
@@ -1509,7 +1485,7 @@
       "prominenceFeet": 203,
       "peakbaggerAscents": 1529,
       "completed": true,
-      "completionNumber": 26,
+      "completionNumber": 23,
       "rating": 7.0,
       "timesHiked": 1,
       "ascents": [
@@ -1725,11 +1701,19 @@
       "range": "Adirondack High Peaks",
       "prominenceFeet": 1206,
       "peakbaggerAscents": 2438,
-      "completed": false,
-      "completionNumber": null,
+      "completed": true,
+      "completionNumber": 19,
       "rating": null,
-      "timesHiked": 0,
-      "ascents": [],
+      "timesHiked": 1,
+      "ascents": [
+        {
+          "ordinal": 1,
+          "date": "2025-07-06",
+          "trip": "solo hike - Porter / Cascade",
+          "note": null,
+          "entrySlug": null
+        }
+      ],
       "latitude": 44.2186594,
       "longitude": -73.860143,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6028"
@@ -1763,11 +1747,19 @@
       "range": "Adirondack High Peaks",
       "prominenceFeet": 316,
       "peakbaggerAscents": 2029,
-      "completed": false,
-      "completionNumber": null,
+      "completed": true,
+      "completionNumber": 18,
       "rating": null,
-      "timesHiked": 0,
-      "ascents": [],
+      "timesHiked": 1,
+      "ascents": [
+        {
+          "ordinal": 1,
+          "date": "2025-07-06",
+          "trip": "solo hike - Porter / Cascade",
+          "note": null,
+          "entrySlug": null
+        }
+      ],
       "latitude": 44.212416,
       "longitude": -73.853665,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6030"
@@ -1783,14 +1775,14 @@
       "prominenceFeet": 2131,
       "peakbaggerAscents": 984,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 17,
       "rating": 4.0,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "solo hike - Abraham / Ellen",
           "note": null,
           "entrySlug": null
         }
@@ -1847,19 +1839,11 @@
       "range": "Sandwich Range",
       "prominenceFeet": 799,
       "peakbaggerAscents": 1785,
-      "completed": true,
+      "completed": false,
       "completionNumber": null,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": 0,
+      "ascents": [],
       "latitude": 43.9547927,
       "longitude": -71.3814626,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6999"
@@ -1875,28 +1859,28 @@
       "prominenceFeet": 1860,
       "peakbaggerAscents": 1585,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 1,
       "rating": 10.0,
       "timesHiked": 3,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "guys' trip - July 2018",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 2,
           "date": null,
-          "trip": null,
+          "trip": "cousins' sunrise hike August 2022",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 3,
           "date": null,
-          "trip": null,
+          "trip": "duo sunrise hike September 2024",
           "note": null,
           "entrySlug": null
         }
@@ -1953,19 +1937,11 @@
       "range": "Franconia Area",
       "prominenceFeet": 631,
       "peakbaggerAscents": 1929,
-      "completed": true,
+      "completed": false,
       "completionNumber": null,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": 0,
+      "ascents": [],
       "latitude": 44.2217314,
       "longitude": -71.5120241,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6918"
@@ -2209,21 +2185,21 @@
       "prominenceFeet": 317,
       "peakbaggerAscents": 1046,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 4,
       "rating": 8.0,
       "timesHiked": 2,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "La Vida June 2024 S1 M1",
           "note": null,
           "entrySlug": null
         },
         {
           "ordinal": 2,
           "date": null,
-          "trip": null,
+          "trip": "La Vida July 2024 S3 M1",
           "note": null,
           "entrySlug": null
         }
@@ -2243,14 +2219,14 @@
       "prominenceFeet": 316,
       "peakbaggerAscents": 1110,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 16,
       "rating": 8.0,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "solo hike - Abraham / Ellen",
           "note": null,
           "entrySlug": null
         }
@@ -2288,19 +2264,11 @@
       "range": "Rangeley-Stratton Ranges",
       "prominenceFeet": 575,
       "peakbaggerAscents": 627,
-      "completed": true,
+      "completed": false,
       "completionNumber": null,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": 0,
+      "ascents": [],
       "latitude": 45.0028335,
       "longitude": -70.333401,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6842"
@@ -2315,19 +2283,11 @@
       "range": "Presidential Range",
       "prominenceFeet": 250,
       "peakbaggerAscents": 1455,
-      "completed": true,
+      "completed": false,
       "completionNumber": null,
       "rating": null,
-      "timesHiked": 1,
-      "ascents": [
-        {
-          "ordinal": 1,
-          "date": null,
-          "trip": null,
-          "note": null,
-          "entrySlug": null
-        }
-      ],
+      "timesHiked": 0,
+      "ascents": [],
       "latitude": 44.2147886,
       "longitude": -71.3092414,
       "sourceUrl": "https://www.peakbagger.com/peak.aspx?pid=6971"
@@ -2400,14 +2360,14 @@
       "prominenceFeet": 494,
       "peakbaggerAscents": 787,
       "completed": true,
-      "completionNumber": null,
+      "completionNumber": 9,
       "rating": 7.0,
       "timesHiked": 1,
       "ascents": [
         {
           "ordinal": 1,
           "date": null,
-          "trip": null,
+          "trip": "duo trip August 2024",
           "note": null,
           "entrySlug": null
         }

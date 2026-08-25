@@ -14,6 +14,7 @@ import {
 import { useEffect, useRef } from "react";
 import { feature } from "topojson-client";
 import world from "world-atlas/countries-110m.json";
+import { createGlobeReliefRenderer } from "@/components/venture/globe-relief";
 
 export type TravelMapDestination = Readonly<{
   slug: string;
@@ -34,7 +35,8 @@ type MapControls = Readonly<{
 }>;
 
 const mapWidth = 960;
-const mapHeight = 600;
+const indexMapHeight = 600;
+const atlasMapHeight = 566;
 const restingScale = 252;
 const minimumScale = 185;
 const maximumScale = 3600;
@@ -51,10 +53,14 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 
 export function InternationalTravelsMap({
   destinations,
+  variant = "index",
 }: {
   destinations: readonly TravelMapDestination[];
+  variant?: "index" | "atlas";
 }) {
+  const mapHeight = variant === "atlas" ? atlasMapHeight : indexMapHeight;
   const svgRef = useRef<SVGSVGElement>(null);
+  const reliefCanvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<MapControls>({
     zoomBy: () => undefined,
     reset: () => undefined,
@@ -62,7 +68,8 @@ export function InternationalTravelsMap({
 
   useEffect(() => {
     const element = svgRef.current;
-    if (!element) return;
+    const reliefCanvas = reliefCanvasRef.current;
+    if (!element || !reliefCanvas) return;
 
     const svg = select(element);
     svg.selectAll("*").remove();
@@ -95,7 +102,7 @@ export function InternationalTravelsMap({
     svg
       .append("desc")
       .text(
-        "Iceland, Türkiye, and Cambodia are shaded in green. Drag or use the arrow keys to rotate, scroll or use the map controls to zoom, and select a country or marker to open its page.",
+        "A globe with subtle shaded terrain relief. Iceland, Türkiye, and Cambodia are shaded in green. Drag or use the arrow keys to rotate, scroll or use the map controls to zoom, and select a country or marker to open its page.",
       );
 
     const sphere = { type: "Sphere" } as GeoGeometryObjects;
@@ -104,7 +111,7 @@ export function InternationalTravelsMap({
     const spherePath = svg
       .append("path")
       .datum(sphere)
-      .attr("fill", "#ffffff")
+      .attr("fill", "transparent")
       .attr("stroke", "#d6d3d1")
       .attr("stroke-width", 1.25);
 
@@ -122,6 +129,7 @@ export function InternationalTravelsMap({
       .data(countryFeatures)
       .join("path")
       .attr("fill", "#f4f2ec")
+      .attr("fill-opacity", 0.34)
       .attr("stroke", "#d6d3d1")
       .attr("stroke-width", 0.65)
       .attr("vector-effect", "non-scaling-stroke");
@@ -196,7 +204,7 @@ export function InternationalTravelsMap({
 
     destinationLinks.append("title").text((destination) => destination.name);
 
-    const draw = () => {
+    const drawVectorFrame = () => {
       spherePath.attr("d", () => path(sphere));
       graticulePath.attr("d", () => path(graticule));
       countryPaths.attr("d", (country) => path(country));
@@ -233,6 +241,28 @@ export function InternationalTravelsMap({
       });
     };
 
+    const reliefRenderer = createGlobeReliefRenderer({
+      canvas: reliefCanvas,
+      width: mapWidth,
+      height: mapHeight,
+      renderScale: 0.5,
+      opacity: 0.72,
+      fadeStartScale: restingScale * 4,
+      fadeEndScale: restingScale * 10,
+      // Keep the SVG boundaries and the prefiltered terrain moving at the
+      // display cadence during the gentle automatic spin.
+      minimumFrameInterval: 16,
+      onFrame: drawVectorFrame,
+    });
+
+    const draw = (immediate = false) => {
+      // Once the texture is available, its renderer owns the vector redraw so
+      // every visible layer advances on one projection frame. Before then, keep
+      // the lightweight vector globe animated as a graceful loading fallback.
+      const terrainWillDraw = reliefRenderer.requestDraw(projection, immediate);
+      if (!terrainWillDraw) drawVectorFrame();
+    };
+
     const rotateFromKeyboard = (longitude: number, latitude: number) => {
       const current = projection.rotate();
       projection.rotate([
@@ -240,17 +270,17 @@ export function InternationalTravelsMap({
         clamp(current[1] + latitude, -82, 82),
         current[2],
       ]);
-      draw();
+      draw(true);
     };
 
     const zoomBy = (factor: number) => {
       projection.scale(clamp(projection.scale() * factor, minimumScale, maximumScale));
-      draw();
+      draw(true);
     };
 
     const reset = () => {
       projection.rotate(initialRotation).scale(restingScale);
-      draw();
+      draw(true);
     };
 
     controlsRef.current = { zoomBy, reset };
@@ -310,7 +340,7 @@ export function InternationalTravelsMap({
           clamp(current[1] - event.dy * sensitivity, -82, 82),
           current[2],
         ]);
-        draw();
+        draw(true);
       })
       .on("end", () => {
         dragging = false;
@@ -333,24 +363,32 @@ export function InternationalTravelsMap({
 
     return () => {
       spinTimer.stop();
+      reliefRenderer.destroy();
       reducedMotionQuery.removeEventListener("change", updateMotionPreference);
       controlsRef.current = { zoomBy: () => undefined, reset: () => undefined };
       svg.on(".pause", null).on(".rotate", null).on(".zoom", null).on(".drag", null);
       svg.selectAll("*").remove();
     };
-  }, [destinations]);
+  }, [destinations, mapHeight]);
 
   return (
-    <figure className="not-prose m-0 mt-9 w-full">
+    <figure className={`not-prose m-0 w-full ${variant === "atlas" ? "mt-0" : "mt-9"}`}>
       <div className="relative overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
+        <canvas
+          ref={reliefCanvasRef}
+          width={Math.round(mapWidth * 0.5)}
+          height={Math.round(mapHeight * 0.5)}
+          className="pointer-events-none absolute inset-0 block h-full w-full"
+          aria-hidden="true"
+        />
         <svg
           ref={svgRef}
-          className="block aspect-[8/5] w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none"
+          className={`relative block w-full touch-none select-none outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none ${variant === "atlas" ? "aspect-[56/33]" : "aspect-[8/5]"}`}
           viewBox={`0 0 ${mapWidth} ${mapHeight}`}
           preserveAspectRatio="xMidYMid meet"
           role="application"
           tabIndex={0}
-          aria-label="Interactive globe of international travels. Drag or use arrow keys to rotate, scroll or use plus and minus to zoom, and select a shaded country or green marker to open its page."
+          aria-label="Interactive terrain-relief globe of international travels. Drag or use arrow keys to rotate, scroll or use plus and minus to zoom, and select a shaded country or green marker to open its page."
         />
 
         <div className="absolute right-3 top-3 flex gap-1" aria-label="map zoom controls">
@@ -380,14 +418,14 @@ export function InternationalTravelsMap({
         </div>
       </div>
 
-      <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-500">
+      <figcaption className={`${variant === "atlas" ? "mt-1.5" : "mt-2"} flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-500`}>
         <span>drag to rotate · scroll or use controls to zoom</span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-[#859900]" aria-hidden="true" />
           visited country
         </span>
         <a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer" className="text-[#6f8200]">
-          boundaries: Natural Earth ↗
+          boundaries &amp; terrain: Natural Earth ↗
         </a>
       </figcaption>
     </figure>

@@ -82,7 +82,7 @@
           "maximum": 115
         },
         "rating": { "type": ["number", "null"], "minimum": 0, "maximum": 10 },
-        "timesHiked": { "type": "integer", "minimum": 0 },
+        "timesHiked": { "type": ["integer", "null"], "minimum": 0 },
         "ascents": {
           "type": "array",
           "items": { "$ref": "#/$defs/ascent" }

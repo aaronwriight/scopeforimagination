@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { VentureShell } from "@/components/site/site-content";
 import { Northeast115Index } from "@/components/venture/northeast-115-index";
 import {
+  getAllNortheastRangeAreas,
   getAllNortheastPeaks,
-  getCompletedNortheastRangeAreas,
 } from "@/lib/venture-trails";
 
 export const metadata: Metadata = {
@@ -13,11 +13,11 @@ export const metadata: Metadata = {
 
 export default function VentureTrailsPage() {
   const peaks = getAllNortheastPeaks();
-  const rangeAreas = getCompletedNortheastRangeAreas();
+  const rangeAreas = getAllNortheastRangeAreas();
 
   return (
     <VentureShell title="northeast 115">
-      <p>
+      <p className="font-serif text-stone-500">
         A summit-by-summit log of the 4000-footers across New Hampshire, New York, Maine, and Vermont.
       </p>
       <Northeast115Index peaks={peaks} rangeAreas={rangeAreas} />
