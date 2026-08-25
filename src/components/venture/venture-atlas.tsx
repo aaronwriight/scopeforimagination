@@ -55,7 +55,7 @@ export function VentureAtlas({
   peaks: readonly NortheastPeak[];
   rangeAreas: readonly NortheastRangeArea[];
 }) {
-  const [view, setView] = useState<AtlasView>("peaks");
+  const [view, setView] = useState<AtlasView>("travels");
 
   return (
     <section className="not-prose w-full" aria-label="Venture atlas">
