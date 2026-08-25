@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
+    "prebuild": "node scripts/clear_next_build_cache.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

@@ -12,6 +12,16 @@ const nextConfig = {
   experimental: {
     taint: true,
   },
+  webpack(config, { dev }) {
+    // Vercel restores `.next/cache` before every build. This site's production
+    // webpack cache exceeds 1 GB while its deployable output is about 50 MB, so
+    // keep remote production builds bounded by caching only in development.
+    if (!dev) {
+      config.cache = false
+    }
+
+    return config
+  },
   // ...other config settings
 }
 
