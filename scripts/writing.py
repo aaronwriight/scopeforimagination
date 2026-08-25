@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draft, review, publish, inspect, and announce unified SFI posts.
+"""Draft, review, publish, and announce unified SFI posts.
 
 Scope for Imagination is the complete, globally numbered journal. Venture posts
 are published into that journal as well as into Venture's place-based index.
@@ -28,6 +28,7 @@ from urllib.parse import urlparse
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AUTHOR_SCHEMA = "../../post.schema.json"
 SUPPORTED_SOURCE_SUFFIXES = {".docx", ".html", ".htm", ".txt", ".md"}
+BLANK_SOURCE_FORMATS = ("md", "html", "txt")
 BLOGS = ("sfi", "venture")
 STATUSES = ("draft", "published")
 RESERVED_VENTURE_SLUGS = {"about", "index", "parks", "trails", "travels"}
@@ -166,10 +167,8 @@ def valid_time(value: object) -> bool:
         return False
 
 
-def time_argument(value: str) -> str:
-    if not valid_time(value):
-        raise argparse.ArgumentTypeError("times must use 24-hour HH:MM")
-    return value
+def current_publication_time() -> str:
+    return datetime.now().strftime("%H:%M")
 
 
 def is_http_url(value: object) -> bool:
@@ -203,6 +202,167 @@ def title_from_source(source: Path) -> str:
     stem = re.sub(r"^\d{4}[-_ ]+", "", source.stem)
     words = re.sub(r"[-_]+", " ", stem).strip()
     return words or "untitled"
+
+
+def canonical_source_suffix(source: Path) -> str:
+    suffix = source.suffix.lower()
+    return ".html" if suffix == ".htm" else suffix
+
+
+def prompt_text(label: str, *, default: str | None = None, required: bool = False) -> str:
+    suffix = f" [{default}]" if default is not None else ""
+    while True:
+        try:
+            value = input(f"{label}{suffix}: ").strip()
+        except EOFError as error:
+            raise WritingError(
+                "interactive draft input ended; rerun in a terminal or supply draft flags with --no-prompt"
+            ) from error
+        if value:
+            return value
+        if default is not None:
+            return default
+        if not required:
+            return ""
+        print(f"{label} is required.")
+
+
+def prompt_choice(label: str, choices: tuple[str, ...], *, default: str) -> str:
+    while True:
+        value = prompt_text(f"{label} ({'/'.join(choices)})", default=default).lower()
+        if value in choices:
+            return value
+        print(f"Choose one of: {', '.join(choices)}.")
+
+
+def prompt_date(label: str, *, default: str) -> str:
+    while True:
+        value = prompt_text(label, default=default)
+        if valid_date(value):
+            return value
+        print("Use YYYY-MM-DD.")
+
+
+def prompt_number(label: str) -> float | None:
+    while True:
+        value = prompt_text(label)
+        if not value:
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            print("Enter a number, or leave this blank.")
+
+
+def prompt_yes_no(label: str, *, default: bool = False) -> bool:
+    hint = "Y/n" if default else "y/N"
+    while True:
+        value = prompt_text(f"{label} [{hint}]").lower()
+        if not value:
+            return default
+        if value in {"y", "yes"}:
+            return True
+        if value in {"n", "no"}:
+            return False
+        print("Enter y or n.")
+
+
+def draft_arguments_supplied(arguments: argparse.Namespace) -> bool:
+    value_names = (
+        "source",
+        "source_format",
+        "blog",
+        "title",
+        "subtitle",
+        "excerpt",
+        "entry",
+        "date",
+        "location",
+        "trip",
+        "thread",
+        "slug",
+        "tags",
+        "collections",
+        "latitude",
+        "longitude",
+        "music_title",
+        "music_album",
+        "music_artist",
+        "music_url",
+    )
+    return arguments.replace or any(getattr(arguments, name, None) is not None for name in value_names)
+
+
+def collect_interactive_draft(arguments: argparse.Namespace, entry: str) -> None:
+    print(f"new draft · entry {entry}")
+    arguments.blog = arguments.blog or prompt_choice("Blog", BLOGS, default="sfi")
+
+    if arguments.source is None and arguments.source_format is None:
+        existing = prompt_text("Existing document to copy (leave blank for a new document)")
+        if existing:
+            normalized_path = existing.strip().strip("\"'").replace("\\ ", " ")
+            arguments.source = Path(normalized_path).expanduser()
+        else:
+            arguments.source_format = prompt_choice(
+                "New document format", BLANK_SOURCE_FORMATS, default="md"
+            )
+
+    default_title = "venture" if arguments.blog == "venture" else "scope for imagination"
+    arguments.title = arguments.title or prompt_text("Title", default=default_title)
+
+    subtitle_default = title_from_source(arguments.source) if arguments.source else None
+    if arguments.subtitle is None:
+        arguments.subtitle = prompt_text("Subtitle", default=subtitle_default, required=True)
+    if arguments.excerpt is None:
+        arguments.excerpt = prompt_text("Excerpt")
+    if arguments.date is None:
+        arguments.date = prompt_date("Date", default=date.today().isoformat())
+    if arguments.location is None:
+        arguments.location = prompt_text("Location")
+    if arguments.tags is None:
+        arguments.tags = prompt_text("Tags (comma-separated)")
+
+    if arguments.blog == "venture":
+        if arguments.trip is None:
+            arguments.trip = prompt_text("Trip")
+        if arguments.thread is None:
+            if arguments.trip:
+                print(f"Thread suggestion: {slugify(arguments.trip)} (optional)")
+            arguments.thread = prompt_text("Thread (leave blank for a standalone post)")
+        if arguments.collections is None:
+            arguments.collections = prompt_text("Collections (comma-separated)")
+        if arguments.latitude is None:
+            arguments.latitude = prompt_number("Latitude")
+        if arguments.longitude is None:
+            arguments.longitude = prompt_number("Longitude")
+
+    music_values = (
+        arguments.music_title,
+        arguments.music_album,
+        arguments.music_artist,
+        arguments.music_url,
+    )
+    include_music = any(value is not None for value in music_values)
+    if not include_music:
+        include_music = prompt_yes_no("Add a music tagline?")
+    if include_music:
+        if not arguments.music_title:
+            arguments.music_title = prompt_text("Song title", required=True)
+        if arguments.music_album is None:
+            arguments.music_album = prompt_text("Album")
+        if not arguments.music_artist:
+            arguments.music_artist = prompt_text("Artist", required=True)
+        if arguments.music_url is None:
+            arguments.music_url = prompt_text("Song URL") or None
+
+
+def blank_source_template(root: Path, source_format: str) -> str:
+    relative = Path("writing") / "templates" / f"entry.{source_format}"
+    candidates = (root / relative, PROJECT_ROOT / relative)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    raise WritingError(f"draft template is missing: {relative}")
 
 
 def load_json_object(path: Path) -> dict[str, Any]:
@@ -339,6 +499,24 @@ def create_music(arguments: argparse.Namespace) -> dict[str, str] | None:
 
 
 def command_draft(arguments: argparse.Namespace, root: Path) -> int:
+    entry = arguments.entry or next_entry(root)
+    if arguments.source and arguments.source_format:
+        raise WritingError("choose either --source or --format, not both")
+
+    interactive = not arguments.no_prompt and (
+        not draft_arguments_supplied(arguments) or sys.stdin.isatty()
+    )
+    if interactive:
+        collect_interactive_draft(arguments, entry)
+
+    arguments.blog = arguments.blog or "sfi"
+    arguments.source_format = arguments.source_format or "md"
+    arguments.date = arguments.date or date.today().isoformat()
+    arguments.excerpt = arguments.excerpt or ""
+    arguments.location = arguments.location or ""
+    arguments.tags = arguments.tags or ""
+    arguments.collections = arguments.collections or ""
+
     source_argument = arguments.source.expanduser().resolve() if arguments.source else None
     if source_argument:
         if not source_argument.is_file():
@@ -347,7 +525,6 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
             supported = ", ".join(sorted(SUPPORTED_SOURCE_SUFFIXES))
             raise WritingError(f"source document must be one of: {supported}")
 
-    entry = arguments.entry or next_entry(root)
     subtitle = (arguments.subtitle or (title_from_source(source_argument) if source_argument else "untitled")).strip()
     slug = arguments.slug or f"{entry}-{slugify(subtitle)}-{arguments.date.replace('-', '')}"
     if not valid_post_slug(slug):
@@ -359,6 +536,10 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
 
     post_directory = root / "writing" / arguments.blog / slug
     metadata_path = post_directory / "post.json"
+    if source_argument and arguments.replace and post_directory in source_argument.parents:
+        raise WritingError(
+            "--source cannot be inside the draft folder being replaced; copy it elsewhere first"
+        )
     if int(entry) in allocated_entries(root):
         replacing_same_entry = False
         if arguments.replace and metadata_path.is_file():
@@ -388,14 +569,12 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
     (images_directory / ".gitkeep").touch()
 
     if source_argument:
-        source_name = source_argument.name
-        if source_name in {"post.json", ".gitkeep"}:
-            source_name = f"source{source_argument.suffix.lower()}"
+        source_name = f"entry{canonical_source_suffix(source_argument)}"
         shutil.copy2(source_argument, post_directory / source_name)
     else:
-        source_name = "source.md"
+        source_name = f"entry.{arguments.source_format}"
         (post_directory / source_name).write_text(
-            "# Draft\n\n[Begin writing here. Remove this prompt before review.]\n",
+            blank_source_template(root, arguments.source_format),
             encoding="utf-8",
         )
 
@@ -407,7 +586,7 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
         "excerpt": arguments.excerpt.strip(),
         "entry": entry,
         "date": arguments.date,
-        "time": arguments.time,
+        "time": "",
         "location": arguments.location.strip(),
         "trip": arguments.trip.strip() if arguments.trip else None,
         "thread": arguments.thread.strip() if arguments.thread else None,
@@ -461,6 +640,9 @@ def inline_markdown(value: str, image_web_root: str) -> str:
 
 
 def markdown_to_html(source: str, image_web_root: str) -> str:
+    # Template guidance and editorial notes live in HTML comments so authors
+    # can keep a quick reference beside the draft without publishing it.
+    source = re.sub(r"<!--.*?-->", "", source, flags=re.DOTALL)
     lines = source.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     blocks: list[str] = []
     paragraph: list[str] = []
@@ -488,21 +670,39 @@ def markdown_to_html(source: str, image_web_root: str) -> str:
             blocks.append(f"<blockquote><p>{rendered}</p></blockquote>")
             quote_lines.clear()
 
-    for raw_line in lines:
+    def flush_all() -> None:
+        flush_paragraph()
+        flush_list()
+        flush_quote()
+
+    index = 0
+    while index < len(lines):
+        raw_line = lines[index]
         line = raw_line.rstrip()
         heading = re.match(r"^(#{1,5})\s+(.+)$", line)
         unordered = re.match(r"^\s*[-*+]\s+(.+)$", line)
         ordered = re.match(r"^\s*\d+[.)]\s+(.+)$", line)
         quote = re.match(r"^\s*>\s?(.*)$", line)
+        directive = re.match(r"^\s*:::\s*(center|callout)\s*$", line, flags=re.IGNORECASE)
 
-        if not line.strip():
-            flush_paragraph()
-            flush_list()
-            flush_quote()
+        if directive:
+            flush_all()
+            kind = directive.group(1).lower()
+            inner_lines: list[str] = []
+            index += 1
+            while index < len(lines) and not re.match(r"^\s*:::\s*$", lines[index]):
+                inner_lines.append(lines[index])
+                index += 1
+            if index >= len(lines):
+                raise WritingError(f"unclosed ::: {kind} block")
+            inner = markdown_to_html("\n".join(inner_lines), image_web_root)
+            tag = "div" if kind == "center" else "aside"
+            class_name = "entry-centered" if kind == "center" else "entry-callout"
+            blocks.append(f'<{tag} class="{class_name}">{inner}</{tag}>')
+        elif not line.strip():
+            flush_all()
         elif heading:
-            flush_paragraph()
-            flush_list()
-            flush_quote()
+            flush_all()
             # The page itself owns h1, so source headings begin at h2.
             level = min(len(heading.group(1)) + 1, 6)
             blocks.append(f"<h{level}>{inline_markdown(heading.group(2), image_web_root)}</h{level}>")
@@ -522,10 +722,9 @@ def markdown_to_html(source: str, image_web_root: str) -> str:
             flush_list()
             flush_quote()
             paragraph.append(line)
+        index += 1
 
-    flush_paragraph()
-    flush_list()
-    flush_quote()
+    flush_all()
     return "\n".join(blocks).strip()
 
 
@@ -675,7 +874,7 @@ def generated_collision_issues(post: AuthorPost, root: Path) -> list[str]:
     return issues
 
 
-def review_post(post: AuthorPost, root: Path) -> ReviewResult:
+def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> ReviewResult:
     metadata = post.metadata
     blockers: list[str] = []
     notes: list[str] = []
@@ -689,7 +888,7 @@ def review_post(post: AuthorPost, root: Path) -> ReviewResult:
     if metadata.get("$schema") != AUTHOR_SCHEMA:
         blockers.append(f"$schema must be {AUTHOR_SCHEMA!r}")
 
-    for field in ("title", "subtitle", "excerpt", "entry", "date", "time", "location", "slug", "blog", "status"):
+    for field in ("title", "subtitle", "excerpt", "entry", "date", "location", "slug", "blog", "status"):
         if not isinstance(metadata.get(field), str) or not str(metadata.get(field)).strip():
             blockers.append(f"{field} must be a non-empty string")
 
@@ -698,8 +897,16 @@ def review_post(post: AuthorPost, root: Path) -> ReviewResult:
         blockers.append("entry must be a four-digit string from 0001 through 9999")
     if isinstance(metadata.get("date"), str) and metadata["date"].strip() and not valid_date(metadata["date"]):
         blockers.append("date must use YYYY-MM-DD")
-    if isinstance(metadata.get("time"), str) and metadata["time"].strip() and not valid_time(metadata["time"]):
-        blockers.append("time must use 24-hour HH:MM")
+    publication_time = metadata.get("time")
+    if publication_time is not None and publication_time != "" and not valid_time(publication_time):
+        blockers.append("time must be blank while drafting or use 24-hour HH:MM")
+    elif metadata.get("status") == "published" and not valid_time(publication_time):
+        blockers.append("published posts require a 24-hour HH:MM time")
+    elif metadata.get("status") == "draft" and not publishing:
+        if valid_time(publication_time):
+            notes.append("time: the existing draft value will be replaced on first publish")
+        else:
+            notes.append("time: will be stamped on first publish")
     if not valid_post_slug(metadata.get("slug")):
         blockers.append("slug must use NNNN-title-YYYYMMDD with lowercase letters, numbers, and hyphens")
     if metadata.get("blog") not in BLOGS:
@@ -819,8 +1026,7 @@ def review_post(post: AuthorPost, root: Path) -> ReviewResult:
 
             if post.source_path.suffix.lower() != ".docx":
                 source_text = post.source_path.read_text(encoding="utf-8")
-                if post.source_path.suffix.lower() in {".html", ".htm"}:
-                    source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.DOTALL)
+                source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.DOTALL)
                 for reference in local_image_references(source_text):
                     pure_reference = PurePosixPath(reference)
                     if pure_reference.is_absolute() or ".." in pure_reference.parts:
@@ -849,6 +1055,10 @@ def print_review(result: ReviewResult, root: Path) -> None:
     metadata = result.post.metadata
     print(f"review · {result.post.entry or '????'} · {metadata.get('blog', '?')} · {metadata.get('subtitle', '')}")
     print(f"record: {relative_display(result.post.path, root)}")
+    print(
+        "source: "
+        + (relative_display(result.post.source_path, root) if result.post.source_path else "none")
+    )
     print(
         "body: "
         f"{result.word_count} words · {result.heading_count} headings · "
@@ -972,8 +1182,13 @@ def publish_conflicts(post: AuthorPost, root: Path) -> list[Path]:
 
 
 def command_publish(arguments: argparse.Namespace, root: Path) -> int:
-    post = locate_post(arguments.target, root)
-    result = review_post(post, root)
+    author_post = locate_post(arguments.target, root)
+    publish_metadata = dict(author_post.metadata)
+    existing_time = publish_metadata.get("time")
+    if publish_metadata.get("status") != "published" or not valid_time(existing_time):
+        publish_metadata["time"] = current_publication_time()
+    post = AuthorPost(author_post.path, publish_metadata)
+    result = review_post(post, root, publishing=True)
     print_review(result, root)
     if not result.ok or result.body_html is None:
         print("publish stopped: resolve the review blockers first", file=sys.stderr)
@@ -1034,7 +1249,7 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
 
     updated_metadata = dict(post.metadata)
     updated_metadata["status"] = "published"
-    write_json(post.path, updated_metadata)
+    write_json(author_post.path, updated_metadata)
 
     print(f"published {relative_display(sfi_path, root)}")
     if post.blog == "venture":
@@ -1044,49 +1259,6 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
     print(f"url: /scope-for-imagination/{post.entry}")
     if post.blog == "venture":
         print(f"venture url: /venture/{post.slug}")
-    return 0
-
-
-def post_details(post: AuthorPost, root: Path) -> dict[str, Any]:
-    metadata = post.metadata
-    sfi_output = root / "content" / "scope-for-imagination" / "posts" / f"{post.entry}.json"
-    newsletter = root / "content" / "scope-for-imagination" / "newsletters" / f"{post.entry}.json"
-    venture_output = root / "content" / "venture" / "entries" / f"{post.slug}.json"
-    urls = {"sfi": f"/scope-for-imagination/{post.entry}"}
-    if post.blog == "venture":
-        urls["venture"] = f"/venture/{post.slug}"
-    return {
-        "metadata": metadata,
-        "record": relative_display(post.path, root),
-        "source": relative_display(post.source_path, root) if post.source_path else None,
-        "images": relative_display(post.directory / "images", root),
-        "outputs": {
-            "sfi": relative_display(sfi_output, root) if sfi_output.exists() else None,
-            "venture": relative_display(venture_output, root) if venture_output.exists() else None,
-            "newsletter": relative_display(newsletter, root) if newsletter.exists() else None,
-        },
-        "urls": urls,
-    }
-
-
-def command_post(arguments: argparse.Namespace, root: Path) -> int:
-    post = locate_post(arguments.target, root)
-    details = post_details(post, root)
-    if arguments.json:
-        print(json.dumps(details, ensure_ascii=False, indent=2))
-        return 0
-    metadata = details["metadata"]
-    print(f"{post.entry} · {post.blog} · {metadata.get('status')}")
-    print(f"{metadata.get('title')}: {metadata.get('subtitle')}")
-    print(f"record: {details['record']}")
-    print(f"source: {details['source'] or 'none'}")
-    print(f"images: {details['images']}")
-    print("outputs:")
-    for name, path in details["outputs"].items():
-        print(f"  {name}: {path or 'not generated'}")
-    print("urls:")
-    for name, path in details["urls"].items():
-        print(f"  {name}: {path}")
     return 0
 
 
@@ -1143,23 +1315,24 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     draft = commands.add_parser("draft", help="initialize a post, optionally from an existing document")
-    draft.add_argument("--source", type=Path, help=".docx, .html, .htm, .txt, or .md source document")
-    draft.add_argument("--blog", choices=BLOGS, default="sfi")
+    draft.add_argument("--source", type=Path, help="copy an existing .docx, .html, .htm, .txt, or .md document")
+    draft.add_argument("--format", dest="source_format", choices=BLANK_SOURCE_FORMATS, help="new entry format; defaults to md")
+    draft.add_argument("--blog", choices=BLOGS)
     draft.add_argument("--title", help="defaults to scope for imagination, or venture for Venture posts")
     draft.add_argument("--subtitle", help="defaults to the source filename")
-    draft.add_argument("--excerpt", default="")
+    draft.add_argument("--excerpt")
     draft.add_argument("--entry", type=normalize_entry, help="defaults to the next global entry")
-    draft.add_argument("--date", type=date_argument, default=date.today().isoformat())
-    draft.add_argument("--time", type=time_argument, default=datetime.now().strftime("%H:%M"))
-    draft.add_argument("--location", default="")
+    draft.add_argument("--date", type=date_argument)
+    draft.add_argument("--location")
     draft.add_argument("--trip")
     draft.add_argument("--thread")
     draft.add_argument("--slug", help="defaults to ENTRY-subtitle-YYYYMMDD")
-    draft.add_argument("--tags", default="", help="comma-separated manual tags")
-    draft.add_argument("--collections", default="", help="comma-separated Venture collections")
+    draft.add_argument("--tags", help="comma-separated manual tags")
+    draft.add_argument("--collections", help="comma-separated Venture collections")
     draft.add_argument("--latitude", "--lat", dest="latitude", type=float)
     draft.add_argument("--longitude", "--lon", dest="longitude", type=float)
     draft.add_argument("--replace", action="store_true", help="replace an unpublished folder with this slug")
+    draft.add_argument("--no-prompt", action="store_true", help="use flags/defaults without interactive questions")
     add_music_arguments(draft)
 
     review = commands.add_parser("review", help="run the metadata and body review checklist")
@@ -1170,10 +1343,6 @@ def build_parser() -> argparse.ArgumentParser:
     publish.add_argument("--yes", action="store_true", help="confirm publication non-interactively")
     publish.add_argument("--dry-run", action="store_true", help="review and show the publish plan without writing")
     publish.add_argument("--replace", action="store_true", help="replace generated output")
-
-    post = commands.add_parser("post", help="inspect one author record and its derived outputs")
-    post.add_argument("target", help="entry, slug, post folder, source, or post.json")
-    post.add_argument("--json", action="store_true", help="print machine-readable JSON")
 
     newsletter = commands.add_parser("newsletter", help="create a Resend draft or explicitly send it")
     newsletter.add_argument("target", help="entry, slug, post folder, source, or post.json")
@@ -1191,7 +1360,6 @@ def main(argv: list[str] | None = None) -> int:
         "draft": command_draft,
         "review": command_review,
         "publish": command_publish,
-        "post": command_post,
         "newsletter": command_newsletter,
     }
     try:

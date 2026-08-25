@@ -1,6 +1,6 @@
 {
   "$schema": "../../post.schema.json",
-  "source": "source.html",
+  "source": "entry.html",
   "title": "scope for imagination",
   "subtitle": "life lately",
   "excerpt": "",

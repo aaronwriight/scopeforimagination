@@ -35,6 +35,28 @@ a:hover {
   text-decoration-line: underline;
 }
 
+.prose .entry-centered {
+  text-align: center;
+}
+
+.prose .entry-centered img {
+  margin-inline: auto;
+}
+
+.prose .entry-callout {
+  border-left: 2px solid #6f8200;
+  margin-block: 1.75rem;
+  padding: 0.1rem 0 0.1rem 1rem;
+}
+
+.prose .entry-callout > :first-child {
+  margin-top: 0;
+}
+
+.prose .entry-callout > :last-child {
+  margin-bottom: 0;
+}
+
 /* @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 

@@ -1,13 +1,12 @@
 # Writing and publishing
 
-This is the canonical guide for writing both **Scope for Imagination (SFI)** and **Venture** posts. Run every command from the repository root.
+This is the canonical guide for writing both **Scope for Imagination (SFI)** and **Venture** posts. Run commands from the repository root.
 
-The short version is:
+The everyday workflow is:
 
 ```sh
-pnpm writing draft --blog sfi --subtitle "your subtitle"
+pnpm writing draft
 pnpm writing review 0003
-pnpm writing post 0003
 pnpm writing publish 0003 --dry-run
 pnpm writing publish 0003
 ```
@@ -22,23 +21,36 @@ The `writing/` folder is the author workspace and source of truth. Files under `
 pnpm writing draft [OPTIONS]
 pnpm writing review [TARGET]
 pnpm writing publish [TARGET] [--dry-run] [--replace] [--yes]
-pnpm writing post TARGET [--json]
 pnpm writing newsletter TARGET [--send] [--dry-run] [--yes]
 ```
 
-`TARGET` may be an entry number, slug, post folder, source-document path, or `post.json` path. When your terminal is already inside a post folder, `review` and `publish` can infer the nearest `post.json`, so their target may be omitted.
+`TARGET` may be an entry number, slug, post folder, `entry.*` source path, or `post.json` path. When your terminal is already inside a post folder, `review` and `publish` can infer the nearest `post.json`, so their target may be omitted.
 
-`draft` accepts:
+There is no separate `post` command. `review` is the read-only way to inspect a post and its publication readiness.
+
+### Draft options
+
+In an interactive terminal, the simplest command starts a guided draft:
+
+```sh
+pnpm writing draft
+```
+
+The prompts collect the missing author fields, let you import an existing document or start a new one, and show defaults in brackets. Press Return to accept a displayed default. The next global entry number and slug are assigned automatically.
+
+For a new document, choose `md`, `html`, or `txt`; the default is `md`. A Word document can be imported, but the command does not generate a blank `.docx` template.
+
+Flags can prefill the same workflow. Add `--no-prompt` when a fully specified command should run without questions:
 
 ```text
 --blog sfi|venture
 --source PATH
+--format md|html|txt
 --title TEXT
 --subtitle TEXT
 --excerpt TEXT
 --entry NNNN
 --date YYYY-MM-DD
---time HH:MM
 --location TEXT
 --trip TEXT
 --thread TEXT
@@ -51,10 +63,13 @@ pnpm writing newsletter TARGET [--send] [--dry-run] [--yes]
 --music-album TEXT
 --music-artist TEXT
 --music-url URL
+--no-prompt
 --replace
 ```
 
-Most metadata flags are conveniences; it is fine to initialize a sparse draft and edit `post.json`. The command assigns the next global entry number and generates the slug when those values are omitted. A manual `--slug` can change only the middle title words; it must retain the matching `NNNN-` entry prefix and `-YYYYMMDD` date suffix. Use `--entry` only for a deliberate migration or reservation, and use draft-time `--replace` only when you intend to replace an existing author draft.
+Use `--format` only when starting a new blank source. When `--source` points to an existing `.md`, `.html`, `.htm`, `.txt`, or `.docx` document, its file type is inferred instead. Imported `.htm` files are normalized to `.html`.
+
+Use `--no-prompt` for scripts or when you deliberately want omitted values to use noninteractive defaults. Use `--entry` only for a deliberate migration or reservation. A manual `--slug` may customize the middle title words, but it must retain the matching `NNNN-` entry prefix and `-YYYYMMDD` date suffix. Use draft-time `--replace` only when you intend to replace an existing unpublished author folder.
 
 ## One journal sequence, two views
 
@@ -69,7 +84,7 @@ SFI is the umbrella journal. Venture is its adventure-focused subset.
 
 The sequence describes publication order. `tags`, `collections`, `trip`, and `thread` describe how entries relate to one another.
 
-## The folder structure
+## Folder structure
 
 Each post has one self-contained folder named after its slug:
 
@@ -77,18 +92,22 @@ Each post has one self-contained folder named after its slug:
 writing/
 ├── README.md
 ├── post.schema.json
+├── templates/
+│   ├── entry.md
+│   ├── entry.html
+│   └── entry.txt
 ├── sfi/
 │   ├── README.md
-│   └── 0001-an-ode-to-slow-living-20260620/
+│   └── 0003-a-note-from-cambridge-20260825/
 │       ├── post.json
-│       ├── source.html
+│       ├── entry.md
 │       └── images/
 │           └── .gitkeep
 └── venture/
     ├── README.md
     └── 0023-la-vida-august-2026-m1-20260815/
         ├── post.json
-        ├── la-vida-august-2026-m1.docx
+        ├── entry.docx
         └── images/
             ├── summit-view.jpg
             └── trail-map.png
@@ -96,29 +115,43 @@ writing/
 
 Inside a post folder:
 
-- `post.json` is the author metadata. Edit it by hand.
-- `source.md`, `source.html`, `source.txt`, or `source.docx` is the actual essay.
-- `images/` contains image files that belong to this post.
+- `post.json` contains author metadata.
+- `entry.md`, `entry.html`, `entry.txt`, or imported `entry.docx` contains the essay.
+- `images/` contains image files that belong to the post.
 
-Keep one source document per post folder. The `source` field in `post.json` points to that file using a path relative to the post folder. A blank draft starts with `source.md`; an imported document keeps its original filename.
+The canonical author-body name is always `entry.<ext>`. An imported document is copied and renamed to that form; its original file remains untouched. The metadata key is still named `source`, and its value points to the relative body filename, such as `"entry.md"`.
 
-## The regular workflow
+Keep one source document per post folder.
+
+## Regular workflow
 
 ### 1. Create or import a draft
 
-Start a blank SFI post:
+For the guided workflow:
 
 ```sh
-pnpm writing draft --blog sfi --subtitle "a note from cambridge"
+pnpm writing draft
 ```
 
-Start a blank Venture post:
+For a prefilled SFI draft:
 
 ```sh
-pnpm writing draft --blog venture --subtitle "La Vida August 2026 M1"
+pnpm writing draft \
+  --blog sfi \
+  --format md \
+  --subtitle "a note from cambridge"
 ```
 
-Or import an existing Word, HTML, plain-text, or Markdown document:
+For a prefilled Venture draft:
+
+```sh
+pnpm writing draft \
+  --blog venture \
+  --format html \
+  --subtitle "La Vida August 2026 M1"
+```
+
+To import an existing document:
 
 ```sh
 pnpm writing draft \
@@ -127,80 +160,141 @@ pnpm writing draft \
   --subtitle "La Vida August 2026 M1"
 ```
 
-`draft` selects the next entry number from **both** `writing/sfi/` and `writing/venture/`, creates the post folder, copies or initializes the source document, creates `images/`, and writes a starter `post.json`. It does not publish, deploy, or email anything.
+`draft`:
 
-When a source is supplied, `draft` copies it into the new author folder and uses its filename as the subtitle only when `--subtitle` is omitted. The document body is rendered during review and publication; the remaining metadata comes from your flags or the starter defaults. Open `post.json` after every import and confirm it yourself.
+- chooses the next entry number across both `writing/sfi/` and `writing/venture/`;
+- creates the slug-named post folder;
+- copies a reusable template or imports the selected source as `entry.<ext>`;
+- creates `images/` and `post.json`;
+- leaves `time` blank for publication; and
+- does not publish, deploy, or email anything.
 
-### 2. Write the source and complete `post.json`
+When importing, the original source filename can supply a suggested subtitle, but the copied file is still named `entry.<ext>`. Confirm the prompted values and the resulting `post.json` before writing.
 
-Write in whichever supported format feels best:
+### 2. Write the entry
 
-- `.md` for Markdown;
-- `.html` for hand-authored HTML; only the document body becomes the post body;
-- `.txt` for simple prose with blank lines between paragraphs;
-- `.docx` for Word documents, including basic headings, lists, links, emphasis, quotations, and images.
+Choose whichever supported format feels best:
 
-Replace every bracketed prompt, `TODO`, and placeholder before publication. Put post-specific image files in the post's `images/` folder and give every meaningful image useful alt text in the source document.
+| Format | How it is created | Best for |
+| --- | --- | --- |
+| `entry.md` | New template or import | Lightweight prose, headings, links, images, quotations, and layout directives. |
+| `entry.html` | New template or import | Direct semantic HTML and the most control over figures and structure. Only the document body is published. |
+| `entry.txt` | New template or import | Plain writing with the same small set of structural markers and layout directives as Markdown. |
+| `entry.docx` | Import only | Existing Word writing, including basic headings, lists, links, emphasis, quotations, and images. |
 
-Reference a local Markdown image like this:
+Each blank template begins with a commented quick reference. Those comments are removed when the entry is rendered and are never included in the public body. Replace the visible bracketed starter prompt before review.
+
+#### Markdown and text quick syntax
+
+The `.md` and `.txt` renderers support:
+
+```md
+# Section heading
+## Subheading
+
+A paragraph with **bold**, *italic*, and [a link](https://example.com).
+
+- an unordered item
+- another item
+
+1. an ordered item
+2. another item
+
+![Useful alt text](images/summit-view.jpg)
+
+*An optional caption beneath the image.*
+
+> A quotation can span more than one line.
+>
+> — Attribution
+```
+
+The page owns the main title, so `#` in an author source begins the entry's first section rather than creating a second page title.
+
+Use a `center` directive for centered text, images, or both:
+
+```md
+::: center
+Centered text.
+
+![A view across the Adirondack ridgeline](images/summit-view.jpg)
+
+*An optional centered caption.*
+:::
+```
+
+Use a `callout` directive for a distinct aside:
+
+```md
+::: callout
+**Field note.** A short detail that should stand apart from the main narrative.
+:::
+```
+
+Both directives must have their opening and closing `:::` lines. Do not nest directives.
+
+#### HTML patterns
+
+For HTML, keep entry content inside `<body>`. The template includes examples of headings, paragraphs, emphasis, links, lists, figures, centered content, block quotations, and callouts. Use local image paths such as:
+
+```html
+<figure>
+  <img src="images/summit-view.jpg" alt="A view across the Adirondack ridgeline" />
+  <figcaption>An optional caption.</figcaption>
+</figure>
+```
+
+#### Images
+
+Put post-specific images in the post's `images/` folder and give every meaningful image useful alt text. Markdown and text use:
 
 ```md
 ![A view across the Adirondack ridgeline](images/summit-view.jpg)
 ```
 
-Or in HTML:
+HTML uses:
 
 ```html
 <img src="images/summit-view.jpg" alt="A view across the Adirondack ridgeline" />
 ```
 
-`review` reports missing local image references. On publish, local image references are rewritten to `/images/posts/<slug>/...`, and the contents of the author `images/` folder are copied there recursively. Images embedded in a Word source are extracted beneath that generated post directory in `docx/`.
+`review` reports missing local image references. On publish, local image references are rewritten to `/images/posts/<slug>/...`, and author images are copied there recursively. Images embedded in a Word source are extracted beneath that generated post directory in `docx/`.
 
-Complete the metadata in `post.json`; the [field reference](#metadata-field-reference) below explains each key.
+### 3. Complete the metadata
 
-### 3. Review
+The guided draft fills much of `post.json`; you can edit it by hand before review. The [metadata reference](#metadata-field-reference) explains every key.
+
+Replace every bracketed prompt, `TODO`, `TBD`, `FIXME`, `TK`, private note, and placeholder before publication.
+
+### 4. Review
 
 ```sh
 pnpm writing review 0003
 ```
 
-`review` is read-only. It checks the author folder, metadata shape, publication requirements, source document, unfinished prompts, entry and slug collisions, music fields, tags, collections, coordinates, and blog-specific rules. It reports fields that are blank or still need a human decision.
+`review` is read-only. It checks the author folder, metadata shape, publication requirements, source document, unfinished prompts, entry and slug collisions, music fields, tags, collections, coordinates, and blog-specific rules. It also renders the body so missing images and malformed source content can be caught before publication.
 
-Fix every error before publishing. Read warnings as an editorial checklist: some may be intentional, but they should never be surprising.
+A blank draft `time` is expected: review notes that it will be stamped at publication. Fix every blocker and read every note as an editorial checklist.
 
-A target may be an entry number, slug, post folder, source-document path, or `post.json` path. These are equivalent:
+These targets are equivalent:
 
 ```sh
 pnpm writing review 0003
 pnpm writing review 0003-a-note-from-cambridge-20260825
 pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825
-pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825/source.md
+pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825/entry.md
 pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825/post.json
 ```
 
 From inside that post folder, `pnpm writing review` with no target reviews the current post.
 
-### 4. Inspect the finished post
-
-```sh
-pnpm writing post 0003
-```
-
-This prints an easy-to-read summary of the resolved author record and its source/output paths. For the normalized machine-readable record, use:
-
-```sh
-pnpm writing post 0003 --json
-```
-
-Use `post` whenever you want to answer “what will this entry publish as?” without changing any files.
-
-### 5. Preview the publish operation
+### 5. Preview publication
 
 ```sh
 pnpm writing publish 0003 --dry-run
 ```
 
-The dry run performs the publication review and shows what would be generated without writing generated records or changing the draft's status.
+A dry run performs the publication review and shows the records that would be generated. It does not write output, change status, or save a publication time.
 
 ### 6. Publish locally
 
@@ -208,7 +302,11 @@ The dry run performs the publication review and shows what would be generated wi
 pnpm writing publish 0003
 ```
 
-`publish` runs the same review, displays the post and planned outputs, and asks for confirmation before writing anything. Answer `y` only after the summary is correct. A normal publish generates local website records; it does **not** push to GitHub, deploy the website, or send a newsletter.
+`publish` runs the same review, displays the post and planned outputs, and asks for confirmation before writing anything. Answer `y` only after the summary is correct.
+
+The first successful publish stamps `time` using the local machine's current 24-hour `HH:MM` time. A dry run or cancelled confirmation leaves it blank. Republishing an existing entry with `--replace` preserves its original publication time.
+
+A normal publish generates local website records; it does **not** push to GitHub, deploy the website, or send a newsletter.
 
 When intentionally regenerating an existing published entry after editing its author source, use:
 
@@ -232,7 +330,7 @@ Run the site locally if needed:
 pnpm dev
 ```
 
-Check the post itself and its index placement. Published entries appear at:
+Published entries appear at:
 
 - every post: `/scope-for-imagination/NNNN`;
 - Venture posts additionally: `/venture/<slug>`.
@@ -243,7 +341,7 @@ Before pushing, run:
 pnpm build
 ```
 
-Commit the author folder, generated record or records, and generated public images together. The GitHub/Vercel workflow remains the step that makes the post public.
+Commit the author folder, generated record or records, and generated public images together. The GitHub/Vercel workflow is what makes the post public.
 
 ### 8. Create the newsletter
 
@@ -278,23 +376,23 @@ The machine-readable contract is [`writing/post.schema.json`](post.schema.json).
 | Field | Who sets it | Meaning |
 | --- | --- | --- |
 | `$schema` | draft command | Relative path to `writing/post.schema.json`. |
-| `source` | draft command, then author | Source filename within the post folder. Supplying a document to `draft` is optional; a post needs a readable source before publication. |
-| `title` | author | The journal/post title shown in the header. SFI normally uses `scope for imagination`. |
-| `subtitle` | author | The entry's specific title or subtitle. It is used in headers and indexes. |
-| `excerpt` | author | A short plain-text description for indexes and newsletters. Do not paste the entire opening paragraph by default. |
-| `entry` | draft command | One global four-digit **string** shared by SFI and Venture, for example `"0023"`. Do not renumber an existing post casually. |
-| `date` | author | Publication date in `YYYY-MM-DD` form. |
-| `time` | author | Publication time in 24-hour `HH:MM` form. |
+| `source` | draft command | Canonical body filename inside the post folder: `entry.md`, `entry.html`, `entry.txt`, or imported `entry.docx`. The metadata key remains `source`. |
+| `title` | author | Journal/post title shown in the header. SFI normally uses `scope for imagination`; Venture normally uses `venture`. |
+| `subtitle` | author | The entry-specific title used in headers, indexes, and the default slug. |
+| `excerpt` | author | Short plain-text description for indexes and newsletters. |
+| `entry` | draft command | One global four-digit string shared by SFI and Venture, for example `"0023"`. |
+| `date` | author | Entry date in `YYYY-MM-DD` form. It also supplies the final eight slug digits. |
+| `time` | publish command | Blank during drafting. The first successful publish stamps local `HH:MM`; replacement publication preserves it. |
 | `location` | author | Where the entry was written or situated, using the wording you want displayed. |
 | `trip` | author | Venture trip name, such as `La Vida August 2026 M1`. Use `null` for an unrelated SFI post. |
-| `thread` | author | Optional lowercase, hyphenated slug shared by several entries in one story, trip, or series. Use `null` for a standalone post. |
-| `slug` | draft command, author may override | Uses `NNNN-title-YYYYMMDD`. A manual `--slug` may customize the lowercase, hyphenated title words, but it must preserve the matching entry prefix and date suffix, stay unique, and match its folder name. |
+| `thread` | author | Optional lowercase, hyphenated slug shared by several entries in one story, trip, or series. |
+| `slug` | draft command, author may override | `NNNN-title-YYYYMMDD`; it must match the folder, entry, and date and remain unique. |
 | `music` | author | Optional tagline with required `title` and `artist`, plus optional `album` and absolute `url`. Use `null` for no song. |
 | `tags` | author | Manual descriptive tags. Every Venture post must include `venture`. |
 | `blog` | author at draft creation | `sfi` for a general entry or `venture` for the Venture subset. |
-| `collections` | author | Optional collection slugs, such as `northeast-115`, `national-parks`, or `travels`. Use `[]` when none apply. |
+| `collections` | author | Optional collection slugs such as `northeast-115`, `national-parks`, or `travels`. |
 | `latitude` / `longitude` | author | Coordinates for mapping. SFI-only posts may leave both `null`; Venture publication requires both. |
-| `status` | commands | `draft` while writing; `publish` changes it to `published`. Do not mark a draft published by hand. |
+| `status` | commands | `draft` while writing; `publish` changes it to `published`. Do not change it by hand. |
 
 ### Music example
 
@@ -313,32 +411,34 @@ If there is no music tagline, use:
 "music": null
 ```
 
-## Example: a regular SFI post
+## Example: regular SFI post
 
-Create the author folder:
+Start interactively with `pnpm writing draft`, or prefill it:
 
 ```sh
 pnpm writing draft \
   --blog sfi \
+  --format md \
   --title "scope for imagination" \
   --subtitle "a note from cambridge" \
+  --excerpt "A short introduction to the idea at the center of this entry." \
   --date 2026-08-25 \
   --location "Cambridge, MA" \
   --tags "musings"
 ```
 
-The meaningful metadata will look like this after editing:
+The draft metadata will look like:
 
 ```json
 {
   "$schema": "../../post.schema.json",
-  "source": "source.md",
+  "source": "entry.md",
   "title": "scope for imagination",
   "subtitle": "a note from cambridge",
   "excerpt": "A short introduction to the idea at the center of this entry.",
   "entry": "0003",
   "date": "2026-08-25",
-  "time": "20:15",
+  "time": "",
   "location": "Cambridge, MA",
   "trip": null,
   "thread": null,
@@ -353,18 +453,19 @@ The meaningful metadata will look like this after editing:
 }
 ```
 
-Then review, inspect, and publish:
+Then review and publish:
 
 ```sh
 pnpm writing review 0003
-pnpm writing post 0003
 pnpm writing publish 0003 --dry-run
 pnpm writing publish 0003
 ```
 
+The successful publish fills `time` and changes `status` to `published`.
+
 ## Example: La Vida August 2026 M1
 
-Create or import the source:
+Import the source:
 
 ```sh
 pnpm writing draft \
@@ -374,7 +475,6 @@ pnpm writing draft \
   --subtitle "La Vida August 2026 M1" \
   --excerpt "A field note from five August days among Adirondack summits." \
   --date 2026-08-15 \
-  --time 19:28 \
   --location "Adirondack Mountains, New York" \
   --trip "La Vida August 2026 M1" \
   --thread "la-vida-august-2026-m1" \
@@ -384,18 +484,18 @@ pnpm writing draft \
   --longitude -73.986
 ```
 
-Then confirm metadata along these lines:
+The copied author source is `entry.docx`, and the draft metadata includes:
 
 ```json
 {
   "$schema": "../../post.schema.json",
-  "source": "la-vida-august-2026-m1.docx",
+  "source": "entry.docx",
   "title": "venture",
   "subtitle": "La Vida August 2026 M1",
   "excerpt": "A field note from five August days among Adirondack summits.",
   "entry": "0003",
   "date": "2026-08-15",
-  "time": "19:28",
+  "time": "",
   "location": "Adirondack Mountains, New York",
   "trip": "La Vida August 2026 M1",
   "thread": "la-vida-august-2026-m1",
@@ -410,26 +510,25 @@ Then confirm metadata along these lines:
 }
 ```
 
-The number shown here is illustrative: use the number assigned by `draft`. If this is one of several La Vida posts, keep the same `trip` and `thread` on each post while giving every post its own entry, subtitle, slug, date, and source folder.
+The number is illustrative; use the number assigned by `draft`. If several La Vida posts belong together, keep the same `trip` and `thread` while giving each its own entry, subtitle, slug, date, and source folder.
 
-Review and publish it through the same pipeline:
+Review and publish through the same pipeline:
 
 ```sh
 pnpm writing review 0003
-pnpm writing post 0003
 pnpm writing publish 0003 --dry-run
 pnpm writing publish 0003
 ```
 
-The result appears as the same globally numbered entry in SFI and as a specialized Venture story. Link the published Venture slug from the relevant peak, park, or travel field-note records when that place should point to the story.
+The result appears as one globally numbered entry in SFI and as a specialized Venture story. Link its published Venture slug from relevant peak, park, or travel field-note records when those places should point to the story.
 
-## Author sources versus generated outputs
+## Author sources and generated outputs
 
 Author-owned files live under `writing/`:
 
 ```text
 writing/<blog>/<slug>/post.json
-writing/<blog>/<slug>/source.<ext>
+writing/<blog>/<slug>/entry.<ext>
 writing/<blog>/<slug>/images/*
 ```
 
@@ -447,22 +546,21 @@ For a Venture post, publishing also generates:
 content/venture/entries/<slug>.json
 ```
 
-All generated records come from the same author folder. A Venture entry is written to the SFI post collection so global numbering and the umbrella archive stay consistent, then also to the Venture entry collection so the specialized route, index, and map can find it.
-
 Treat generated files like build artifacts:
 
-- edit `writing/.../post.json` or the source document, not the generated post JSON;
+- edit `writing/.../post.json` or `entry.<ext>`, not generated JSON;
 - rerun `review` and `publish --replace` after an intentional edit;
-- commit source and generated changes together;
+- commit author sources, generated records, and generated public images together; and
 - never store private trip notes, secrets, or unpublished material in generated public records.
 
 ## Pre-publish checklist
 
 - The entry number is the one assigned by `draft` and is not duplicated.
 - The folder name and `slug` match.
-- Title, subtitle, excerpt, date, time, and location are final.
-- The source contains no bracketed prompts, `TODO`s, private notes, or accidental comments.
-- Tags are intentional; Venture includes the `venture` tag.
+- Title, subtitle, excerpt, date, and location are final.
+- `time` is blank for a first publication or retains its original value for a replacement.
+- The source contains no visible starter prompt, `TODO`, `TBD`, `FIXME`, `TK`, private notes, or unintended comments.
+- Tags are intentional; Venture includes `venture`.
 - Trip, thread, and collections describe the right grouping.
 - Music title and artist are paired, and its optional URL works.
 - SFI coordinates are either both supplied or both `null`; Venture coordinates are both supplied.
@@ -491,27 +589,27 @@ Do not manually reuse a number. Check both `writing/sfi/` and `writing/venture/`
 
 ### Review reports blank fields
 
-Open the post's `post.json` and fill the reported value. Empty strings and `null` are allowed while drafting so ideas can be saved early; they are not automatically valid for publication.
+Open `post.json` and fill the reported value. Blank `time` is the intentional exception for an unpublished draft; the first successful publish supplies it.
 
 ### Review finds unfinished text
 
-Search the source document for bracketed prompts, `TODO`, placeholder URLs, and scaffolding language. Remove or replace every item intended only as a writing prompt.
+Search `entry.<ext>` for the visible starter prompt, bracketed placeholders, `TODO`, `TBD`, `FIXME`, `TK`, placeholder URLs, and scaffolding language. The commented quick reference is ignored by rendering and may remain.
 
 ### The date changed after the draft was created
 
-Keep `date`, the final eight digits of `slug`, and the post folder name aligned. Rename the folder and update `slug` together, then run `review` by its new path.
+Keep `date`, the final eight slug digits, and the post folder name aligned. Rename the folder and update `slug` together, then run `review` by its new path.
 
 ### A Venture story is missing from one journal
 
-Confirm `"blog": "venture"`, the `venture` tag, and `"status": "published"`; then republish with `--replace`. A valid Venture publish generates both the SFI record and Venture record from the same author source.
+Confirm `"blog": "venture"`, the `venture` tag, and `"status": "published"`; then republish with `--replace`. A valid Venture publish generates both records from the same author source.
 
 ### Images are missing
 
-Keep the original files in the post's `images/` folder, use `images/...` relative references in Markdown or HTML, and check alt text and filename casing. Rerun `review`, then `publish --replace`. Published copies live under `/images/posts/<slug>/`; do not edit those generated copies directly.
+Keep originals in the post's `images/` folder, use `images/...` relative references, and check alt text and filename casing. Rerun `review`, then `publish --replace`. Published copies live under `/images/posts/<slug>/`; do not edit those generated copies directly.
 
 ### Publish refuses to overwrite a record
 
-This protects an existing published entry. Confirm that you are editing the correct author folder, inspect it with `post`, run a dry run, and then use `publish TARGET --replace`.
+This protects an existing published entry. Confirm that you are editing the correct author folder, run `review`, preview with `publish --dry-run`, and then use `publish TARGET --replace`.
 
 ### Newsletter cannot connect
 

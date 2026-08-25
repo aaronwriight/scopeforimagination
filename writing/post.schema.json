@@ -31,7 +31,7 @@
       "type": "string"
     },
     "source": {
-      "description": "Optional path to the copied author document inside this post folder.",
+      "description": "Canonical relative author-body filename inside this post folder: entry.md, entry.html, entry.txt, or an imported entry.docx. The metadata key remains source.",
       "type": ["string", "null"]
     },
     "title": {
@@ -60,7 +60,7 @@
       ]
     },
     "time": {
-      "description": "Publication time in 24-hour HH:MM form; an empty or null value is allowed while drafting.",
+      "description": "Publication time in 24-hour HH:MM form. It remains empty or null while drafting, is stamped by the first successful publish, and is preserved by replacement publication.",
       "oneOf": [
         { "type": "null" },
         { "const": "" },
