@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
+    "writing": "python3 scripts/writing.py",
     "sfi:draft": "python3 scripts/sfi_draft.py",
     "sfi:new": "python3 scripts/sfi_blogpost.py",
     "sfi:check": "python3 scripts/sfi_check_posts.py",

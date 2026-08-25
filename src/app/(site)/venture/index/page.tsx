@@ -87,10 +87,12 @@ export default async function VentureIndexPage() {
     if (linkedEntrySlugs.has(entry.slug)) continue;
     items.push({
       id: `journal:${entry.slug}`,
-      title: entry.title,
+      title: entry.subtitle,
       href: `/venture/${entry.slug}`,
       kind: "journal",
       location: entry.location,
+      entry: entry.entry,
+      time: entry.time,
       records: [{
         id: "journal-entry",
         label: "journal entry",

@@ -75,11 +75,13 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def is_music(value: object) -> bool:
-    if not isinstance(value, dict) or not set(value).issubset({"title", "artist", "url"}):
+    if not isinstance(value, dict) or not set(value).issubset({"title", "album", "artist", "url"}):
         return False
     if not isinstance(value.get("title"), str) or not str(value["title"]).strip():
         return False
     if not isinstance(value.get("artist"), str) or not str(value["artist"]).strip():
+        return False
+    if "album" in value and (not isinstance(value["album"], str) or not str(value["album"]).strip()):
         return False
     if "url" not in value:
         return True
@@ -106,7 +108,7 @@ def is_local_post(value: object) -> bool:
     if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
         return False
 
-    return "music" not in value or is_music(value["music"])
+    return "music" not in value or value["music"] is None or is_music(value["music"])
 
 
 def load_post(posts_dir: Path, entry: str) -> dict[str, object]:
@@ -172,6 +174,8 @@ def build_document(post: dict[str, object], arguments: argparse.Namespace) -> di
             "title": str(music["title"]).strip(),
             "artist": str(music["artist"]).strip(),
         }
+        if music.get("album"):
+            sanity_music["album"] = str(music["album"]).strip()
         if music.get("url"):
             sanity_music["url"] = str(music["url"]).strip()
         document["music"] = sanity_music

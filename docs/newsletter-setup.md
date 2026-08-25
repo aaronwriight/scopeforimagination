@@ -34,7 +34,7 @@ NEXT_PUBLIC_SANITY_DATASET=production
 NEXT_PUBLIC_SANITY_API_VERSION=2024-02-22
 # Optional: only needed if published Sanity posts are not publicly readable.
 SANITY_API_READ_TOKEN=...
-# Optional: only needed for `pnpm sfi:upload`.
+# Optional: only needed for the legacy Sanity mirror tool.
 SANITY_API_WRITE_TOKEN=...
 ```
 
@@ -58,50 +58,10 @@ Until the relevant variables are configured, each signup form safely reports tha
 
 ## Publishing And Email Workflow
 
-The recommended blog workflow is local-first:
-
-1. Start a local draft:
+The canonical author and newsletter workflow is documented in [`writing/README.md`](../writing/README.md). In brief, publish and verify the post first, then create a Resend draft with:
 
 ```sh
-pnpm sfi:draft --subtitle="Post subtitle" --tags="musings"
+pnpm writing newsletter NNNN
 ```
 
-An entry can optionally include a music tagline. Supply `--music-title` and `--music-artist` together, plus an optional absolute `http(s)` `--music-url`; the draft command carries them into the generated publish command.
-
-2. Edit the generated draft in `content/scope-for-imagination/drafts/`.
-3. Generate the local post JSON and paired newsletter template:
-
-```sh
-pnpm sfi:new \
-  --doc="content/scope-for-imagination/drafts/0002-post-subtitle.html" \
-  --title="scope for imagination" \
-  --subtitle="Post subtitle" \
-  --tags="musings" \
-  --location="Cambridge, MA" \
-  --entry=0002
-```
-
-When music metadata is present, the generated HTML and plain-text newsletter templates place the song line directly beneath the entry date/location/number line.
-
-4. Check the local post contract:
-
-```sh
-pnpm sfi:check --entry=0002
-```
-
-5. Preview `/scope-for-imagination/0002`.
-6. Create a Resend broadcast draft:
-
-```sh
-pnpm sfi:newsletter --entry=0002
-```
-
-The newsletter command uses `content/scope-for-imagination/newsletters/NNNN.json` first. If that template does not exist, it can optionally fetch a matching published Sanity post and build a draft from the post schema fields.
-
-After reviewing the draft in Resend, send it there—or explicitly send immediately:
-
-```sh
-pnpm sfi:newsletter --entry=0002 --send
-```
-
-The template includes Resend’s unsubscribe placeholder. The send command is intentionally separate from post generation so publishing a draft cannot accidentally email the list.
+Preview newsletter generation without contacting Resend with `--dry-run`. Immediate sending requires the explicit `--send` flag and an interactive confirmation unless `--yes` is deliberately supplied. Publishing a post never emails the list automatically.

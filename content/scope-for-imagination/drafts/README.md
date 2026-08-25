@@ -1,33 +1,5 @@
-# Entry 0002: life update
+# Legacy draft location
 
-Edit `0002-life-update.html`, replacing or removing every bracketed prompt. The section headings are only scaffolding; keep whichever ones help.
+New drafts do not belong here. Use the unified author workspace and commands documented in [`writing/README.md`](../../../writing/README.md).
 
-Publish it with:
-
-```sh
-pnpm sfi:new \
-  --doc="content/scope-for-imagination/drafts/0002-life-update.html" \
-  --title="scope for imagination" \
-  --subtitle="life lately" \
-  --tags="life update" \
-  --location="Cambridge, MA" \
-  --entry=0002
-```
-
-Then validate and preview it:
-
-```sh
-pnpm sfi:check --entry=0002
-```
-
-For future entries with a music tagline, pass the song metadata when creating the draft:
-
-```sh
-pnpm sfi:draft \
-  --subtitle="Post subtitle" \
-  --music-title="Song title" \
-  --music-artist="Artist" \
-  --music-url="https://example.com/song"
-```
-
-The URL is optional, but the title and artist must be provided together. The draft command includes the same flags in the `sfi:new` command it prints.
+Each new post now lives in `writing/sfi/<slug>/` or `writing/venture/<slug>/` with its metadata, source document, and images together. This directory remains only as a migration marker and contains no active drafts.

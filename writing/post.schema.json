@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aaronwriight.vercel.app/schemas/writing-post.json",
+  "title": "Unified SFI and Venture Author Post",
+  "description": "The author-owned metadata contract. Draft values may be empty or null; the writing review and publish commands enforce publication completeness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "source",
+    "title",
+    "subtitle",
+    "excerpt",
+    "entry",
+    "date",
+    "time",
+    "location",
+    "trip",
+    "thread",
+    "slug",
+    "music",
+    "tags",
+    "blog",
+    "collections",
+    "latitude",
+    "longitude",
+    "status"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "source": {
+      "description": "Optional path to the copied author document inside this post folder.",
+      "type": ["string", "null"]
+    },
+    "title": {
+      "description": "The journal or post title.",
+      "type": ["string", "null"]
+    },
+    "subtitle": {
+      "description": "The entry subtitle shown in the site header and indexes.",
+      "type": ["string", "null"]
+    },
+    "excerpt": {
+      "description": "A short, plain-text summary used in indexes and newsletters.",
+      "type": ["string", "null"]
+    },
+    "entry": {
+      "description": "The global SFI/Venture sequence number. It is a string so leading zeroes are preserved.",
+      "type": "string",
+      "pattern": "^[0-9]{4}$"
+    },
+    "date": {
+      "description": "Publication date in YYYY-MM-DD form; an empty or null value is allowed while drafting.",
+      "oneOf": [
+        { "type": "null" },
+        { "const": "" },
+        { "type": "string", "format": "date" }
+      ]
+    },
+    "time": {
+      "description": "Publication time in 24-hour HH:MM form; an empty or null value is allowed while drafting.",
+      "oneOf": [
+        { "type": "null" },
+        { "const": "" },
+        {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        }
+      ]
+    },
+    "location": {
+      "type": ["string", "null"]
+    },
+    "trip": {
+      "description": "The Venture trip name. SFI-only posts may use null.",
+      "type": ["string", "null"]
+    },
+    "thread": {
+      "description": "Optional slug shared by posts that belong to the same story or trip thread.",
+      "oneOf": [
+        { "type": "null" },
+        { "const": "" },
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      ]
+    },
+    "slug": {
+      "description": "A unique NNNN-title-YYYYMMDD slug. A manual override may customize the lowercase, hyphenated title words while preserving the matching entry prefix and date suffix.",
+      "oneOf": [
+        { "type": "null" },
+        { "const": "" },
+        {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[a-z0-9]+(?:-[a-z0-9]+)*-[0-9]{8}$"
+        }
+      ]
+    },
+    "music": {
+      "description": "Optional music tagline. Review requires a non-empty title and artist whenever this object is present.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "artist"],
+          "properties": {
+            "title": { "type": ["string", "null"] },
+            "album": { "type": ["string", "null"] },
+            "artist": { "type": ["string", "null"] },
+            "url": {
+              "oneOf": [
+                { "type": "null" },
+                { "const": "" },
+                {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "blog": {
+      "description": "The entry's specialized home. Venture entries also belong to the SFI umbrella archive.",
+      "enum": ["sfi", "venture"]
+    },
+    "collections": {
+      "description": "Optional collection slugs such as northeast-115, national-parks, or travels.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "uniqueItems": true
+    },
+    "latitude": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "number", "minimum": -90, "maximum": 90 }
+      ]
+    },
+    "longitude": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "number", "minimum": -180, "maximum": 180 }
+      ]
+    },
+    "status": {
+      "enum": ["draft", "published"]
+    }
+  }
+}

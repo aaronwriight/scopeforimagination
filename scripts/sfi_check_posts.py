@@ -64,13 +64,16 @@ def validate_music(value: object, path: Path, errors: list[str]) -> None:
         errors.append(f"{path}: music must be an object")
         return
 
-    unknown_fields = sorted(set(value) - {"title", "artist", "url"})
+    unknown_fields = sorted(set(value) - {"title", "album", "artist", "url"})
     if unknown_fields:
         errors.append(f"{path}: music contains unsupported fields: {', '.join(unknown_fields)}")
 
     for field in ["title", "artist"]:
         if not isinstance(value.get(field), str) or not str(value.get(field)).strip():
             errors.append(f"{path}: music.{field} must be a non-empty string")
+
+    if "album" in value and (not isinstance(value["album"], str) or not str(value["album"]).strip()):
+        errors.append(f"{path}: music.album must be a non-empty string")
 
     if "url" in value:
         music_url = value["url"]
@@ -114,7 +117,7 @@ def validate_post(path: Path, expected_entry: str, errors: list[str]) -> dict[st
     if not isinstance(tags, list) or not all(isinstance(tag, str) and tag.strip() for tag in tags):
         errors.append(f"{path}: tags must be a list of non-empty strings")
 
-    if "music" in value:
+    if "music" in value and value["music"] is not None:
         validate_music(value["music"], path, errors)
 
     body_html = value.get("bodyHtml")
@@ -141,6 +144,14 @@ def validate_newsletter(path: Path, expected_entry: str, post: dict[str, object]
 
     if value.get("entry") != expected_entry:
         errors.append(f"{path}: entry field must match `{expected_entry}`")
+
+    newsletter_path = value.get("path")
+    if newsletter_path is not None and (
+        not isinstance(newsletter_path, str)
+        or not newsletter_path.startswith("/")
+        or newsletter_path.startswith("//")
+    ):
+        errors.append(f"{path}: path must be a site-relative path beginning with one `/`")
 
     html = value.get("html")
     text = value.get("text")

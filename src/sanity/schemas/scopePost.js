@@ -66,6 +66,11 @@ const scopePost = {
           validation: (Rule) => Rule.required(),
         },
         {
+          name: "album",
+          title: "Album",
+          type: "string",
+        },
+        {
           name: "url",
           title: "Link",
           type: "url",

@@ -21,9 +21,11 @@ export type VentureAdventureItem = Readonly<{
   href: string;
   kind: VentureAdventureKind;
   location: string;
+  entry?: string;
+  time?: string;
   records: readonly VentureAdventureRecord[];
   excerpt?: string;
-  music?: MusicCredit;
+  music?: MusicCredit | null;
 }>;
 
 type OrganizeBy = "type" | "trip";
@@ -74,7 +76,16 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
                 {item.records.length} {item.records.length === 1 ? "field note" : "field notes"}
               </span>
             </div>
-            <p className="mt-1 text-xs leading-6 text-stone-500">{item.location} · {dateSummary(item)}</p>
+            {item.entry && item.time && item.records[0]?.date ? (
+              <p className="mt-1 text-xs leading-6 text-stone-500">
+                <time dateTime={`${item.records[0].date}T${item.time}`}>
+                  {formatAdventureDate(item.records[0].date)} • {item.time}
+                </time>{" "}
+                • {item.location} • {item.entry}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs leading-6 text-stone-500">{item.location} · {dateSummary(item)}</p>
+            )}
             <p className="mt-0.5 text-xs leading-6 text-stone-500">
               trip: {trips.length > 0 ? trips.join(" · ") : "to add"}
             </p>

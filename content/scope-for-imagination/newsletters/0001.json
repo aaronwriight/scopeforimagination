@@ -1,8 +1,0 @@
-{
-  "entry": "0001",
-  "name": "SFI 0001: an ode to slow living",
-  "subject": "scope for imagination: an ode to slow living",
-  "previewText": "A new Scope for Imagination entry: an ode to slow living",
-  "html": "<p>Hello {{{contact.first_name|there}}},</p><p>There is a new entry in <em>Scope for Imagination</em>.</p><h1>scope for imagination</h1><p><em>an ode to slow living</em></p><p>6.20.26 • Cambridge, MA • 0001</p><p><a href=\"[[ENTRY_URL]]\">Read entry 0001 →</a></p><p><small><a href=\"{{{RESEND_UNSUBSCRIBE_URL}}}\">Unsubscribe</a></small></p>",
-  "text": "Hello {{{contact.first_name|there}}},\n\nThere is a new entry in Scope for Imagination.\n\nscope for imagination: an ode to slow living\n6.20.26 • Cambridge, MA • 0001\n\nRead entry 0001: [[ENTRY_URL]]\n\nUnsubscribe: {{{RESEND_UNSUBSCRIBE_URL}}}\n"
-}

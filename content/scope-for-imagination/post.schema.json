@@ -1,17 +1,43 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aaronwriight.vercel.app/schemas/scope-for-imagination-post.json",
-  "title": "Scope for Imagination Local Post",
+  "title": "Published Scope for Imagination Post",
   "type": "object",
   "additionalProperties": false,
-  "required": ["title", "subtitle", "date", "time", "location", "entry", "tags", "bodyHtml"],
+  "required": [
+    "$schema",
+    "title",
+    "subtitle",
+    "excerpt",
+    "entry",
+    "date",
+    "time",
+    "location",
+    "trip",
+    "thread",
+    "slug",
+    "tags",
+    "blog",
+    "collections",
+    "latitude",
+    "longitude",
+    "status",
+    "bodyHtml"
+  ],
   "properties": {
+    "$schema": {
+      "const": "../post.schema.json"
+    },
     "title": {
       "type": "string",
       "minLength": 1,
       "default": "scope for imagination"
     },
     "subtitle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "excerpt": {
       "type": "string",
       "minLength": 1
     },
@@ -31,6 +57,22 @@
       "type": "string",
       "pattern": "^[0-9]{4}$"
     },
+    "trip": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ]
+    },
+    "thread": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        { "type": "null" }
+      ]
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[a-z0-9]+(?:-[a-z0-9]+)*-[0-9]{8}$"
+    },
     "tags": {
       "type": "array",
       "items": {
@@ -40,24 +82,59 @@
       "uniqueItems": true
     },
     "music": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["title", "artist"],
-      "properties": {
-        "title": {
-          "type": "string",
-          "minLength": 1
-        },
-        "artist": {
-          "type": "string",
-          "minLength": 1
-        },
-        "url": {
-          "type": "string",
-          "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "artist"],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "album": {
+              "type": "string",
+              "minLength": 1
+            },
+            "artist": {
+              "type": "string",
+              "minLength": 1
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+            }
+          }
         }
-      }
+      ]
+    },
+    "blog": {
+      "enum": ["sfi", "venture"]
+    },
+    "collections": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "uniqueItems": true
+    },
+    "latitude": {
+      "oneOf": [
+        { "type": "number", "minimum": -90, "maximum": 90 },
+        { "type": "null" }
+      ]
+    },
+    "longitude": {
+      "oneOf": [
+        { "type": "number", "minimum": -180, "maximum": 180 },
+        { "type": "null" }
+      ]
+    },
+    "status": {
+      "const": "published"
     },
     "bodyHtml": {
       "type": "string",

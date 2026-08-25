@@ -5,4 +5,4 @@ Analytics by privacy focussed Plausible
 
 ## Authoring
 
-See [Writing and publishing posts](docs/writing-and-publishing.md) for the complete Scope for Imagination and Venture workflow, including drafts, music taglines, local previews, validation, newsletters, and Venture place linking.
+See the canonical [Writing and publishing guide](writing/README.md) for the shared Scope for Imagination and Venture workflow, including global entry numbering, author folders, metadata, drafts, review, publication, inspection, images, and newsletters.

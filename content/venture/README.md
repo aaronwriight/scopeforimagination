@@ -1,8 +1,10 @@
 # Venture entries
 
-For the complete author workflow and a trip-post example, start with [`docs/writing-and-publishing.md`](../../docs/writing-and-publishing.md).
+For the canonical author workflow, shared SFI/Venture numbering, folder structure, and a La Vida example, start with [`writing/README.md`](../../writing/README.md).
 
-Venture is an adventure journal for hikes, trips, the Northeast 115, and the 63 U.S. national parks. The live site reads JSON field notes from `content/venture/entries/` and places every entry on the interactive globe using its latitude and longitude.
+Venture is an adventure journal for hikes, trips, the Northeast 115, and the 63 U.S. national parks. It is a subset of Scope for Imagination and shares its global entry sequence. Do not author posts directly in `content/venture/entries/`; `pnpm writing publish TARGET` generates those public records from `writing/venture/<slug>/`.
+
+The live site reads generated journal records from `content/venture/entries/` and places every published entry on the interactive globe using its latitude and longitude.
 
 The place catalogs live separately from the journal entries:
 
@@ -14,31 +16,7 @@ Every ascent, park visit, travel visit, and standalone Venture entry also carrie
 
 Every peak and park has a canonical page. The atlas marker and the corresponding row on the trails or parks index use that same URL; a place page can then link to one or more full journal entries through `entrySlug`.
 
-To add an entry, create `content/venture/entries/my-adventure.json` with this shape:
-
-```json
-{
-  "$schema": "../entry.schema.json",
-  "title": "Adventure title",
-  "slug": "adventure-title",
-  "date": "2026-08-24",
-  "trip": "Trip or expedition name",
-  "location": "Place, State",
-  "latitude": 44.2706,
-  "longitude": -71.3033,
-  "excerpt": "A short introduction for the atlas and entry list.",
-  "music": {
-    "title": "Song title",
-    "artist": "Artist name",
-    "url": "https://example.com/song"
-  },
-  "tags": ["venture", "hiking"],
-  "collections": ["northeast-115"],
-  "bodyHtml": "<p>Write the story here.</p>"
-}
-```
-
-The `music` object is optional. Omit it entirely when an entry has no song attached; `title` and `artist` are required when it is present, while `url` is optional. Use an empty `collections` array for adventures outside the current catalogs. Keeping the `venture` tag on every entry prepares these stories to be surfaced in Scope for Imagination later.
+After publishing a Venture story, use its generated slug as the `entrySlug` on the relevant ascent or visit records. Several records can point to the same story. Keep private workbook and trip notes out of these public catalog files.
 
 To re-import the Northeast 115 workbook, run:
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MusicTagline } from "@/components/site/music-tagline";
 import type { VentureEntry } from "@/lib/venture-entries";
-import { formatVentureDate } from "@/lib/venture-entries";
+import { formatVentureHeaderDate } from "@/lib/venture-entries";
 
 function formatMonth(date: string): string {
   return new Date(`${date.slice(0, 7)}-01T12:00:00`).toLocaleDateString("en-US", {
@@ -15,10 +15,13 @@ function EntryRows({ entries }: { entries: VentureEntry[] }) {
       {entries.map((entry) => (
         <article key={entry.slug} className="border-b border-stone-300 py-6 dark:border-stone-700">
           <h3 className="font-serif text-lg font-normal leading-tight text-stone-900 dark:text-stone-100">
-            <Link href={`/venture/${entry.slug}`}>{entry.title}</Link>
+            <Link href={`/venture/${entry.slug}`}>{entry.subtitle}</Link>
           </h3>
           <p className="mt-1 text-xs text-stone-500">
-            {formatVentureDate(entry.date)} · {entry.location}
+            <time dateTime={`${entry.date}T${entry.time}`}>
+              {formatVentureHeaderDate(entry.date)} • {entry.time}
+            </time>{" "}
+            • {entry.location} • {entry.entry}
           </p>
           <MusicTagline music={entry.music} className="mt-1" />
           <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{entry.excerpt}</p>

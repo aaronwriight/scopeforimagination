@@ -63,6 +63,11 @@ def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
         or f"A new Scope for Imagination entry: {subtitle}"
     )
     entry_url = "[[ENTRY_URL]]"
+    post_path = (
+        f"/venture/{post['slug']}"
+        if post.get("blog") == "venture" and post.get("slug")
+        else f"/scope-for-imagination/{entry}"
+    )
     unsubscribe_url = "{{{RESEND_UNSUBSCRIBE_URL}}}"
     details_text = f"{display_date(str(post['date']))} • {post['location']} • {entry}"
     music_html = ""
@@ -101,6 +106,7 @@ def newsletter_for_post(post: dict[str, object]) -> dict[str, str]:
 
     return {
         "entry": entry,
+        "path": post_path,
         "name": f"SFI {entry}: {subtitle}",
         "subject": subject,
         "previewText": preview_text[:160],
@@ -122,7 +128,7 @@ def sanity_query(entry: str) -> dict[str, object] | None:
     api_version = os.environ.get("NEXT_PUBLIC_SANITY_API_VERSION") or SANITY_API_VERSION
     query = (
         f'*[_type == "scopePost" && status == "published" && entry == "{entry}"][0]{{'
-        'title,subtitle,entry,publishedAt,location,excerpt,music{title,artist,url},'
+        'title,subtitle,entry,publishedAt,location,excerpt,music{title,album,artist,url},'
         '"subject": newsletter.subject,'
         '"previewText": newsletter.previewText'
         "}"
@@ -190,7 +196,11 @@ def main() -> int:
         )
         return 1
 
-    entry_url = f"{site_url}/scope-for-imagination/{entry}"
+    entry_path = str(template.get("path") or f"/scope-for-imagination/{entry}").strip()
+    if not entry_path.startswith("/") or entry_path.startswith("//"):
+        print("error: newsletter path must be a site-relative path beginning with one `/`", file=sys.stderr)
+        return 1
+    entry_url = f"{site_url}{entry_path}"
     payload = {
         "segment_id": segment_id,
         "from": sender,

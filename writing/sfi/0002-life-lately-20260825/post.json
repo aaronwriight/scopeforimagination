@@ -1,0 +1,23 @@
+{
+  "$schema": "../../post.schema.json",
+  "source": "source.html",
+  "title": "scope for imagination",
+  "subtitle": "life lately",
+  "excerpt": "",
+  "entry": "0002",
+  "date": "2026-08-25",
+  "time": "",
+  "location": "Cambridge, MA",
+  "trip": null,
+  "thread": null,
+  "slug": "0002-life-lately-20260825",
+  "music": null,
+  "tags": [
+    "life update"
+  ],
+  "blog": "sfi",
+  "collections": [],
+  "latitude": null,
+  "longitude": null,
+  "status": "draft"
+}

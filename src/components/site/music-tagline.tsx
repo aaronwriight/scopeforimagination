@@ -4,7 +4,7 @@ export function MusicTagline({
   music,
   className = "",
 }: {
-  music?: MusicCredit;
+  music?: MusicCredit | null;
   className?: string;
 }) {
   if (!music) return null;
