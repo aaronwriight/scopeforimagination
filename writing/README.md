@@ -36,7 +36,7 @@ In an interactive terminal, the simplest command starts a guided draft:
 pnpm writing draft
 ```
 
-Every question begins with the exact `post.json` field it fills, such as `post.json "title"` or `post.json "date"`. The prompts let you import an existing document or start a new one and show defaults in brackets; press Return to accept a displayed default. Automatic fields—including `entry`, `source`, `slug`, `time`, and `status`—are labeled and announced too.
+Every question begins with the exact `post.json` field it fills, such as `post.json "title"` or `post.json "trip"`. The prompts let you import an existing document or start a new one and show defaults in brackets; press Return to accept a displayed default. `trip`, `thread`, and `collections` are offered for both SFI and Venture. Automatic fields—including `entry`, `source`, `excerpt`, `date`, `time`, `slug`, and `status`—are labeled and announced too.
 
 For a new document, choose `md`, `html`, or `txt`; the default is `md`. A Word document can be imported, but the command does not generate a blank `.docx` template.
 
@@ -60,8 +60,8 @@ Flags can prefill the same workflow. Add `--no-prompt` when a fully specified co
 --latitude NUMBER
 --longitude NUMBER
 --music-title TEXT
---music-album TEXT
 --music-artist TEXT
+--music-album TEXT
 --music-url URL
 --no-prompt
 --replace
@@ -69,7 +69,7 @@ Flags can prefill the same workflow. Add `--no-prompt` when a fully specified co
 
 Use `--format` only when starting a new blank source. When `--source` points to an existing `.md`, `.html`, `.htm`, `.txt`, or `.docx` document, its file type is inferred instead. Imported `.htm` files are normalized to `.html`.
 
-Use `--no-prompt` for scripts or when you deliberately want omitted values to use noninteractive defaults. Use `--entry` only for a deliberate migration or reservation. A manual `--slug` may customize the middle title words, but it must retain the matching `NNNN-` entry prefix and `-YYYYMMDD` date suffix. Use draft-time `--replace` only when you intend to replace an existing unpublished author folder.
+Use `--no-prompt` for scripts or when you deliberately want omitted values to use noninteractive defaults. Use `--entry` only for a deliberate migration or reservation. By default, `excerpt` and `date` remain blank until first publication; `--excerpt` and `--date` are manual overrides for intentional summaries or retrospective dates. A manual `--slug` requires `--date`, may customize the middle title words, and must retain the matching `NNNN-` entry prefix and `-YYYYMMDD` date suffix. Use draft-time `--replace` only when you intend to replace an existing unpublished author folder.
 
 ## One journal sequence, two views
 
@@ -107,7 +107,7 @@ writing/
 │           └── .gitkeep
 └── venture/
     ├── README.md
-    └── 0002-la-vida-august-2026-m1-20260815/
+    └── 0002-la-vida-august-2026-m1-20260826/
         ├── post.json
         ├── entry.docx
         └── images/
@@ -165,10 +165,10 @@ pnpm writing draft \
 `draft`:
 
 - chooses the next entry number across both `writing/sfi/` and `writing/venture/`;
-- creates the slug-named post folder;
+- creates a provisionally dated, slug-named post folder;
 - copies a reusable template or imports the selected source as `entry.<ext>`;
 - creates `images/` and `post.json`;
-- leaves `time` blank for publication; and
+- leaves `excerpt`, `date`, and `time` blank for first publication unless an override was supplied; and
 - does not publish, deploy, or email anything.
 
 When importing, the original source filename can supply a suggested subtitle, but the copied file is still named `entry.<ext>`. Confirm the prompted values and the resulting `post.json` before writing.
@@ -276,7 +276,7 @@ pnpm writing review 0001
 
 `review` is read-only. It checks the author folder, metadata shape, publication requirements, source document, unfinished prompts, entry and slug collisions, music fields, tags, collections, coordinates, and blog-specific rules. It also renders the body so missing images and malformed source content can be caught before publication.
 
-A blank draft `time` is expected: review notes that it will be stamped at publication. Fix every blocker and read every note as an editorial checklist.
+Blank draft `excerpt`, `date`, and `time` values are expected. Review previews the excerpt that will be derived from the first meaningful prose block and notes that the publication date and time will be stamped later. Fix every blocker and read every note as an editorial checklist.
 
 These targets are equivalent:
 
@@ -296,7 +296,7 @@ From inside that post folder, `pnpm writing review` with no target reviews the c
 pnpm writing publish 0001 --dry-run
 ```
 
-A dry run performs the publication review and shows the records that would be generated. It does not write output, change status, or save a publication time.
+A dry run performs the publication review and shows the derived excerpt, publication date/time, final slug, any planned folder rename, and records that would be generated. It does not write output, rename the draft, or save any automatic value.
 
 ### 6. Publish locally
 
@@ -306,7 +306,16 @@ pnpm writing publish 0001
 
 `publish` runs the same review, displays the post and planned outputs, and asks for confirmation before writing anything. Answer `y` only after the summary is correct.
 
-The first successful publish stamps `time` using the local machine's current 24-hour `HH:MM` time. A dry run or cancelled confirmation leaves it blank. Republishing an existing entry with `--replace` preserves its original publication time.
+On the first successful publish, the command:
+
+- derives a blank `excerpt` from the first meaningful prose block, without headings or captions, and shortens it to at most 160 characters;
+- stamps a blank `date` and the publication `time` from the local machine's clock, confirming the time immediately after approval;
+- finalizes the slug's date suffix and safely renames the provisional author folder when needed; and
+- preserves any nonblank `--excerpt` or `--date` override.
+
+A dry run, failed review, or cancelled confirmation leaves the draft untouched. Republishing an existing entry with `--replace` preserves its original excerpt, date, time, slug, and folder.
+
+The reviewed body, generated records, images, and finalized author metadata are staged together. If promotion fails, the command restores the prior files instead of leaving a partial publication.
 
 A normal publish generates local website records; it does **not** push to GitHub, deploy the website, or send a newsletter.
 
@@ -381,14 +390,14 @@ The machine-readable contract is [`writing/post.schema.json`](post.schema.json).
 | `source` | draft command | Canonical body filename inside the post folder: `entry.md`, `entry.html`, `entry.txt`, or imported `entry.docx`. The metadata key remains `source`. |
 | `title` | author | Journal/post title shown in the header. SFI normally uses `scope for imagination`; Venture normally uses `venture`. |
 | `subtitle` | author | The entry-specific title used in headers, indexes, and the default slug. |
-| `excerpt` | author | Short plain-text description for indexes and newsletters. |
+| `excerpt` | publish command, or author override | Short plain-text description for indexes and newsletters. Blank drafts derive it from the first meaningful prose block; use `--excerpt` or edit the value for a manual summary. |
 | `entry` | draft command | One global four-digit string shared by SFI and Venture, for example `"0023"`. |
-| `date` | author | Entry date in `YYYY-MM-DD` form. It also supplies the final eight slug digits. |
-| `time` | publish command | Blank during drafting. The first successful publish stamps local `HH:MM`; replacement publication preserves it. |
+| `date` | publish command, or author override | Blank during normal drafting. First publish stamps local `YYYY-MM-DD` and uses it for the final eight slug digits; `--date` supports a deliberate retrospective date. |
+| `time` | publish command | Blank during drafting. The first successful publish stamps local `HH:MM` immediately after approval and verifies that an automatic date has not rolled over; replacement publication preserves it. |
 | `location` | author | Where the entry was written or situated, using the wording you want displayed. |
-| `trip` | author | Venture trip name, such as `La Vida August 2026 M1`. Use `null` for an unrelated SFI post. |
+| `trip` | author | Optional public trip or grouping name for either blog, such as `La Vida August 2026 M1`. Venture requires one; unrelated SFI posts may use `null`. |
 | `thread` | author | Optional lowercase, hyphenated slug shared by several entries in one story, trip, or series. |
-| `slug` | draft command, author may override | `NNNN-title-YYYYMMDD`; it must match the folder, entry, and date and remain unique. |
+| `slug` | commands, author may override | `NNNN-title-YYYYMMDD`. Draft creates a provisional date suffix; first publish finalizes it and the folder. A manual slug requires an explicit date. |
 | `music` | author | Optional tagline with required `title` and `artist`, plus optional `album` and absolute `url`. Use `null` for no song. |
 | `tags` | author | Manual descriptive tags. Every Venture post must include `venture`. |
 | `blog` | author at draft creation | `sfi` for a general entry or `venture` for the Venture subset. |
@@ -401,8 +410,8 @@ The machine-readable contract is [`writing/post.schema.json`](post.schema.json).
 ```json
 "music": {
   "title": "Sweet Heat Lightning",
-  "album": "Appaloosa Bones",
   "artist": "Gregory Alan Isakov",
+  "album": "Appaloosa Bones",
   "url": "https://example.com/song"
 }
 ```
@@ -423,13 +432,11 @@ pnpm writing draft \
   --format md \
   --title "scope for imagination" \
   --subtitle "a note from cambridge" \
-  --excerpt "A short introduction to the idea at the center of this entry." \
-  --date 2026-08-25 \
   --location "Cambridge, MA" \
   --tags "musings"
 ```
 
-The draft metadata will look like:
+If created on August 25, the draft metadata will look like this; its slug date is provisional:
 
 ```json
 {
@@ -437,9 +444,9 @@ The draft metadata will look like:
   "source": "entry.md",
   "title": "scope for imagination",
   "subtitle": "a note from cambridge",
-  "excerpt": "A short introduction to the idea at the center of this entry.",
+  "excerpt": "",
   "entry": "0001",
-  "date": "2026-08-25",
+  "date": "",
   "time": "",
   "location": "Cambridge, MA",
   "trip": null,
@@ -463,7 +470,7 @@ pnpm writing publish 0001 --dry-run
 pnpm writing publish 0001
 ```
 
-The successful publish fills `time` and changes `status` to `published`.
+The successful publish derives `excerpt`, fills `date` and `time`, finalizes the slug/folder date, and changes `status` to `published`.
 
 ## Example: La Vida August 2026 M1
 
@@ -475,8 +482,6 @@ pnpm writing draft \
   --source "/path/to/la-vida-august-2026-m1.docx" \
   --title "venture" \
   --subtitle "La Vida August 2026 M1" \
-  --excerpt "A field note from five August days among Adirondack summits." \
-  --date 2026-08-15 \
   --location "Adirondack Mountains, New York" \
   --trip "La Vida August 2026 M1" \
   --thread "la-vida-august-2026-m1" \
@@ -486,7 +491,7 @@ pnpm writing draft \
   --longitude -73.986
 ```
 
-The copied author source is `entry.docx`, and the draft metadata includes:
+If created on August 26, the copied author source is `entry.docx`, and the draft metadata includes:
 
 ```json
 {
@@ -494,14 +499,14 @@ The copied author source is `entry.docx`, and the draft metadata includes:
   "source": "entry.docx",
   "title": "venture",
   "subtitle": "La Vida August 2026 M1",
-  "excerpt": "A field note from five August days among Adirondack summits.",
+  "excerpt": "",
   "entry": "0002",
-  "date": "2026-08-15",
+  "date": "",
   "time": "",
   "location": "Adirondack Mountains, New York",
   "trip": "La Vida August 2026 M1",
   "thread": "la-vida-august-2026-m1",
-  "slug": "0002-la-vida-august-2026-m1-20260815",
+  "slug": "0002-la-vida-august-2026-m1-20260826",
   "music": null,
   "tags": ["venture", "hiking"],
   "blog": "venture",
@@ -512,7 +517,7 @@ The copied author source is `entry.docx`, and the draft metadata includes:
 }
 ```
 
-The number is illustrative; use the number assigned by `draft`. If several La Vida posts belong together, keep the same `trip` and `thread` while giving each its own entry, subtitle, slug, date, and source folder.
+The number is illustrative; use the number assigned by `draft`. If several La Vida posts belong together, keep the same `trip` and `thread` while giving each its own entry, subtitle, slug, publication stamp, and source folder.
 
 Review and publish through the same pipeline:
 
@@ -558,9 +563,9 @@ Treat generated files like build artifacts:
 ## Pre-publish checklist
 
 - The entry number is the one assigned by `draft` and is not duplicated.
-- The folder name and `slug` match.
-- Title, subtitle, excerpt, date, and location are final.
-- `time` is blank for a first publication or retains its original value for a replacement.
+- The provisional folder name and `slug` match.
+- Title, subtitle, and location are final.
+- The derived excerpt and publication date/time shown by `publish --dry-run` are right, or deliberate overrides are present.
 - The source contains no visible starter prompt, `TODO`, `TBD`, `FIXME`, `TK`, private notes, or unintended comments.
 - Tags are intentional; Venture includes `venture`.
 - Trip, thread, and collections describe the right grouping.
@@ -580,7 +585,7 @@ Treat generated files like build artifacts:
 Use the complete path to the author metadata:
 
 ```sh
-pnpm writing review writing/venture/0002-la-vida-august-2026-m1-20260815/post.json
+pnpm writing review writing/venture/0002-la-vida-august-2026-m1-20260826/post.json
 ```
 
 Entry numbers and slugs must be unique across both blog folders.
@@ -591,7 +596,7 @@ Do not manually reuse a number. Check both `writing/sfi/` and `writing/venture/`
 
 ### Review reports blank fields
 
-Open `post.json` and fill the reported value. Blank `time` is the intentional exception for an unpublished draft; the first successful publish supplies it.
+Open `post.json` and fill the reported value. Blank `excerpt`, `date`, and `time` are intentional for an unpublished draft: first publish derives or stamps them. `review` shows the planned excerpt and notes the automatic fields.
 
 ### Review finds unfinished text
 
@@ -599,7 +604,7 @@ Search `entry.<ext>` for the visible starter prompt, bracketed placeholders, `TO
 
 ### The date changed after the draft was created
 
-Keep `date`, the final eight slug digits, and the post folder name aligned. Rename the folder and update `slug` together, then run `review` by its new path.
+Do not rename the draft manually. First publish aligns `date`, the final eight slug digits, and the post folder after confirmation. Use `--date` when drafting—or enter an intentional date in `post.json`—for a retrospective post; `publish --dry-run` shows the resulting final path without changing anything.
 
 ### A Venture story is missing from one journal
 

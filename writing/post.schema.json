@@ -32,7 +32,10 @@
     },
     "source": {
       "description": "Canonical relative author-body filename inside this post folder: entry.md, entry.html, entry.txt, or an imported entry.docx. The metadata key remains source.",
-      "type": ["string", "null"]
+      "oneOf": [
+        { "type": "null" },
+        { "enum": ["entry.md", "entry.html", "entry.txt", "entry.docx"] }
+      ]
     },
     "title": {
       "description": "The journal or post title.",
@@ -43,7 +46,7 @@
       "type": ["string", "null"]
     },
     "excerpt": {
-      "description": "A short, plain-text summary used in indexes and newsletters.",
+      "description": "A short, plain-text summary used in indexes and newsletters. Leave it empty while drafting to derive it from the first meaningful prose block on first publish.",
       "type": ["string", "null"]
     },
     "entry": {
@@ -52,7 +55,7 @@
       "pattern": "^[0-9]{4}$"
     },
     "date": {
-      "description": "Publication date in YYYY-MM-DD form; an empty or null value is allowed while drafting.",
+      "description": "Publication date in YYYY-MM-DD form. Leave it empty while drafting to stamp it on first publish, or supply a date for a retrospective entry.",
       "oneOf": [
         { "type": "null" },
         { "const": "" },
@@ -60,7 +63,7 @@
       ]
     },
     "time": {
-      "description": "Publication time in 24-hour HH:MM form. It remains empty or null while drafting, is stamped by the first successful publish, and is preserved by replacement publication.",
+      "description": "Publication time in 24-hour HH:MM form. It is normally empty or null while drafting; first publish replaces any draft value with its stamp, and replacement publication preserves that stamp.",
       "oneOf": [
         { "type": "null" },
         { "const": "" },
@@ -74,14 +77,13 @@
       "type": ["string", "null"]
     },
     "trip": {
-      "description": "The Venture trip name. SFI-only posts may use null.",
+      "description": "Optional trip or grouping name for either blog. Venture posts require one before publication.",
       "type": ["string", "null"]
     },
     "thread": {
       "description": "Optional slug shared by posts that belong to the same story or trip thread.",
       "oneOf": [
         { "type": "null" },
-        { "const": "" },
         {
           "type": "string",
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -89,7 +91,7 @@
       ]
     },
     "slug": {
-      "description": "A unique NNNN-title-YYYYMMDD slug. A manual override may customize the lowercase, hyphenated title words while preserving the matching entry prefix and date suffix.",
+      "description": "A unique NNNN-title-YYYYMMDD slug. An undated draft uses a provisional date suffix that is finalized on first publish. A manual override requires an explicit date.",
       "oneOf": [
         { "type": "null" },
         { "const": "" },
@@ -109,8 +111,8 @@
           "required": ["title", "artist"],
           "properties": {
             "title": { "type": ["string", "null"] },
-            "album": { "type": ["string", "null"] },
             "artist": { "type": ["string", "null"] },
+            "album": { "type": ["string", "null"] },
             "url": {
               "oneOf": [
                 { "type": "null" },

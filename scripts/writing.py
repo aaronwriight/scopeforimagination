@@ -20,6 +20,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import date, datetime
+from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
@@ -29,6 +30,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AUTHOR_SCHEMA = "../../post.schema.json"
 SUPPORTED_SOURCE_SUFFIXES = {".docx", ".html", ".htm", ".txt", ".md"}
 BLANK_SOURCE_FORMATS = ("md", "html", "txt")
+CANONICAL_SOURCE_NAMES = {"entry.docx", "entry.html", "entry.txt", "entry.md"}
 BLOGS = ("sfi", "venture")
 STATUSES = ("draft", "published")
 RESERVED_VENTURE_SLUGS = {"about", "index", "parks", "trails", "travels"}
@@ -167,8 +169,14 @@ def valid_time(value: object) -> bool:
         return False
 
 
-def current_publication_time() -> str:
-    return datetime.now().strftime("%H:%M")
+def current_draft_date() -> str:
+    return date.today().isoformat()
+
+
+def current_publication_stamp() -> tuple[str, str]:
+    """Return one local clock reading as an ISO date and 24-hour time."""
+    now = datetime.now()
+    return now.date().isoformat(), now.strftime("%H:%M")
 
 
 def is_http_url(value: object) -> bool:
@@ -235,14 +243,6 @@ def prompt_choice(label: str, choices: tuple[str, ...], *, default: str) -> str:
         print(f"Choose one of: {', '.join(choices)}.")
 
 
-def prompt_date(label: str, *, default: str) -> str:
-    while True:
-        value = prompt_text(label, default=default)
-        if valid_date(value):
-            return value
-        print("Use YYYY-MM-DD.")
-
-
 def prompt_number(label: str) -> float | None:
     while True:
         value = prompt_text(label)
@@ -286,8 +286,8 @@ def draft_arguments_supplied(arguments: argparse.Namespace) -> bool:
         "latitude",
         "longitude",
         "music_title",
-        "music_album",
         "music_artist",
+        "music_album",
         "music_url",
     )
     return arguments.replace or any(getattr(arguments, name, None) is not None for name in value_names)
@@ -327,32 +327,29 @@ def collect_interactive_draft(arguments: argparse.Namespace, entry: str) -> None
             default=subtitle_default,
             required=True,
         )
-    if arguments.excerpt is None:
-        arguments.excerpt = prompt_text('post.json "excerpt" — index/newsletter summary')
-    if arguments.date is None:
-        arguments.date = prompt_date(
-            'post.json "date" (YYYY-MM-DD)', default=date.today().isoformat()
-        )
     if arguments.location is None:
         arguments.location = prompt_text('post.json "location"')
     if arguments.tags is None:
         arguments.tags = prompt_text('post.json "tags" (comma-separated)')
 
+    if arguments.trip is None:
+        arguments.trip = prompt_text(
+            'post.json "trip" — trip or grouping name (blank = none)'
+        )
+    if arguments.thread is None:
+        if arguments.trip:
+            print(
+                f'post.json "thread" suggestion: {slugify(arguments.trip)} (optional)'
+            )
+        arguments.thread = prompt_text(
+            'post.json "thread" — shared story slug (blank = standalone)'
+        )
+    if arguments.collections is None:
+        arguments.collections = prompt_text(
+            'post.json "collections" (comma-separated slugs)'
+        )
+
     if arguments.blog == "venture":
-        if arguments.trip is None:
-            arguments.trip = prompt_text('post.json "trip" — Venture trip name')
-        if arguments.thread is None:
-            if arguments.trip:
-                print(
-                    f'post.json "thread" suggestion: {slugify(arguments.trip)} (optional)'
-                )
-            arguments.thread = prompt_text(
-                'post.json "thread" — shared story slug (blank = standalone)'
-            )
-        if arguments.collections is None:
-            arguments.collections = prompt_text(
-                'post.json "collections" (comma-separated slugs)'
-            )
         if arguments.latitude is None:
             arguments.latitude = prompt_number('post.json "latitude"')
         if arguments.longitude is None:
@@ -360,8 +357,8 @@ def collect_interactive_draft(arguments: argparse.Namespace, entry: str) -> None
 
     music_values = (
         arguments.music_title,
-        arguments.music_album,
         arguments.music_artist,
+        arguments.music_album,
         arguments.music_url,
     )
     include_music = any(value is not None for value in music_values)
@@ -372,13 +369,13 @@ def collect_interactive_draft(arguments: argparse.Namespace, entry: str) -> None
             arguments.music_title = prompt_text(
                 'post.json "music.title" — song title', required=True
             )
-        if arguments.music_album is None:
-            arguments.music_album = prompt_text(
-                'post.json "music.album" — album title (optional)'
-            )
         if not arguments.music_artist:
             arguments.music_artist = prompt_text(
                 'post.json "music.artist" — artist', required=True
+            )
+        if arguments.music_album is None:
+            arguments.music_album = prompt_text(
+                'post.json "music.album" — album title (optional)'
             )
         if arguments.music_url is None:
             arguments.music_url = (
@@ -514,7 +511,7 @@ def locate_post(target: str | None, root: Path) -> AuthorPost:
 def create_music(arguments: argparse.Namespace) -> dict[str, str] | None:
     supplied = any(
         getattr(arguments, field) is not None
-        for field in ("music_title", "music_album", "music_artist", "music_url")
+        for field in ("music_title", "music_artist", "music_album", "music_url")
     )
     if not supplied:
         return None
@@ -541,7 +538,7 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
 
     arguments.blog = arguments.blog or "sfi"
     arguments.source_format = arguments.source_format or "md"
-    arguments.date = arguments.date or date.today().isoformat()
+    arguments.date = arguments.date or ""
     arguments.excerpt = arguments.excerpt or ""
     arguments.location = arguments.location or ""
     arguments.tags = arguments.tags or ""
@@ -556,11 +553,14 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
             raise WritingError(f"source document must be one of: {supported}")
 
     subtitle = (arguments.subtitle or (title_from_source(source_argument) if source_argument else "untitled")).strip()
-    slug = arguments.slug or f"{entry}-{slugify(subtitle)}-{arguments.date.replace('-', '')}"
+    if arguments.slug and not arguments.date:
+        raise WritingError("--slug requires --date because undated draft slugs are provisional")
+    slug_date = arguments.date or current_draft_date()
+    slug = arguments.slug or f"{entry}-{slugify(subtitle)}-{slug_date.replace('-', '')}"
     if not valid_post_slug(slug):
         raise WritingError("--slug must use NNNN-title-YYYYMMDD with lowercase letters, numbers, and hyphens")
-    if not slug.startswith(f"{entry}-") or not slug.endswith(arguments.date.replace("-", "")):
-        raise WritingError("--slug must begin with the entry and end with the publication date")
+    if not slug.startswith(f"{entry}-") or not slug.endswith(slug_date.replace("-", "")):
+        raise WritingError("--slug must begin with the entry and end with the selected date")
     if arguments.blog == "venture" and slug in RESERVED_VENTURE_SLUGS:
         raise WritingError(f"venture slug is reserved: {slug}")
 
@@ -633,11 +633,24 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
 
     print(f"created {relative_display(post_directory, root)}")
     entry_origin = "from --entry" if arguments.entry else "automatic"
-    slug_origin = "from --slug" if arguments.slug else "automatic from entry + subtitle + date"
+    if arguments.slug:
+        slug_origin = "from --slug"
+    elif arguments.date:
+        slug_origin = "automatic from entry + subtitle + --date"
+    else:
+        slug_origin = "provisional from entry + subtitle + draft date"
     print(f'post.json "entry" ({entry_origin}): "{entry}"')
     print(f'post.json "blog": "{arguments.blog}"')
     print(f'post.json "source" (automatic from import/format): "{source_name}"')
     print(f'post.json "slug" ({slug_origin}): "{slug}"')
+    if arguments.excerpt:
+        print(f'post.json "excerpt" (from --excerpt): {arguments.excerpt!r}')
+    else:
+        print('post.json "excerpt" (derived on first publish): ""')
+    if arguments.date:
+        print(f'post.json "date" (from --date): "{arguments.date}"')
+    else:
+        print('post.json "date" (stamped on first publish): ""')
     print('post.json "time" (stamped on first publish): ""')
     print('post.json "status": "draft"')
     print(f"write:  {relative_display(post_directory / source_name, root)}")
@@ -802,6 +815,144 @@ def render_source(post: AuthorPost, image_directory: Path, image_web_root: str) 
     return rewrite_local_images(body.strip(), image_web_root)
 
 
+class ExcerptHTMLParser(HTMLParser):
+    """Collect the first prose block plus a visible-text fallback."""
+
+    prose_tags = {"p", "li"}
+    ignored_tags = {
+        "script",
+        "style",
+        "template",
+        "noscript",
+        "head",
+        "title",
+        "figcaption",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+    }
+    boundary_tags = {
+        "p",
+        "li",
+        "div",
+        "section",
+        "article",
+        "blockquote",
+        "address",
+        "pre",
+        "dl",
+        "dt",
+        "dd",
+        "table",
+        "tr",
+        "th",
+        "td",
+        "br",
+    }
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.paragraphs: list[str] = []
+        self.visible_text: list[str] = []
+        self.current_tag: str | None = None
+        self.current_text: list[str] = []
+        self.current_unemphasized_text: list[str] = []
+        self.current_has_image = False
+        self.emphasis_depth = 0
+        self.previous_image_paragraph = False
+        self.ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del attrs
+        tag = tag.lower()
+        if tag in self.ignored_tags:
+            self.ignored_depth += 1
+            return
+        if self.ignored_depth:
+            return
+        if tag in self.prose_tags and self.current_tag is None:
+            self.current_tag = tag
+            self.current_text = []
+            self.current_unemphasized_text = []
+            self.current_has_image = False
+            self.emphasis_depth = 0
+        elif self.current_tag is not None and tag == "img":
+            self.current_has_image = True
+        elif self.current_tag is not None and tag in {"em", "i"}:
+            self.emphasis_depth += 1
+        if tag == "br":
+            self.visible_text.append(" ")
+            if self.current_tag is not None:
+                self.current_text.append(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        if self.ignored_depth:
+            if tag in self.ignored_tags:
+                self.ignored_depth -= 1
+            return
+        if self.current_tag is not None and tag in {"em", "i"} and self.emphasis_depth:
+            self.emphasis_depth -= 1
+        if self.current_tag == tag:
+            paragraph = normalize_excerpt_text("".join(self.current_text))
+            unemphasized = normalize_excerpt_text("".join(self.current_unemphasized_text))
+            markdown_caption = (
+                self.previous_image_paragraph
+                and bool(paragraph)
+                and not unemphasized
+            )
+            if re.search(r"\w", paragraph, flags=re.UNICODE) and not markdown_caption:
+                self.paragraphs.append(paragraph)
+                self.visible_text.extend((" ", paragraph, " "))
+            self.previous_image_paragraph = self.current_has_image and not paragraph
+            self.current_tag = None
+            self.current_text = []
+            self.current_unemphasized_text = []
+            self.current_has_image = False
+            self.emphasis_depth = 0
+        if tag in self.boundary_tags:
+            self.visible_text.append(" ")
+
+    def handle_data(self, data: str) -> None:
+        if self.ignored_depth:
+            return
+        if self.current_tag is not None:
+            self.current_text.append(data)
+            if self.emphasis_depth == 0:
+                self.current_unemphasized_text.append(data)
+        else:
+            self.visible_text.append(data)
+
+
+def normalize_excerpt_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def shorten_excerpt(value: str, limit: int = 160) -> str:
+    value = normalize_excerpt_text(value)
+    if len(value) <= limit:
+        return value
+    prefix = value[: limit - 1].rstrip()
+    boundary = prefix.rfind(" ")
+    if boundary >= limit // 2:
+        prefix = prefix[:boundary]
+    return prefix.rstrip(" ,;:–—-") + "…"
+
+
+def derive_excerpt(body_html: str) -> str:
+    parser = ExcerptHTMLParser()
+    parser.feed(body_html)
+    parser.close()
+    candidates = parser.paragraphs or [normalize_excerpt_text("".join(parser.visible_text))]
+    for candidate in candidates:
+        if re.search(r"\w", candidate, flags=re.UNICODE):
+            return shorten_excerpt(candidate)
+    return ""
+
+
 def legacy_renderers() -> tuple[Callable[..., str], Callable[[str], str]]:
     """Load the preserved Word/HTML renderers without creating tracked bytecode."""
     sys.dont_write_bytecode = True
@@ -911,7 +1062,13 @@ def generated_collision_issues(post: AuthorPost, root: Path) -> list[str]:
     return issues
 
 
-def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> ReviewResult:
+def review_post(
+    post: AuthorPost,
+    root: Path,
+    *,
+    publishing: bool = False,
+    rendered_body_html: str | None = None,
+) -> ReviewResult:
     metadata = post.metadata
     blockers: list[str] = []
     notes: list[str] = []
@@ -925,15 +1082,35 @@ def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> Re
     if metadata.get("$schema") != AUTHOR_SCHEMA:
         blockers.append(f"$schema must be {AUTHOR_SCHEMA!r}")
 
-    for field in ("title", "subtitle", "excerpt", "entry", "date", "location", "slug", "blog", "status"):
+    for field in ("title", "subtitle", "entry", "location", "slug", "blog", "status"):
         if not isinstance(metadata.get(field), str) or not str(metadata.get(field)).strip():
             blockers.append(f"{field} must be a non-empty string")
+
+    excerpt = metadata.get("excerpt")
+    blank_excerpt = excerpt is None or (isinstance(excerpt, str) and not excerpt.strip())
+    if blank_excerpt:
+        if metadata.get("status") == "draft" and not publishing:
+            notes.append("excerpt: will be derived from the first prose block on first publish")
+        else:
+            blockers.append("excerpt must be a non-empty string")
+    elif not isinstance(excerpt, str):
+        blockers.append("excerpt must be a non-empty string")
+
+    publication_date = metadata.get("date")
+    blank_date = publication_date is None or (
+        isinstance(publication_date, str) and not publication_date.strip()
+    )
+    if blank_date:
+        if metadata.get("status") == "draft" and not publishing:
+            notes.append("date: will be stamped on first publish")
+        else:
+            blockers.append("date must be a non-empty YYYY-MM-DD string")
+    elif not valid_date(publication_date):
+        blockers.append("date must use YYYY-MM-DD")
 
     entry = metadata.get("entry")
     if not isinstance(entry, str) or not re.fullmatch(r"\d{4}", entry) or entry == "0000":
         blockers.append("entry must be a four-digit string from 0001 through 9999")
-    if isinstance(metadata.get("date"), str) and metadata["date"].strip() and not valid_date(metadata["date"]):
-        blockers.append("date must use YYYY-MM-DD")
     publication_time = metadata.get("time")
     if publication_time is not None and publication_time != "" and not valid_time(publication_time):
         blockers.append("time must be blank while drafting or use 24-hour HH:MM")
@@ -956,14 +1133,33 @@ def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> Re
     if metadata.get("blog") != expected_blog:
         blockers.append(f"blog must match its writing/{expected_blog}/ folder")
     if metadata.get("slug") != expected_slug:
-        blockers.append(f"slug must match its folder name {expected_slug!r}")
+        pending_publish_rename = (
+            publishing
+            and metadata.get("status") == "draft"
+            and valid_post_slug(expected_slug)
+            and valid_post_slug(metadata.get("slug"))
+            and expected_slug[:-8] == str(metadata.get("slug"))[:-8]
+        )
+        if pending_publish_rename:
+            final_directory = post.directory.parent / str(metadata["slug"])
+            if final_directory.exists():
+                blockers.append(
+                    f"final publication folder already exists: {relative_display(final_directory, root)}"
+                )
+            else:
+                notes.append(f"folder: will be finalized as {metadata['slug']}")
+        else:
+            blockers.append(f"slug must match its folder name {expected_slug!r}")
     if isinstance(entry, str) and isinstance(metadata.get("slug"), str):
         if not str(metadata["slug"]).startswith(f"{entry}-"):
             blockers.append("slug must begin with the post entry")
         if valid_date(metadata.get("date")) and not str(metadata["slug"]).endswith(
             str(metadata["date"]).replace("-", "")
         ):
-            blockers.append("slug must end with the post date as YYYYMMDD")
+            if metadata.get("status") == "draft":
+                notes.append("slug: date suffix will be finalized on first publish")
+            else:
+                blockers.append("slug must end with the post date as YYYYMMDD")
     if metadata.get("blog") == "venture" and metadata.get("slug") in RESERVED_VENTURE_SLUGS:
         blockers.append(f"venture slug is reserved: {metadata.get('slug')}")
 
@@ -1034,6 +1230,10 @@ def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> Re
             blockers.append("source must be a normalized relative path inside the post folder")
         elif pure_source.suffix.lower() not in SUPPORTED_SOURCE_SUFFIXES:
             blockers.append("source must be a .docx, .html, .htm, .txt, or .md document")
+        elif len(pure_source.parts) != 1 or pure_source.name not in CANONICAL_SOURCE_NAMES:
+            blockers.append(
+                "source must be entry.docx, entry.html, entry.txt, or entry.md"
+            )
         elif not post.source_path or not post.source_path.is_file():
             blockers.append(f"source file is missing: {source}")
         else:
@@ -1044,13 +1244,14 @@ def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> Re
     blockers.extend(duplicate_author_issues(post, root))
     blockers.extend(generated_collision_issues(post, root))
 
-    body_html: str | None = None
+    body_html = rendered_body_html
     if source_is_safe and post.source_path:
-        try:
-            with tempfile.TemporaryDirectory(prefix="writing-review-") as temporary:
-                body_html = render_source(post, Path(temporary), "/images/posts/review")
-        except Exception as error:
-            blockers.append(f"source could not be rendered: {error}")
+        if body_html is None:
+            try:
+                with tempfile.TemporaryDirectory(prefix="writing-review-") as temporary:
+                    body_html = render_source(post, Path(temporary), "/images/posts/review")
+            except Exception as error:
+                blockers.append(f"source could not be rendered: {error}")
         if body_html is not None:
             if not re.sub(r"<[^>]+>", "", body_html).strip():
                 blockers.append("rendered post body is empty")
@@ -1072,6 +1273,15 @@ def review_post(post: AuthorPost, root: Path, *, publishing: bool = False) -> Re
                     local_path = post.directory / pure_reference
                     if not local_path.is_file():
                         blockers.append(f"referenced image is missing: {reference}")
+
+            if blank_excerpt and metadata.get("status") == "draft" and not publishing:
+                excerpt_preview = derive_excerpt(body_html)
+                if excerpt_preview:
+                    notes.append(f"excerpt preview: {excerpt_preview}")
+                else:
+                    blockers.append(
+                        "excerpt cannot be derived; add a prose block or supply a manual excerpt"
+                    )
 
     plain_body = html.unescape(re.sub(r"<[^>]+>", " ", body_html or ""))
     words = re.findall(r"\b[\w’'-]+\b", plain_body)
@@ -1218,53 +1428,186 @@ def publish_conflicts(post: AuthorPost, root: Path) -> list[Path]:
     return [path for path in paths if path.exists()]
 
 
+def slug_for_publication_date(slug: str, publication_date: str) -> str:
+    if not valid_post_slug(slug) or not valid_date(publication_date):
+        return slug
+    return f"{slug[:-8]}{publication_date.replace('-', '')}"
+
+
+def move_path(source: Path, destination: Path) -> None:
+    source.replace(destination)
+
+
+def remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def commit_publication(
+    author_directory: Path,
+    final_author_directory: Path,
+    replacements: list[tuple[Path | None, Path]],
+    backup_root: Path,
+) -> None:
+    """Promote staged publication files and restore the prior state on failure."""
+    backup_root.mkdir(parents=True, exist_ok=True)
+    promoted: list[dict[str, Any]] = []
+    author_renamed = False
+    try:
+        if final_author_directory != author_directory:
+            move_path(author_directory, final_author_directory)
+            author_renamed = True
+
+        for index, (staged, target) in enumerate(replacements):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            backup: Path | None = None
+            if target.exists() or target.is_symlink():
+                backup = backup_root / f"{index:02d}-{target.name}"
+                move_path(target, backup)
+            record = {"target": target, "backup": backup, "installed": False}
+            promoted.append(record)
+            if staged is not None:
+                move_path(staged, target)
+                record["installed"] = True
+    except Exception as error:
+        rollback_errors: list[str] = []
+        for record in reversed(promoted):
+            target = record["target"]
+            backup = record["backup"]
+            try:
+                if record["installed"] and (target.exists() or target.is_symlink()):
+                    remove_path(target)
+                if backup is not None and backup.exists():
+                    move_path(backup, target)
+            except Exception as rollback_error:
+                rollback_errors.append(str(rollback_error))
+        if author_renamed:
+            try:
+                move_path(final_author_directory, author_directory)
+            except Exception as rollback_error:
+                rollback_errors.append(str(rollback_error))
+        if rollback_errors:
+            raise WritingError(
+                "publish failed and rollback was incomplete: "
+                f"{error}; rollback issues: {'; '.join(rollback_errors)}"
+            ) from error
+        raise WritingError(f"publish failed; previous files were restored: {error}") from error
+
+
 def command_publish(arguments: argparse.Namespace, root: Path) -> int:
     author_post = locate_post(arguments.target, root)
     publish_metadata = dict(author_post.metadata)
-    existing_time = publish_metadata.get("time")
-    if publish_metadata.get("status") != "published" or not valid_time(existing_time):
-        publish_metadata["time"] = current_publication_time()
+    first_publish = publish_metadata.get("status") == "draft"
+    automatic_date = first_publish and (
+        publish_metadata.get("date") is None
+        or (
+            isinstance(publish_metadata.get("date"), str)
+            and not str(publish_metadata.get("date")).strip()
+        )
+    )
+    automatic_excerpt = first_publish and (
+        publish_metadata.get("excerpt") is None
+        or (
+            isinstance(publish_metadata.get("excerpt"), str)
+            and not str(publish_metadata.get("excerpt")).strip()
+        )
+    )
+    if first_publish:
+        stamped_date, stamped_time = current_publication_stamp()
+        if automatic_date:
+            publish_metadata["date"] = stamped_date
+        publish_metadata["time"] = stamped_time
+        if valid_date(publish_metadata.get("date")) and isinstance(
+            publish_metadata.get("slug"), str
+        ):
+            publish_metadata["slug"] = slug_for_publication_date(
+                str(publish_metadata["slug"]), str(publish_metadata["date"])
+            )
     post = AuthorPost(author_post.path, publish_metadata)
-    result = review_post(post, root, publishing=True)
-    print_review(result, root)
-    if not result.ok or result.body_html is None:
-        print("publish stopped: resolve the review blockers first", file=sys.stderr)
-        return 1
-
-    conflicts = publish_conflicts(post, root)
-    if conflicts and not arguments.replace:
-        print("publish stopped: generated output already exists:", file=sys.stderr)
-        for path in conflicts:
-            print(f"  - {relative_display(path, root)}", file=sys.stderr)
-        print("pass --replace after reviewing the existing output", file=sys.stderr)
-        return 1
-
-    print()
-    print("publish summary")
-    print(f"  entry: {post.entry}")
-    print(f"  blog: {post.blog} (and scope for imagination)")
-    print(f"  slug: {post.slug}")
-    print(f"  title: {post.metadata.get('title')}: {post.metadata.get('subtitle')}")
-    print(f"  date: {post.metadata.get('date')} {post.metadata.get('time')}")
-    print(f"  replace: {'yes' if conflicts else 'no'}")
-    if arguments.dry_run:
-        print("dry run: no files changed")
-        return 0
-    if not arguments.yes:
+    final_author_directory = author_post.directory.parent / post.slug
+    public_images = root / "public" / "images" / "posts" / post.slug
+    with tempfile.TemporaryDirectory(prefix=".writing-publish-", dir=root) as temporary:
+        staging_root = Path(temporary)
+        staged_images = staging_root / "images"
+        staged_images.mkdir()
+        copied_images = copy_author_images(post, staged_images)
         try:
-            answer = input("Publish this post? [y/N] ").strip().lower()
-        except EOFError:
-            answer = ""
-        if answer not in {"y", "yes"}:
-            print("publish cancelled")
+            body_html = render_source(post, staged_images, f"/images/posts/{post.slug}")
+        except Exception as error:
+            result = review_post(
+                post,
+                root,
+                publishing=True,
+                rendered_body_html="",
+            )
+            result.blockers.append(f"source could not be rendered: {error}")
+            print_review(result, root)
+            print("publish stopped: resolve the review blockers first", file=sys.stderr)
             return 1
 
-    public_images = root / "public" / "images" / "posts" / post.slug
-    public_images.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f".{post.slug}-", dir=public_images.parent) as temporary:
-        staged_images = Path(temporary)
-        copied_images = copy_author_images(post, staged_images)
-        body_html = render_source(post, staged_images, f"/images/posts/{post.slug}")
+        if automatic_excerpt:
+            publish_metadata["excerpt"] = derive_excerpt(body_html)
+            post = AuthorPost(author_post.path, publish_metadata)
+
+        result = review_post(
+            post,
+            root,
+            publishing=True,
+            rendered_body_html=body_html,
+        )
+        print_review(result, root)
+        if not result.ok:
+            print("publish stopped: resolve the review blockers first", file=sys.stderr)
+            return 1
+
+        conflicts = publish_conflicts(post, root)
+        if conflicts and not arguments.replace:
+            print("publish stopped: generated output already exists:", file=sys.stderr)
+            for path in conflicts:
+                print(f"  - {relative_display(path, root)}", file=sys.stderr)
+            print("pass --replace after reviewing the existing output", file=sys.stderr)
+            return 1
+
+        print()
+        print("publish summary")
+        print(f"  entry: {post.entry}")
+        print(f"  blog: {post.blog} (and scope for imagination)")
+        print(f"  slug: {post.slug}")
+        print(f"  title: {post.metadata.get('title')}: {post.metadata.get('subtitle')}")
+        print(f"  date: {post.metadata.get('date')} {post.metadata.get('time')}")
+        print(f"  excerpt: {post.metadata.get('excerpt')}")
+        if final_author_directory != author_post.directory:
+            print(
+                "  author folder: "
+                f"{relative_display(author_post.directory, root)} → "
+                f"{relative_display(final_author_directory, root)}"
+            )
+        print(f"  replace: {'yes' if conflicts else 'no'}")
+        if arguments.dry_run:
+            print("dry run: no files changed")
+            return 0
+        if not arguments.yes:
+            try:
+                answer = input("Publish this post? [y/N] ").strip().lower()
+            except EOFError:
+                answer = ""
+            if answer not in {"y", "yes"}:
+                print("publish cancelled")
+                return 1
+
+        if first_publish:
+            confirmed_date, confirmed_time = current_publication_stamp()
+            if automatic_date and confirmed_date != publish_metadata.get("date"):
+                print(
+                    "publish stopped: the local date changed during review; rerun publish "
+                    "to confirm the updated date and slug",
+                    file=sys.stderr,
+                )
+                return 1
+            publish_metadata["time"] = confirmed_time
+            post = AuthorPost(author_post.path, publish_metadata)
 
         sfi_record = published_record(post.metadata, body_html, "../post.schema.json")
         venture_record = published_record(post.metadata, body_html, "../entry.schema.json")
@@ -1274,19 +1617,36 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
         newsletter_path = root / "content" / "scope-for-imagination" / "newsletters" / f"{post.entry}.json"
         venture_path = root / "content" / "venture" / "entries" / f"{post.slug}.json"
 
-        if public_images.exists():
-            shutil.rmtree(public_images)
-        if any(staged_images.iterdir()):
-            shutil.copytree(staged_images, public_images)
-
-        write_json(sfi_path, sfi_record)
+        staged_sfi = staging_root / "sfi.json"
+        staged_newsletter = staging_root / "newsletter.json"
+        staged_venture = staging_root / "venture.json"
+        staged_author = staging_root / "post.json"
+        write_json(staged_sfi, sfi_record)
+        write_json(staged_newsletter, newsletter)
         if post.blog == "venture":
-            write_json(venture_path, venture_record)
-        write_json(newsletter_path, newsletter)
+            write_json(staged_venture, venture_record)
+        updated_metadata = dict(post.metadata)
+        updated_metadata["status"] = "published"
+        write_json(staged_author, updated_metadata)
 
-    updated_metadata = dict(post.metadata)
-    updated_metadata["status"] = "published"
-    write_json(author_post.path, updated_metadata)
+        replacements: list[tuple[Path | None, Path]] = [
+            (staged_images if any(staged_images.iterdir()) else None, public_images),
+            (staged_sfi, sfi_path),
+        ]
+        if post.blog == "venture":
+            replacements.append((staged_venture, venture_path))
+        replacements.extend(
+            (
+                (staged_newsletter, newsletter_path),
+                (staged_author, final_author_directory / "post.json"),
+            )
+        )
+        commit_publication(
+            author_post.directory,
+            final_author_directory,
+            replacements,
+            staging_root / "backups",
+        )
 
     print(f"published {relative_display(sfi_path, root)}")
     if post.blog == "venture":
@@ -1333,8 +1693,8 @@ def command_newsletter(arguments: argparse.Namespace, root: Path) -> int:
 
 def add_music_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--music-title", help="optional song title")
-    parser.add_argument("--music-album", help="optional album title")
     parser.add_argument("--music-artist", help="artist for --music-title")
+    parser.add_argument("--music-album", help="optional album title")
     parser.add_argument("--music-url", type=url_argument, help="optional absolute http(s) music URL")
 
 
@@ -1357,15 +1717,15 @@ def build_parser() -> argparse.ArgumentParser:
     draft.add_argument("--blog", choices=BLOGS)
     draft.add_argument("--title", help="defaults to scope for imagination, or venture for Venture posts")
     draft.add_argument("--subtitle", help="defaults to the source filename")
-    draft.add_argument("--excerpt")
+    draft.add_argument("--excerpt", help="optional override; otherwise derived on first publish")
     draft.add_argument("--entry", type=normalize_entry, help="defaults to the next global entry")
-    draft.add_argument("--date", type=date_argument)
+    draft.add_argument("--date", type=date_argument, help="optional override; otherwise stamped on first publish")
     draft.add_argument("--location")
-    draft.add_argument("--trip")
+    draft.add_argument("--trip", help="optional trip or grouping name; required for Venture")
     draft.add_argument("--thread")
-    draft.add_argument("--slug", help="defaults to ENTRY-subtitle-YYYYMMDD")
+    draft.add_argument("--slug", help="manual ENTRY-title-YYYYMMDD override; requires --date")
     draft.add_argument("--tags", help="comma-separated manual tags")
-    draft.add_argument("--collections", help="comma-separated Venture collections")
+    draft.add_argument("--collections", help="comma-separated collection slugs")
     draft.add_argument("--latitude", "--lat", dest="latitude", type=float)
     draft.add_argument("--longitude", "--lon", dest="longitude", type=float)
     draft.add_argument("--replace", action="store_true", help="replace an unpublished folder with this slug")
