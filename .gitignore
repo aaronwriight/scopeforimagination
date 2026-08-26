@@ -8,6 +8,9 @@ node_modules
 # testing
 /coverage
 
+# private local writing previews
+/.writing-preview/
+
 # next.js
 .next/
 out/

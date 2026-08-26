@@ -22,6 +22,101 @@ class WritingPipelineTests(unittest.TestCase):
             result = writing.main(["--root", str(root), *arguments])
         return result, stdout.getvalue(), stderr.getvalue()
 
+    def create_post(
+        self,
+        root: Path,
+        *,
+        entry: str = "1",
+        blog: str = "sfi",
+        published: bool = False,
+        with_image: bool = False,
+    ) -> writing.AuthorPost:
+        normalized_entry = entry.zfill(4)
+        source = root / f"seed-{normalized_entry}.md"
+        image_markup = "\n\n![A summit view](images/summit.jpg)\n" if with_image else ""
+        source.write_text(
+            f"## Field notes\n\nA complete opening paragraph for entry {normalized_entry}.{image_markup}",
+            encoding="utf-8",
+        )
+        arguments = [
+            "draft",
+            "--entry",
+            entry,
+            "--blog",
+            blog,
+            "--source",
+            str(source),
+            "--subtitle",
+            f"entry {normalized_entry}",
+            "--excerpt",
+            f"Excerpt for entry {normalized_entry}.",
+            "--date",
+            "2026-08-25",
+            "--location",
+            "Adirondack Mountains, New York",
+            "--tags",
+            "hiking",
+            "--no-prompt",
+        ]
+        if blog == "venture":
+            arguments.extend(
+                (
+                    "--trip",
+                    "La Vida August 2026 M1",
+                    "--collections",
+                    "northeast-115",
+                    "--lat",
+                    "44.1",
+                    "--lon",
+                    "-73.9",
+                )
+            )
+        result, _, error = self.run_cli(root, *arguments)
+        self.assertEqual(result, 0, error)
+        post = writing.locate_post(normalized_entry, root)
+        if with_image:
+            (post.directory / "images" / "summit.jpg").write_bytes(b"private-author-image")
+        if published:
+            with mock.patch(
+                "writing.current_publication_stamp",
+                return_value=("2026-08-25", "14:37"),
+            ):
+                result, _, error = self.run_cli(
+                    root, "publish", normalized_entry, "--yes"
+                )
+            self.assertEqual(result, 0, error)
+            post = writing.locate_post(normalized_entry, root)
+        return post
+
+    @staticmethod
+    def publication_paths(root: Path, post: writing.AuthorPost) -> dict[str, Path]:
+        paths = {
+            "sfi": root
+            / "content"
+            / "scope-for-imagination"
+            / "posts"
+            / f"{post.entry}.json",
+            "newsletter": root
+            / "content"
+            / "scope-for-imagination"
+            / "newsletters"
+            / f"{post.entry}.json",
+            "images": root / "public" / "images" / "posts" / post.slug,
+        }
+        if post.blog == "venture":
+            paths["venture"] = (
+                root / "content" / "venture" / "entries" / f"{post.slug}.json"
+            )
+        return paths
+
+    @staticmethod
+    def snapshot_files(root: Path) -> dict[str, bytes]:
+        return {
+            str(path.relative_to(root)): path.read_bytes()
+            for path in sorted(root.rglob("*"))
+            if path.is_file()
+        }
+
     def test_global_entry_and_venture_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -721,6 +816,424 @@ Centered *text*.
         self.assertIn('class="entry-callout"', rendered)
         self.assertNotIn("not-a-real-file", rendered)
 
+    def test_unpublish_preserves_author_work_and_removes_all_venture_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(
+                root, blog="venture", published=True, with_image=True
+            )
+            paths = self.publication_paths(root, post)
+            for path in paths.values():
+                self.assertTrue(path.exists(), path)
+
+            original_metadata = dict(post.metadata)
+            original_source = post.source_path.read_bytes() if post.source_path else b""
+            original_image = (post.directory / "images" / "summit.jpg").read_bytes()
+            before_dry_run = self.snapshot_files(root)
+
+            result, _, error = self.run_cli(
+                root, "unpublish", "1", "--dry-run"
+            )
+            self.assertEqual(result, 0, error)
+            self.assertEqual(self.snapshot_files(root), before_dry_run)
+
+            result, _, error = self.run_cli(root, "unpublish", "1", "--yes")
+            self.assertEqual(result, 0, error)
+            unpublished = writing.locate_post("0001", root)
+            expected_metadata = dict(original_metadata)
+            expected_metadata["status"] = "unpublished"
+            self.assertEqual(unpublished.metadata, expected_metadata)
+            self.assertEqual(unpublished.source_path.read_bytes(), original_source)
+            self.assertEqual(
+                (unpublished.directory / "images" / "summit.jpg").read_bytes(),
+                original_image,
+            )
+            for path in paths.values():
+                self.assertFalse(path.exists(), path)
+
+            with mock.patch(
+                "writing.current_publication_stamp",
+                return_value=("2026-09-12", "22:51"),
+            ):
+                result, _, error = self.run_cli(
+                    root, "publish", "0001", "--yes"
+                )
+            self.assertEqual(result, 0, error)
+            republished = writing.locate_post("0001", root)
+            self.assertEqual(republished.metadata, original_metadata)
+            self.assertEqual(republished.metadata["date"], "2026-08-25")
+            self.assertEqual(republished.metadata["time"], "14:37")
+            for path in paths.values():
+                self.assertTrue(path.exists(), path)
+
+    def test_unpublish_refuses_drafts_and_is_idempotent_for_unpublished_posts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            draft = self.create_post(root, with_image=True)
+            draft_snapshot = self.snapshot_files(root)
+            result, _, _ = self.run_cli(root, "unpublish", "0001", "--yes")
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), draft_snapshot)
+            self.assertEqual(writing.locate_post("0001", root).metadata["status"], "draft")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root, published=True, with_image=True)
+            paths = self.publication_paths(root, post)
+            generated_payloads = {
+                "sfi": paths["sfi"].read_bytes(),
+                "newsletter": paths["newsletter"].read_bytes(),
+                "image": (paths["images"] / "summit.jpg").read_bytes(),
+            }
+            result, _, error = self.run_cli(root, "unpublish", "0001", "--yes")
+            self.assertEqual(result, 0, error)
+
+            clean_snapshot = self.snapshot_files(root)
+            result, _, error = self.run_cli(root, "unpublish", "0001", "--yes")
+            self.assertEqual(result, 0, error)
+            self.assertEqual(self.snapshot_files(root), clean_snapshot)
+
+            paths["sfi"].parent.mkdir(parents=True, exist_ok=True)
+            paths["sfi"].write_bytes(generated_payloads["sfi"])
+            paths["newsletter"].parent.mkdir(parents=True, exist_ok=True)
+            paths["newsletter"].write_bytes(generated_payloads["newsletter"])
+            paths["images"].mkdir(parents=True, exist_ok=True)
+            (paths["images"] / "summit.jpg").write_bytes(generated_payloads["image"])
+            result, _, error = self.run_cli(root, "unpublish", "0001", "--yes")
+            self.assertEqual(result, 0, error)
+            self.assertEqual(writing.locate_post("0001", root).metadata["status"], "unpublished")
+            for path in paths.values():
+                self.assertFalse(path.exists(), path)
+
+    def test_unpublish_verifies_outputs_and_rolls_back_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root, published=True, with_image=True)
+            paths = self.publication_paths(root, post)
+            original_sfi = paths["sfi"].read_bytes()
+            writing.write_json(
+                paths["sfi"],
+                {"entry": "9999", "slug": "9999-someone-else-20260825"},
+            )
+            mismatched_snapshot = self.snapshot_files(root)
+            result, _, _ = self.run_cli(root, "unpublish", "0001", "--yes")
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), mismatched_snapshot)
+            self.assertEqual(writing.locate_post("0001", root).metadata["status"], "published")
+
+            paths["sfi"].write_bytes(original_sfi)
+            before_failure = self.snapshot_files(root)
+            original_move = writing.move_path
+            move_count = 0
+
+            def fail_second_move(source_path: Path, destination_path: Path) -> None:
+                nonlocal move_count
+                move_count += 1
+                if move_count == 2:
+                    raise OSError("injected unpublish failure")
+                original_move(source_path, destination_path)
+
+            with mock.patch("writing.move_path", side_effect=fail_second_move):
+                result, _, _ = self.run_cli(root, "unpublish", "0001", "--yes")
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), before_failure)
+            self.assertEqual(writing.locate_post("0001", root).metadata["status"], "published")
+
+    def test_erase_removes_draft_unpublished_and_published_posts(self) -> None:
+        for status in ("draft", "unpublished", "published"):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                post = self.create_post(
+                    root,
+                    published=status in {"unpublished", "published"},
+                    with_image=True,
+                )
+                paths = self.publication_paths(root, post)
+                if status == "unpublished":
+                    result, _, error = self.run_cli(
+                        root, "unpublish", "0001", "--yes"
+                    )
+                    self.assertEqual(result, 0, error)
+                    post = writing.locate_post("0001", root)
+                author_directory = post.directory
+
+                result, _, error = self.run_cli(root, "erase", "1", "--yes")
+                self.assertEqual(result, 0, error)
+                self.assertFalse(author_directory.exists())
+                for path in paths.values():
+                    self.assertFalse(path.exists(), path)
+
+    def test_erase_requires_exact_confirmation_and_reuses_the_highest_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root)
+            with mock.patch("builtins.input", return_value="yes"):
+                result, _, _ = self.run_cli(root, "erase", "0001")
+            self.assertEqual(result, 1)
+            self.assertTrue(post.directory.is_dir())
+
+            with mock.patch("builtins.input", return_value="ERASE 0001"):
+                result, _, error = self.run_cli(root, "erase", "0001")
+            self.assertEqual(result, 0, error)
+            self.assertFalse(post.directory.exists())
+
+            result, _, error = self.run_cli(root, "erase", "9999", "--yes")
+            self.assertEqual(result, 1)
+            self.assertIn("post not found", error)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.create_post(root, entry="1")
+            second = self.create_post(root, entry="2", published=True)
+            result, _, error = self.run_cli(root, "erase", "2", "--yes")
+            self.assertEqual(result, 0, error)
+            self.assertFalse(second.directory.exists())
+            self.assertEqual(writing.next_entry(root), "0002")
+
+    def test_erase_rolls_back_author_and_generated_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.create_post(root, published=True, with_image=True)
+            before_failure = self.snapshot_files(root)
+            original_move = writing.move_path
+            move_count = 0
+
+            def fail_second_move(source_path: Path, destination_path: Path) -> None:
+                nonlocal move_count
+                move_count += 1
+                if move_count == 2:
+                    raise OSError("injected erase failure")
+                original_move(source_path, destination_path)
+
+            with mock.patch("writing.move_path", side_effect=fail_second_move):
+                result, _, _ = self.run_cli(root, "erase", "0001", "--yes")
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), before_failure)
+            self.assertEqual(writing.locate_post("0001", root).metadata["status"], "published")
+
+    def test_resource_preserves_metadata_images_and_live_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root, published=True, with_image=True)
+            original_metadata = dict(post.metadata)
+            original_author_image = (post.directory / "images" / "summit.jpg").read_bytes()
+            paths = self.publication_paths(root, post)
+            generated_before = {
+                "sfi": paths["sfi"].read_bytes(),
+                "newsletter": paths["newsletter"].read_bytes(),
+                "image": (paths["images"] / "summit.jpg").read_bytes(),
+            }
+            replacement = root / "replacement.html"
+            replacement.write_text(
+                "<body><p>A replacement author source.</p></body>\n",
+                encoding="utf-8",
+            )
+
+            before_dry_run = self.snapshot_files(root)
+            result, _, error = self.run_cli(
+                root,
+                "resource",
+                "0001",
+                "--source",
+                str(replacement),
+                "--dry-run",
+            )
+            self.assertEqual(result, 0, error)
+            self.assertEqual(self.snapshot_files(root), before_dry_run)
+
+            with mock.patch("builtins.input", return_value="n"):
+                result, _, _ = self.run_cli(
+                    root, "resource", "0001", "--source", str(replacement)
+                )
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), before_dry_run)
+
+            result, _, error = self.run_cli(
+                root,
+                "re-source",
+                post.slug,
+                "--source",
+                str(replacement),
+                "--yes",
+            )
+            self.assertEqual(result, 0, error)
+            resourced = writing.locate_post("0001", root)
+            expected_metadata = dict(original_metadata)
+            expected_metadata["source"] = "entry.html"
+            self.assertEqual(resourced.metadata, expected_metadata)
+            self.assertFalse((resourced.directory / "entry.md").exists())
+            self.assertEqual(
+                (resourced.directory / "entry.html").read_text(encoding="utf-8"),
+                replacement.read_text(encoding="utf-8"),
+            )
+            self.assertEqual(
+                (resourced.directory / "images" / "summit.jpg").read_bytes(),
+                original_author_image,
+            )
+            self.assertEqual(paths["sfi"].read_bytes(), generated_before["sfi"])
+            self.assertEqual(
+                paths["newsletter"].read_bytes(), generated_before["newsletter"]
+            )
+            self.assertEqual(
+                (paths["images"] / "summit.jpg").read_bytes(),
+                generated_before["image"],
+            )
+
+            prompted_source = root / "prompted.txt"
+            prompted_source.write_text("A source selected at the prompt.\n", encoding="utf-8")
+            with mock.patch("builtins.input", return_value=str(prompted_source)):
+                result, _, error = self.run_cli(
+                    root,
+                    "resource",
+                    str(resourced.directory / "entry.html"),
+                    "--yes",
+                )
+            self.assertEqual(result, 0, error)
+            prompted = writing.locate_post("0001", root)
+            self.assertEqual(prompted.metadata["source"], "entry.txt")
+            self.assertEqual(
+                (prompted.directory / "entry.txt").read_text(encoding="utf-8"),
+                prompted_source.read_text(encoding="utf-8"),
+            )
+            unchanged_except_source = dict(original_metadata)
+            unchanged_except_source["source"] = "entry.txt"
+            self.assertEqual(prompted.metadata, unchanged_except_source)
+            self.assertEqual(paths["sfi"].read_bytes(), generated_before["sfi"])
+
+    def test_resource_supports_every_document_type_and_rejects_others(self) -> None:
+        cases = (
+            ("md", "entry.md"),
+            ("html", "entry.html"),
+            ("htm", "entry.html"),
+            ("txt", "entry.txt"),
+            ("docx", "entry.docx"),
+        )
+        for suffix, canonical_name in cases:
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                post = self.create_post(root, with_image=True)
+                replacement = root / f"replacement.{suffix}"
+                payload = f"replacement-{suffix}".encode()
+                replacement.write_bytes(payload)
+                result, _, error = self.run_cli(
+                    root,
+                    "resource",
+                    str(post.path),
+                    "--source",
+                    str(replacement),
+                    "--yes",
+                )
+                self.assertEqual(result, 0, error)
+                resourced = writing.locate_post("0001", root)
+                self.assertEqual(resourced.metadata["source"], canonical_name)
+                self.assertEqual((resourced.directory / canonical_name).read_bytes(), payload)
+                self.assertEqual(
+                    (resourced.directory / "images" / "summit.jpg").read_bytes(),
+                    b"private-author-image",
+                )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.create_post(root)
+            replacement = root / "replacement.pdf"
+            replacement.write_bytes(b"not supported")
+            before = self.snapshot_files(root)
+            result, _, _ = self.run_cli(
+                root,
+                "resource",
+                "0001",
+                "--source",
+                str(replacement),
+                "--yes",
+            )
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), before)
+
+    def test_resource_rolls_back_source_and_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.create_post(root, published=True, with_image=True)
+            replacement = root / "replacement.html"
+            replacement.write_text("<p>Replacement.</p>\n", encoding="utf-8")
+            before_failure = self.snapshot_files(root)
+            original_move = writing.move_path
+            move_count = 0
+
+            def fail_second_move(source_path: Path, destination_path: Path) -> None:
+                nonlocal move_count
+                move_count += 1
+                if move_count == 2:
+                    raise OSError("injected resource failure")
+                original_move(source_path, destination_path)
+
+            with mock.patch("writing.move_path", side_effect=fail_second_move):
+                result, _, _ = self.run_cli(
+                    root,
+                    "resource",
+                    "0001",
+                    "--source",
+                    str(replacement),
+                    "--yes",
+                )
+            self.assertEqual(result, 1)
+            self.assertEqual(self.snapshot_files(root), before_failure)
+
+    def test_render_builds_a_private_standalone_preview_without_publishing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root, published=True, with_image=True)
+            post.source_path.write_text(
+                "## A private revision\n\nPreview-only prose.\n\n"
+                "![A summit view](images/summit.jpg)\n",
+                encoding="utf-8",
+            )
+            author_before = self.snapshot_files(post.directory)
+            paths = self.publication_paths(root, post)
+            live_before = {
+                "sfi": paths["sfi"].read_bytes(),
+                "newsletter": paths["newsletter"].read_bytes(),
+                "image": (paths["images"] / "summit.jpg").read_bytes(),
+            }
+
+            result, _, error = self.run_cli(root, "render", "0001")
+            self.assertEqual(result, 0, error)
+            preview = root / ".writing-preview" / post.slug
+            index = preview / "index.html"
+            self.assertTrue(index.is_file())
+            preview_html = index.read_text(encoding="utf-8")
+            self.assertIn("<!doctype html", preview_html.lower())
+            self.assertIn("Preview-only prose.", preview_html)
+            self.assertIn(str(post.metadata["subtitle"]), preview_html)
+            self.assertIn(str(post.metadata["location"]), preview_html)
+            self.assertIn(post.entry, preview_html)
+            preview_images = list(preview.rglob("summit.jpg"))
+            self.assertEqual(len(preview_images), 1)
+            self.assertEqual(preview_images[0].read_bytes(), b"private-author-image")
+
+            self.assertEqual(self.snapshot_files(post.directory), author_before)
+            self.assertEqual(paths["sfi"].read_bytes(), live_before["sfi"])
+            self.assertEqual(
+                paths["newsletter"].read_bytes(), live_before["newsletter"]
+            )
+            self.assertEqual(
+                (paths["images"] / "summit.jpg").read_bytes(), live_before["image"]
+            )
+            self.assertEqual(writing.locate_post("0001", root).metadata["status"], "published")
+
+    def test_view_renders_then_opens_the_standalone_preview(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root, with_image=True)
+            expected = (
+                root / ".writing-preview" / post.slug / "index.html"
+            ).resolve()
+            with mock.patch("writing.webbrowser.open", return_value=True) as opened:
+                result, _, error = self.run_cli(root, "view", "0001")
+            self.assertEqual(result, 0, error)
+            self.assertTrue(expected.is_file())
+            opened.assert_called_once()
+            self.assertEqual(opened.call_args.args[0], expected.as_uri())
+
     def test_post_command_is_not_part_of_the_suite(self) -> None:
         parser = writing.build_parser()
         subparsers = next(
@@ -728,7 +1241,34 @@ Centered *text*.
             for action in parser._actions
             if isinstance(action, writing.argparse._SubParsersAction)
         )
-        self.assertEqual(set(subparsers.choices), {"draft", "review", "publish", "newsletter"})
+        self.assertEqual(
+            set(subparsers.choices),
+            {
+                "draft",
+                "review",
+                "publish",
+                "unpublish",
+                "erase",
+                "resource",
+                "re-source",
+                "render",
+                "view",
+                "newsletter",
+            },
+        )
+        self.assertEqual(writing.STATUSES, ("draft", "unpublished", "published"))
+        self.assertEqual(parser.parse_args(["unpublish", "1"]).entry, "0001")
+        self.assertEqual(parser.parse_args(["erase", "1"]).entry, "0001")
+        self.assertEqual(
+            parser.parse_args(["resource", "some-slug"]).command, "resource"
+        )
+        self.assertEqual(
+            parser.parse_args(["re-source", "some-slug"]).command, "re-source"
+        )
+        for command in ("unpublish", "erase"):
+            with self.subTest(command=command), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    parser.parse_args([command, "some-slug"])
 
     def test_replace_same_unpublished_folder(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

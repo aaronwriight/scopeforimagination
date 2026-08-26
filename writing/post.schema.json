@@ -159,7 +159,8 @@
       ]
     },
     "status": {
-      "enum": ["draft", "published"]
+      "description": "Lifecycle state managed by the writing commands. Unpublished entries retain their original publication metadata and author files while their local generated records are withdrawn.",
+      "enum": ["draft", "unpublished", "published"]
     }
   }
 }

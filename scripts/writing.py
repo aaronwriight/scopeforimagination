@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draft, review, publish, and announce unified SFI posts.
+"""Draft, preview, review, publish, withdraw, and announce unified SFI posts.
 
 Scope for Imagination is the complete, globally numbered journal. Venture posts
 are published into that journal as well as into Venture's place-based index.
@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import webbrowser
 from dataclasses import dataclass
 from datetime import date, datetime
 from html.parser import HTMLParser
@@ -32,7 +33,7 @@ SUPPORTED_SOURCE_SUFFIXES = {".docx", ".html", ".htm", ".txt", ".md"}
 BLANK_SOURCE_FORMATS = ("md", "html", "txt")
 CANONICAL_SOURCE_NAMES = {"entry.docx", "entry.html", "entry.txt", "entry.md"}
 BLOGS = ("sfi", "venture")
-STATUSES = ("draft", "published")
+STATUSES = ("draft", "unpublished", "published")
 RESERVED_VENTURE_SLUGS = {"about", "index", "parks", "trails", "travels"}
 
 REQUIRED_AUTHOR_KEYS = {
@@ -61,6 +62,14 @@ MUSIC_KEYS = {"title", "album", "artist", "url"}
 
 class WritingError(Exception):
     """An expected, human-readable command failure."""
+
+
+class TransactionError(WritingError):
+    """A failed file transaction, optionally with retained recovery files."""
+
+    def __init__(self, message: str, *, recovery_required: bool = False) -> None:
+        super().__init__(message)
+        self.recovery_required = recovery_required
 
 
 @dataclass(frozen=True)
@@ -508,6 +517,36 @@ def locate_post(target: str | None, root: Path) -> AuthorPost:
     return matches[0]
 
 
+def assert_managed_author_post(post: AuthorPost, root: Path) -> AuthorPost:
+    """Require a canonical author record before a command may mutate files."""
+    if post.blog not in BLOGS:
+        raise WritingError("post blog must be sfi or venture")
+    if not valid_post_slug(post.slug) or not re.fullmatch(r"\d{4}", post.entry):
+        raise WritingError("post entry or slug is invalid")
+    if not post.slug.startswith(f"{post.entry}-"):
+        raise WritingError("post slug must begin with its entry number")
+
+    expected = root / "writing" / post.blog / post.slug / "post.json"
+    try:
+        actual_resolved = post.path.resolve(strict=True)
+        expected_resolved = expected.resolve(strict=True)
+    except OSError as error:
+        raise WritingError(f"author record cannot be resolved safely: {error}") from error
+    if actual_resolved != expected_resolved:
+        raise WritingError(
+            "refusing to modify an author record outside "
+            f"writing/{post.blog}/{post.slug}/post.json"
+        )
+    if post.path.is_symlink() or post.directory.is_symlink():
+        raise WritingError("refusing to modify a symlinked author record or post folder")
+    return post
+
+
+def locate_managed_entry(entry: str, root: Path) -> AuthorPost:
+    """Resolve one explicitly numbered entry to its managed author record."""
+    return assert_managed_author_post(locate_post(entry, root), root)
+
+
 def create_music(arguments: argparse.Namespace) -> dict[str, str] | None:
     supplied = any(
         getattr(arguments, field) is not None
@@ -580,8 +619,8 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
         raise WritingError(f"post folder already exists: {relative_display(post_directory, root)}")
     if arguments.replace and post_directory.exists():
         existing = load_json_object(metadata_path) if metadata_path.is_file() else None
-        if existing and existing.get("status") == "published":
-            raise WritingError("refusing to replace a published author folder")
+        if existing and existing.get("status") != "draft":
+            raise WritingError("refusing to replace an author folder that has been published")
         shutil.rmtree(post_directory)
 
     music = create_music(arguments)
@@ -1114,8 +1153,8 @@ def review_post(
     publication_time = metadata.get("time")
     if publication_time is not None and publication_time != "" and not valid_time(publication_time):
         blockers.append("time must be blank while drafting or use 24-hour HH:MM")
-    elif metadata.get("status") == "published" and not valid_time(publication_time):
-        blockers.append("published posts require a 24-hour HH:MM time")
+    elif metadata.get("status") in {"published", "unpublished"} and not valid_time(publication_time):
+        blockers.append("published and unpublished posts require a 24-hour HH:MM time")
     elif metadata.get("status") == "draft" and not publishing:
         if valid_time(publication_time):
             notes.append("time: the existing draft value will be replaced on first publish")
@@ -1126,7 +1165,7 @@ def review_post(
     if metadata.get("blog") not in BLOGS:
         blockers.append("blog must be sfi or venture")
     if metadata.get("status") not in STATUSES:
-        blockers.append("status must be draft or published")
+        blockers.append("status must be draft, unpublished, or published")
 
     expected_blog = post.path.parent.parent.name
     expected_slug = post.directory.name
@@ -1445,6 +1484,167 @@ def remove_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def commit_replacements(
+    replacements: list[tuple[Path | None, Path]],
+    backup_root: Path,
+    *,
+    operation: str,
+) -> None:
+    """Atomically install or remove exact paths and roll back as a group."""
+    targets = [target for _, target in replacements]
+    if len(targets) != len(set(targets)):
+        raise WritingError(f"{operation} plan contains a duplicate target")
+
+    backup_root.mkdir(parents=True, exist_ok=True)
+    promoted: list[dict[str, Any]] = []
+    try:
+        for index, (staged, target) in enumerate(replacements):
+            if target == target.parent:
+                raise WritingError(f"refusing an unsafe {operation} target: {target}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            backup: Path | None = None
+            if target.exists() or target.is_symlink():
+                backup = backup_root / f"{index:03d}-{target.name}"
+                move_path(target, backup)
+            record = {"target": target, "backup": backup, "installed": False}
+            promoted.append(record)
+            if staged is not None:
+                move_path(staged, target)
+                record["installed"] = True
+    except Exception as error:
+        rollback_errors: list[str] = []
+        for record in reversed(promoted):
+            target = record["target"]
+            backup = record["backup"]
+            try:
+                if record["installed"] and (target.exists() or target.is_symlink()):
+                    remove_path(target)
+                if backup is not None and backup.exists():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    move_path(backup, target)
+            except Exception as rollback_error:
+                rollback_errors.append(str(rollback_error))
+        if rollback_errors:
+            raise TransactionError(
+                f"{operation} failed and rollback was incomplete: {error}; "
+                f"rollback issues: {'; '.join(rollback_errors)}; "
+                f"recovery files remain in {backup_root.parent}",
+                recovery_required=True,
+            ) from error
+        raise TransactionError(
+            f"{operation} failed; previous files were restored: {error}"
+        ) from error
+
+
+def generated_record_aliases(record: dict[str, Any]) -> set[str]:
+    aliases: set[str] = set()
+    slug = record.get("slug")
+    if valid_slug(slug):
+        aliases.add(str(slug))
+    route = record.get("path")
+    if isinstance(route, str) and route.startswith("/venture/"):
+        route_slug = route.removeprefix("/venture/").strip("/")
+        if valid_slug(route_slug):
+            aliases.add(route_slug)
+    body = record.get("bodyHtml")
+    if isinstance(body, str):
+        for match in re.finditer(r"/images/posts/([a-z0-9]+(?:-[a-z0-9]+)*)/", body):
+            aliases.add(match.group(1))
+    return aliases
+
+
+def publication_artifacts(
+    post: AuthorPost,
+    root: Path,
+    *,
+    include_author_traces: bool = False,
+) -> tuple[list[Path], set[str]]:
+    """Find every locally generated artifact that can be verified as this entry."""
+    aliases = {post.slug}
+    public_post_images = root / "public" / "images" / "posts"
+    if public_post_images.exists():
+        for path in public_post_images.glob(f"{post.entry}-*"):
+            if path.is_dir() or path.is_symlink():
+                aliases.add(path.name)
+
+    record_directories = (
+        root / "content" / "scope-for-imagination" / "posts",
+        root / "content" / "scope-for-imagination" / "newsletters",
+        root / "content" / "venture" / "entries",
+    )
+    records: list[tuple[Path, dict[str, Any] | None, str | None]] = []
+    for directory in record_directories:
+        if not directory.exists():
+            continue
+        for path in sorted(directory.glob("*.json")):
+            try:
+                records.append((path, load_json_object(path), None))
+            except WritingError as error:
+                records.append((path, None, str(error)))
+
+    selected: set[Path] = set()
+    changed = True
+    while changed:
+        changed = False
+        for path, record, load_error in records:
+            filename_match = path.stem == post.entry or path.stem in aliases
+            if record is None:
+                if filename_match:
+                    raise WritingError(
+                        f"refusing to remove an unreadable generated record: "
+                        f"{relative_display(path, root)} ({load_error})"
+                    )
+                continue
+            record_entry_value = record.get("entry")
+            record_entry = (
+                str(record_entry_value).zfill(4)
+                if isinstance(record_entry_value, (str, int))
+                and str(record_entry_value).isdigit()
+                else ""
+            )
+            record_aliases = generated_record_aliases(record)
+            matches = (
+                filename_match
+                or record_entry == post.entry
+                or bool(aliases.intersection(record_aliases))
+            )
+            if not matches:
+                continue
+            if record_entry and record_entry != post.entry:
+                raise WritingError(
+                    "generated-output ownership collision at "
+                    f"{relative_display(path, root)}: entry {record_entry} is not {post.entry}"
+                )
+            if path not in selected:
+                selected.add(path)
+                changed = True
+            before = len(aliases)
+            aliases.update(record_aliases)
+            if len(aliases) != before:
+                changed = True
+
+    artifacts: set[Path] = set(selected)
+    for alias in aliases:
+        if valid_slug(alias):
+            image_path = public_post_images / alias
+            if image_path.exists() or image_path.is_symlink():
+                artifacts.add(image_path)
+
+    legacy_images = root / "public" / "images" / "scope-for-imagination" / post.entry
+    if legacy_images.exists() or legacy_images.is_symlink():
+        artifacts.add(legacy_images)
+
+    if include_author_traces:
+        legacy_drafts = root / "content" / "scope-for-imagination" / "drafts"
+        if legacy_drafts.exists():
+            artifacts.update(legacy_drafts.glob(f"{post.entry}-*.html"))
+        preview = root / ".writing-preview" / post.slug
+        if preview.exists() or preview.is_symlink():
+            artifacts.add(preview)
+
+    return sorted(artifacts, key=lambda path: str(path)), aliases
+
+
 def commit_publication(
     author_directory: Path,
     final_author_directory: Path,
@@ -1691,6 +1891,361 @@ def command_newsletter(arguments: argparse.Namespace, root: Path) -> int:
     return completed.returncode
 
 
+def commit_staged_action(
+    action_root: Path,
+    replacements: list[tuple[Path | None, Path]],
+    *,
+    operation: str,
+) -> None:
+    """Commit a staged action and retain its directory only for manual recovery."""
+    try:
+        commit_replacements(
+            replacements,
+            action_root / "backups",
+            operation=operation,
+        )
+    except TransactionError as error:
+        if not error.recovery_required:
+            shutil.rmtree(action_root, ignore_errors=True)
+        raise
+    shutil.rmtree(action_root, ignore_errors=True)
+
+
+def source_argument_path(arguments: argparse.Namespace) -> Path:
+    source = arguments.source
+    if source is None:
+        try:
+            entered = input(
+                'post.json "source" — updated document path (.md, .html, .txt, or .docx): '
+            ).strip()
+        except EOFError as error:
+            raise WritingError(
+                "resource needs a document path; rerun in a terminal or pass --source PATH"
+            ) from error
+        if not entered:
+            raise WritingError("resource cancelled: no updated document was selected")
+        normalized = entered.strip("\"'").replace("\\ ", " ")
+        source = Path(normalized)
+
+    resolved = source.expanduser().resolve()
+    if not resolved.is_file():
+        raise WritingError(f"updated source document does not exist: {resolved}")
+    if resolved.suffix.lower() not in SUPPORTED_SOURCE_SUFFIXES:
+        supported = ", ".join(sorted(SUPPORTED_SOURCE_SUFFIXES))
+        raise WritingError(f"updated source document must be one of: {supported}")
+    return resolved
+
+
+def command_resource(arguments: argparse.Namespace, root: Path) -> int:
+    post = assert_managed_author_post(locate_post(arguments.target, root), root)
+    source = source_argument_path(arguments)
+    new_name = f"entry{canonical_source_suffix(source)}"
+    new_target = post.directory / new_name
+    old_target = post.source_path
+
+    print(f"resource summary · entry {post.entry}")
+    print(f"  document: {source}")
+    print(f"  active source: {post.metadata.get('source') or '(none)'} → {new_name}")
+    print(f"  metadata: preserved (status remains {post.metadata.get('status')})")
+    print("  author images: preserved")
+    if post.metadata.get("status") == "published":
+        print("  live post: unchanged until publish --replace")
+    else:
+        print("  live post: unchanged")
+
+    same_active_file = (
+        old_target is not None
+        and post.metadata.get("source") == new_name
+        and old_target.resolve() == source
+    )
+    if same_active_file:
+        print("already active: this document is the post's current source")
+        return 0
+    if arguments.dry_run:
+        print("dry run: no files changed")
+        return 0
+    if not arguments.yes:
+        try:
+            answer = input(f"Replace the source for entry {post.entry}? [y/N] ").strip().lower()
+        except EOFError:
+            answer = ""
+        if answer not in {"y", "yes"}:
+            print("resource cancelled")
+            return 1
+
+    action_root = Path(tempfile.mkdtemp(prefix=".writing-resource-", dir=root))
+    staged_source = action_root / new_name
+    staged_metadata = action_root / "post.json"
+    try:
+        shutil.copy2(source, staged_source)
+        updated_metadata = dict(post.metadata)
+        updated_metadata["source"] = new_name
+        write_json(staged_metadata, updated_metadata)
+    except OSError as error:
+        shutil.rmtree(action_root, ignore_errors=True)
+        raise WritingError(f"resource could not stage the updated document: {error}") from error
+
+    replacements: list[tuple[Path | None, Path]] = []
+    if old_target is not None and old_target != new_target and (
+        old_target.exists() or old_target.is_symlink()
+    ):
+        replacements.append((None, old_target))
+    replacements.extend(((staged_source, new_target), (staged_metadata, post.path)))
+    commit_staged_action(action_root, replacements, operation="resource")
+
+    print(f"resourced entry {post.entry}: {relative_display(new_target, root)}")
+    if source.parent == post.directory and source.name != new_name:
+        print(
+            "note: the supplied noncanonical document remains alongside entry.*; "
+            "remove it manually when you no longer need that copy"
+        )
+    print(f"review: pnpm writing review {post.entry}")
+    publish_flags = " --replace" if post.metadata.get("status") == "published" else ""
+    print(f"preview publish: pnpm writing publish {post.entry} --dry-run{publish_flags}")
+    return 0
+
+
+def preview_details(post: AuthorPost) -> str:
+    metadata = post.metadata
+    parts: list[str] = []
+    publication_date = metadata.get("date")
+    publication_time = metadata.get("time")
+    parts.append(
+        display_date(str(publication_date))
+        if valid_date(publication_date)
+        else "publication date pending"
+    )
+    parts.append(str(publication_time) if valid_time(publication_time) else "time pending")
+    location = str(metadata.get("location") or "location pending").strip()
+    parts.extend((location, post.entry))
+    return " • ".join(parts)
+
+
+def preview_document_html(post: AuthorPost, body_html: str) -> str:
+    metadata = post.metadata
+    title = html.escape(str(metadata.get("title") or "untitled"))
+    subtitle = html.escape(str(metadata.get("subtitle") or "untitled"))
+    details = html.escape(preview_details(post))
+    excerpt = str(metadata.get("excerpt") or "").strip()
+    trip = str(metadata.get("trip") or "").strip()
+    music = music_line(metadata.get("music"), rendered_html=True)
+    tags = metadata.get("tags") if isinstance(metadata.get("tags"), list) else []
+    collections = (
+        metadata.get("collections") if isinstance(metadata.get("collections"), list) else []
+    )
+    labels = "".join(
+        f"<li>{html.escape(str(label))}</li>" for label in [*collections, *tags]
+    )
+    venture_trip = ""
+    venture_excerpt = ""
+    if post.blog == "venture":
+        if trip:
+            venture_trip = f'<p class="trip">trip: {html.escape(trip)}</p>'
+        if excerpt:
+            venture_excerpt = f'<p class="excerpt">{html.escape(excerpt)}</p>'
+    music_html = music.replace("<p>", '<p class="music">', 1) if music else ""
+    labels_html = f'<ul class="labels">{labels}</ul>' if labels else ""
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>{subtitle} · private writing preview</title>
+  <style>
+    :root {{ color-scheme: light; --ink: #292524; --muted: #78716c; --line: #d6d3d1; --green: #6f8200; }}
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; background: #fff; color: var(--ink); font-family: Georgia, "Times New Roman", serif; }}
+    main {{ width: min(100% - 3rem, 48rem); margin: 0 auto; padding: 4rem 0 7rem; }}
+    .preview-note {{ margin: 0 0 3.5rem; color: var(--green); font: 0.68rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .14em; text-transform: lowercase; }}
+    header {{ border-bottom: 1px solid var(--line); padding-bottom: 1.75rem; }}
+    h1 {{ margin: 0; font-size: clamp(1.5rem, 4vw, 1.875rem); font-weight: 400; line-height: 1.2; }}
+    .subtitle {{ margin: .75rem 0 0; color: var(--muted); font-size: 1.125rem; font-style: italic; line-height: 1.5; }}
+    .details, .music, .trip {{ margin: .55rem 0 0; color: var(--muted); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .music a, article a {{ color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .16em; }}
+    .excerpt {{ margin: .65rem 0 0; color: var(--muted); font-size: .875rem; font-style: italic; line-height: 1.6; }}
+    .labels {{ display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .6rem 0 0; padding: 0; list-style: none; color: var(--green); font: .65rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .12em; text-transform: lowercase; }}
+    article {{ margin-top: 2.5rem; font-size: .92rem; line-height: 1.85; }}
+    article h2, article h3, article h4, article h5, article h6 {{ margin: 2.4rem 0 .8rem; font-weight: 400; line-height: 1.35; }}
+    article p, article ul, article ol, article blockquote {{ margin: 1.15rem 0; }}
+    article img {{ display: block; width: 100%; height: auto; margin: 2.5rem 0; }}
+    article figure {{ margin: 2.5rem 0; }} article figure img {{ margin: 0; }}
+    article figcaption {{ margin-top: .65rem; color: var(--muted); font-size: .78rem; font-style: italic; text-align: center; }}
+    article blockquote {{ border-left: 2px solid var(--line); color: #57534e; padding-left: 1.25rem; }}
+    article .entry-centered {{ text-align: center; }}
+    article .entry-callout {{ border: 1px solid var(--line); margin: 2rem 0; padding: 1rem 1.25rem; }}
+    article code {{ background: #f5f5f4; font-size: .85em; padding: .1rem .25rem; }}
+  </style>
+</head>
+<body>
+  <main>
+    <p class="preview-note">private draft preview · not published</p>
+    <header>
+      <h1>{title}</h1>
+      <p class="subtitle">{subtitle}</p>
+      <p class="details">{details}</p>
+      {venture_trip}
+      {music_html}
+      {venture_excerpt}
+      {labels_html}
+    </header>
+    <article>{body_html}</article>
+  </main>
+</body>
+</html>
+"""
+
+
+def render_preview(post: AuthorPost, root: Path) -> Path:
+    post = assert_managed_author_post(post, root)
+    action_root = Path(tempfile.mkdtemp(prefix=".writing-render-", dir=root))
+    staged_preview = action_root / "preview"
+    staged_images = staged_preview / "images"
+    try:
+        staged_images.mkdir(parents=True)
+        copy_author_images(post, staged_images)
+        body_html = render_source(post, staged_images, "images")
+        if re.search(r"<script\b", body_html, flags=re.IGNORECASE):
+            raise WritingError("preview refused: the rendered post contains a script tag")
+        (staged_preview / "index.html").write_text(
+            preview_document_html(post, body_html), encoding="utf-8"
+        )
+    except WritingError:
+        shutil.rmtree(action_root, ignore_errors=True)
+        raise
+    except Exception as error:
+        shutil.rmtree(action_root, ignore_errors=True)
+        raise WritingError(f"preview could not be rendered: {error}") from error
+
+    preview_directory = root / ".writing-preview" / post.slug
+    commit_staged_action(
+        action_root,
+        [(staged_preview, preview_directory)],
+        operation="render",
+    )
+    return preview_directory / "index.html"
+
+
+def command_render(arguments: argparse.Namespace, root: Path) -> int:
+    post = locate_post(arguments.target, root)
+    preview = render_preview(post, root)
+    print(f"rendered private preview: {preview}")
+    print(f"view: pnpm writing view {post.entry}")
+    return 0
+
+
+def command_view(arguments: argparse.Namespace, root: Path) -> int:
+    post = locate_post(arguments.target, root)
+    preview = render_preview(post, root)
+    print(f"rendered private preview: {preview}")
+    if not webbrowser.open(preview.as_uri(), new=2):
+        print("could not open the default browser automatically; open the path above", file=sys.stderr)
+        return 1
+    print("opened in the default browser")
+    return 0
+
+
+def print_removal_summary(
+    action: str,
+    post: AuthorPost,
+    artifacts: list[Path],
+    root: Path,
+) -> None:
+    print(f"{action} summary · entry {post.entry}")
+    print(f"  blog: {post.blog}")
+    print(f"  slug: {post.slug}")
+    print(f"  status: {post.metadata.get('status')}")
+    print("  generated files:")
+    if artifacts:
+        for path in artifacts:
+            print(f"    - {relative_display(path, root)}")
+    else:
+        print("    - none found")
+
+
+def command_unpublish(arguments: argparse.Namespace, root: Path) -> int:
+    post = locate_managed_entry(arguments.entry, root)
+    status = post.metadata.get("status")
+    if status == "draft":
+        raise WritingError(
+            f"entry {post.entry} is a draft and has never been published; "
+            f"use `pnpm writing erase {post.entry}` to remove it"
+        )
+    if status not in {"published", "unpublished"}:
+        raise WritingError(f"entry {post.entry} has an unsupported status: {status!r}")
+
+    artifacts, _ = publication_artifacts(post, root)
+    print_removal_summary("unpublish", post, artifacts, root)
+    print(f"  author folder: keep {relative_display(post.directory, root)}")
+    print("  entry allocation: reserved")
+    print("  publication metadata: preserved")
+    if status == "unpublished" and not artifacts:
+        print("already unpublished: no files changed")
+        return 0
+    if arguments.dry_run:
+        print("dry run: no files changed")
+        return 0
+    if not arguments.yes:
+        try:
+            answer = input(f"Unpublish entry {post.entry}? [y/N] ").strip().lower()
+        except EOFError:
+            answer = ""
+        if answer not in {"y", "yes"}:
+            print("unpublish cancelled")
+            return 1
+
+    action_root = Path(tempfile.mkdtemp(prefix=".writing-unpublish-", dir=root))
+    replacements: list[tuple[Path | None, Path]] = [(None, path) for path in artifacts]
+    if status == "published":
+        staged_metadata = action_root / "post.json"
+        updated_metadata = dict(post.metadata)
+        updated_metadata["status"] = "unpublished"
+        try:
+            write_json(staged_metadata, updated_metadata)
+        except OSError as error:
+            shutil.rmtree(action_root, ignore_errors=True)
+            raise WritingError(f"unpublish could not stage post metadata: {error}") from error
+        replacements.append((staged_metadata, post.path))
+    commit_staged_action(action_root, replacements, operation="unpublish")
+
+    print(f"unpublished entry {post.entry}; author files and original publication stamp were kept")
+    print("commit and deploy these removals before the public website changes")
+    print("note: this cannot retract sent email or remove a legacy Sanity copy")
+    return 0
+
+
+def command_erase(arguments: argparse.Namespace, root: Path) -> int:
+    post = locate_managed_entry(arguments.entry, root)
+    artifacts, _ = publication_artifacts(post, root, include_author_traces=True)
+    print_removal_summary("erase", post, artifacts, root)
+    print(f"  author folder: erase {relative_display(post.directory, root)}")
+    print("  entry allocation: released")
+    print("  recovery: committed files remain in Git history; uncommitted files do not")
+    if arguments.dry_run:
+        print("dry run: no files changed")
+        return 0
+    if not arguments.yes:
+        phrase = f"ERASE {post.entry}"
+        try:
+            answer = input(f"Type {phrase} to erase this entry permanently: ").strip()
+        except EOFError:
+            answer = ""
+        if answer != phrase:
+            print("erase cancelled")
+            return 1
+
+    action_root = Path(tempfile.mkdtemp(prefix=".writing-erase-", dir=root))
+    replacements: list[tuple[Path | None, Path]] = [(None, path) for path in artifacts]
+    replacements.append((None, post.directory))
+    commit_staged_action(action_root, replacements, operation="erase")
+
+    print(f"erased entry {post.entry}")
+    print("the number may be reused only when it is above every remaining allocation")
+    print("commit and deploy these removals before the public website changes")
+    print("note: this cannot rewrite Git history, retract sent email, or remove a legacy Sanity copy")
+    return 0
+
+
 def add_music_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--music-title", help="optional song title")
     parser.add_argument("--music-artist", help="artist for --music-title")
@@ -1728,12 +2283,32 @@ def build_parser() -> argparse.ArgumentParser:
     draft.add_argument("--collections", help="comma-separated collection slugs")
     draft.add_argument("--latitude", "--lat", dest="latitude", type=float)
     draft.add_argument("--longitude", "--lon", dest="longitude", type=float)
-    draft.add_argument("--replace", action="store_true", help="replace an unpublished folder with this slug")
+    draft.add_argument("--replace", action="store_true", help="replace an existing draft folder with this slug")
     draft.add_argument("--no-prompt", action="store_true", help="use flags/defaults without interactive questions")
     add_music_arguments(draft)
 
     review = commands.add_parser("review", help="run the metadata and body review checklist")
     review.add_argument("target", nargs="?", help="entry, slug, post folder, source, or post.json")
+
+    resource = commands.add_parser(
+        "resource",
+        aliases=["re-source"],
+        help="replace a post's active source document without changing its metadata",
+    )
+    resource.add_argument("target", help="entry, slug, post folder, source, or post.json")
+    resource.add_argument(
+        "--source",
+        type=Path,
+        help="updated .docx, .html, .htm, .txt, or .md document; prompts when omitted",
+    )
+    resource.add_argument("--yes", action="store_true", help="confirm replacement non-interactively")
+    resource.add_argument("--dry-run", action="store_true", help="show the replacement plan without writing")
+
+    render = commands.add_parser("render", help="build a private standalone HTML preview")
+    render.add_argument("target", nargs="?", help="entry, slug, post folder, source, or post.json")
+
+    view = commands.add_parser("view", help="render a private preview and open it in the default browser")
+    view.add_argument("target", nargs="?", help="entry, slug, post folder, source, or post.json")
 
     publish = commands.add_parser("publish", help="review and generate site content")
     publish.add_argument("target", nargs="?", help="entry, slug, post folder, source, or post.json")
@@ -1746,6 +2321,16 @@ def build_parser() -> argparse.ArgumentParser:
     newsletter.add_argument("--send", action="store_true", help="send immediately instead of creating a draft")
     newsletter.add_argument("--yes", action="store_true", help="confirm --send non-interactively")
     newsletter.add_argument("--dry-run", action="store_true", help="show the action without calling Resend")
+
+    unpublish = commands.add_parser("unpublish", help="withdraw a published entry but keep its author files")
+    unpublish.add_argument("entry", type=normalize_entry, help="explicit entry number")
+    unpublish.add_argument("--yes", action="store_true", help="confirm withdrawal non-interactively")
+    unpublish.add_argument("--dry-run", action="store_true", help="show exact removals without writing")
+
+    erase = commands.add_parser("erase", help="remove an entry's generated and author files")
+    erase.add_argument("entry", type=normalize_entry, help="explicit entry number")
+    erase.add_argument("--yes", action="store_true", help="bypass the typed confirmation")
+    erase.add_argument("--dry-run", action="store_true", help="show exact removals without writing")
     return parser
 
 
@@ -1756,8 +2341,14 @@ def main(argv: list[str] | None = None) -> int:
     handlers = {
         "draft": command_draft,
         "review": command_review,
+        "resource": command_resource,
+        "re-source": command_resource,
+        "render": command_render,
+        "view": command_view,
         "publish": command_publish,
         "newsletter": command_newsletter,
+        "unpublish": command_unpublish,
+        "erase": command_erase,
     }
     try:
         return handlers[arguments.command](arguments, root)
