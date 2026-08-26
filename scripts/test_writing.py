@@ -266,6 +266,10 @@ class WritingPipelineTests(unittest.TestCase):
 
             result, output, error = self.run_cli(root, "review", "0001")
             self.assertEqual(result, 0, error)
+            self.assertIn(
+                "review · 0001 · sfi · scope for imagination · A Small Beginning",
+                output,
+            )
             self.assertIn("ready to publish", output)
             self.assertIn("time: will be stamped on first publish", output)
 

@@ -1526,7 +1526,12 @@ def review_post(
 
 def print_review(result: ReviewResult, root: Path) -> None:
     metadata = result.post.metadata
-    print(f"review · {result.post.entry or '????'} · {metadata.get('blog', '?')} · {metadata.get('subtitle', '')}")
+    title = str(metadata.get("title") or "(untitled)").strip()
+    subtitle = str(metadata.get("subtitle") or "(no subtitle)").strip()
+    print(
+        f"review · {result.post.entry or '????'} · "
+        f"{metadata.get('blog', '?')} · {title} · {subtitle}"
+    )
     print(f"record: {relative_display(result.post.path, root)}")
     print(
         "source: "
