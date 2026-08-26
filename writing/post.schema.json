@@ -31,10 +31,14 @@
       "type": "string"
     },
     "source": {
-      "description": "Canonical relative author-body filename inside this post folder: entry.md, entry.html, entry.txt, or an imported entry.docx. The metadata key remains source.",
+      "description": "Relative filename of the one active author body inside this post folder. Native drafts use entry.md, entry.html, or entry.txt. A Word import is converted immediately to editable HTML named <full-slug>.html; the preserved .docx manuscript is an inactive snapshot.",
       "oneOf": [
         { "type": "null" },
-        { "enum": ["entry.md", "entry.html", "entry.txt", "entry.docx"] }
+        { "enum": ["entry.md", "entry.html", "entry.txt"] },
+        {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[a-z0-9]+(?:-[a-z0-9]+)*-[0-9]{8}\\.html$"
+        }
       ]
     },
     "title": {
@@ -91,7 +95,7 @@
       ]
     },
     "slug": {
-      "description": "A unique NNNN-title-YYYYMMDD slug. An undated draft uses a provisional date suffix that is finalized on first publish. A manual override requires an explicit date.",
+      "description": "A unique NNNN-title-subtitle-YYYYMMDD slug derived from entry, title, subtitle, and date. An undated draft uses a provisional date suffix that is finalized on first publish. A manual override requires an explicit date.",
       "oneOf": [
         { "type": "null" },
         { "const": "" },

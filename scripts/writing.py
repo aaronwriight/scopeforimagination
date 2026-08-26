@@ -19,19 +19,21 @@ import subprocess
 import sys
 import tempfile
 import webbrowser
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
 from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Iterator
 from urllib.parse import urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AUTHOR_SCHEMA = "../../post.schema.json"
 SUPPORTED_SOURCE_SUFFIXES = {".docx", ".html", ".htm", ".txt", ".md"}
+AUTHOR_SOURCE_SUFFIXES = {".html", ".txt", ".md"}
 BLANK_SOURCE_FORMATS = ("md", "html", "txt")
-CANONICAL_SOURCE_NAMES = {"entry.docx", "entry.html", "entry.txt", "entry.md"}
+CANONICAL_ENTRY_SOURCE_NAMES = {"entry.html", "entry.txt", "entry.md"}
 BLOGS = ("sfi", "venture")
 STATUSES = ("draft", "unpublished", "published")
 RESERVED_VENTURE_SLUGS = {"about", "index", "parks", "trails", "travels"}
@@ -131,11 +133,51 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+@contextmanager
+def staged_action_directory(root: Path, prefix: str) -> Iterator[Path]:
+    """Clean staging normally but retain it after an incomplete rollback."""
+    action_root = Path(tempfile.mkdtemp(prefix=prefix, dir=root))
+    try:
+        yield action_root
+    except TransactionError as error:
+        if not error.recovery_required:
+            shutil.rmtree(action_root, ignore_errors=True)
+        raise
+    except BaseException:
+        shutil.rmtree(action_root, ignore_errors=True)
+        raise
+    else:
+        shutil.rmtree(action_root, ignore_errors=True)
+
+
 def slugify(value: str) -> str:
     normalized = value.strip().lower().replace("’", "'")
     normalized = re.sub(r"['`]", "", normalized)
     normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
     return normalized.strip("-") or "untitled"
+
+
+def automatic_post_slug(
+    entry: str,
+    title: str,
+    subtitle: str,
+    date_digits: str,
+) -> str:
+    """Build the standard entry + title + subtitle + date author slug."""
+    return f"{entry}-{slugify(f'{title} {subtitle}')}-{date_digits}"
+
+
+def upgraded_draft_slug(post: AuthorPost) -> str:
+    """Upgrade only a recognizable legacy subtitle-only draft slug."""
+    if post.metadata.get("status") != "draft" or not valid_post_slug(post.slug):
+        return post.slug
+    date_digits = post.slug[-8:]
+    title = str(post.metadata.get("title") or "").strip()
+    subtitle = str(post.metadata.get("subtitle") or "").strip()
+    legacy = f"{post.entry}-{slugify(subtitle)}-{date_digits}"
+    if post.slug != legacy or not title or not subtitle:
+        return post.slug
+    return automatic_post_slug(post.entry, title, subtitle, date_digits)
 
 
 def valid_slug(value: object) -> bool:
@@ -224,6 +266,65 @@ def title_from_source(source: Path) -> str:
 def canonical_source_suffix(source: Path) -> str:
     suffix = source.suffix.lower()
     return ".html" if suffix == ".htm" else suffix
+
+
+def author_source_name(source: Path, slug: str) -> str:
+    """Choose the active author filename for an imported document."""
+    if source.suffix.lower() == ".docx":
+        return f"{slug}.html"
+    return f"entry{canonical_source_suffix(source)}"
+
+
+def valid_author_source_name(value: object, slug: object) -> bool:
+    if not isinstance(value, str) or not isinstance(slug, str):
+        return False
+    return value in CANONICAL_ENTRY_SOURCE_NAMES or (
+        valid_post_slug(slug) and value == f"{slug}.html"
+    )
+
+
+def editable_html_document(body_html: str, title: str, subtitle: str) -> str:
+    """Wrap converted Word body markup in a friendly, editable HTML file."""
+    indented_body = "\n".join(
+        f"  {line}" if line else "" for line in body_html.strip().splitlines()
+    )
+    document_title = f"{title}: {subtitle}" if subtitle else title
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8" />\n'
+        '  <meta name="viewport" content="width=device-width, initial-scale=1" />\n'
+        f"  <title>{html.escape(document_title)}</title>\n"
+        "</head>\n"
+        "<body>\n"
+        "  <!-- Edit the post markup inside <body>. The website supplies the page header and styling. -->\n"
+        f"{indented_body}\n"
+        "</body>\n"
+        "</html>\n"
+    )
+
+
+def convert_docx_to_author_html(
+    document: Path,
+    output: Path,
+    image_directory: Path,
+    *,
+    title: str,
+    subtitle: str,
+) -> int:
+    """Convert Word content into editable author HTML with durable local images."""
+    body_from_docx, _ = legacy_renderers()
+    body_html = body_from_docx(document, image_directory, "images/docx")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        editable_html_document(body_html, title, subtitle), encoding="utf-8"
+    )
+    return (
+        sum(1 for path in image_directory.rglob("*") if path.is_file())
+        if image_directory.exists()
+        else 0
+    )
 
 
 def prompt_text(label: str, *, default: str | None = None, required: bool = False) -> str:
@@ -591,13 +692,22 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
             supported = ", ".join(sorted(SUPPORTED_SOURCE_SUFFIXES))
             raise WritingError(f"source document must be one of: {supported}")
 
+    title = (
+        arguments.title
+        or ("venture" if arguments.blog == "venture" else "scope for imagination")
+    ).strip()
     subtitle = (arguments.subtitle or (title_from_source(source_argument) if source_argument else "untitled")).strip()
     if arguments.slug and not arguments.date:
         raise WritingError("--slug requires --date because undated draft slugs are provisional")
     slug_date = arguments.date or current_draft_date()
-    slug = arguments.slug or f"{entry}-{slugify(subtitle)}-{slug_date.replace('-', '')}"
+    slug = arguments.slug or automatic_post_slug(
+        entry, title, subtitle, slug_date.replace("-", "")
+    )
     if not valid_post_slug(slug):
-        raise WritingError("--slug must use NNNN-title-YYYYMMDD with lowercase letters, numbers, and hyphens")
+        raise WritingError(
+            "--slug must use NNNN-title-subtitle-YYYYMMDD with lowercase "
+            "letters, numbers, and hyphens"
+        )
     if not slug.startswith(f"{entry}-") or not slug.endswith(slug_date.replace("-", "")):
         raise WritingError("--slug must begin with the entry and end with the selected date")
     if arguments.blog == "venture" and slug in RESERVED_VENTURE_SLUGS:
@@ -617,11 +727,11 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
             raise WritingError(f"entry {entry} is already allocated")
     if post_directory.exists() and not arguments.replace:
         raise WritingError(f"post folder already exists: {relative_display(post_directory, root)}")
-    if arguments.replace and post_directory.exists():
+    replacing_existing = arguments.replace and post_directory.exists()
+    if replacing_existing:
         existing = load_json_object(metadata_path) if metadata_path.is_file() else None
         if existing and existing.get("status") != "draft":
             raise WritingError("refusing to replace an author folder that has been published")
-        shutil.rmtree(post_directory)
 
     music = create_music(arguments)
     tags = parse_csv(arguments.tags, lower=True)
@@ -632,55 +742,108 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
     if invalid_collections:
         raise WritingError(f"collections must be lowercase, hyphenated slugs: {', '.join(invalid_collections)}")
 
-    post_directory.mkdir(parents=True)
-    images_directory = post_directory / "images"
-    images_directory.mkdir()
-    (images_directory / ".gitkeep").touch()
+    action_root: Path | None = None
+    draft_directory = post_directory
+    if replacing_existing:
+        action_root = Path(tempfile.mkdtemp(prefix=".writing-draft-", dir=root))
+        draft_directory = action_root / post_directory.name
+    converted_docx_images = 0
+    imported_docx_name: str | None = None
+    draft_created = False
+    try:
+        draft_directory.mkdir(parents=True)
+        draft_created = True
+        images_directory = draft_directory / "images"
+        images_directory.mkdir()
+        (images_directory / ".gitkeep").touch()
 
-    if source_argument:
-        source_name = f"entry{canonical_source_suffix(source_argument)}"
-        shutil.copy2(source_argument, post_directory / source_name)
-    else:
-        source_name = f"entry.{arguments.source_format}"
-        (post_directory / source_name).write_text(
-            blank_source_template(root, arguments.source_format),
-            encoding="utf-8",
+        if source_argument and source_argument.suffix.lower() == ".docx":
+            source_name = author_source_name(source_argument, slug)
+            imported_docx_name = source_argument.name
+            try:
+                shutil.copy2(source_argument, draft_directory / imported_docx_name)
+                converted_docx_images = convert_docx_to_author_html(
+                    source_argument,
+                    draft_directory / source_name,
+                    images_directory / "docx",
+                    title=title,
+                    subtitle=subtitle,
+                )
+            except Exception as error:
+                if isinstance(error, WritingError):
+                    raise
+                raise WritingError(
+                    f"Word document could not be converted: {error}"
+                ) from error
+        elif source_argument:
+            source_name = author_source_name(source_argument, slug)
+            shutil.copy2(source_argument, draft_directory / source_name)
+        else:
+            source_name = f"entry.{arguments.source_format}"
+            (draft_directory / source_name).write_text(
+                blank_source_template(root, arguments.source_format),
+                encoding="utf-8",
+            )
+
+        metadata: dict[str, Any] = {
+            "$schema": AUTHOR_SCHEMA,
+            "source": source_name,
+            "title": title,
+            "subtitle": subtitle,
+            "excerpt": arguments.excerpt.strip(),
+            "entry": entry,
+            "date": arguments.date,
+            "time": "",
+            "location": arguments.location.strip(),
+            "trip": arguments.trip.strip() if arguments.trip else None,
+            "thread": arguments.thread.strip() if arguments.thread else None,
+            "slug": slug,
+            "music": music,
+            "tags": tags,
+            "blog": arguments.blog,
+            "collections": collections,
+            "latitude": arguments.latitude,
+            "longitude": arguments.longitude,
+            "status": "draft",
+        }
+        write_json(draft_directory / "post.json", metadata)
+    except WritingError:
+        if action_root is not None:
+            shutil.rmtree(action_root, ignore_errors=True)
+        elif draft_created:
+            shutil.rmtree(draft_directory, ignore_errors=True)
+        raise
+    except Exception as error:
+        if action_root is not None:
+            shutil.rmtree(action_root, ignore_errors=True)
+        elif draft_created:
+            shutil.rmtree(draft_directory, ignore_errors=True)
+        raise WritingError(f"draft could not be created: {error}") from error
+
+    if action_root is not None:
+        commit_staged_action(
+            action_root,
+            [(draft_directory, post_directory)],
+            operation="draft replace",
         )
 
-    metadata: dict[str, Any] = {
-        "$schema": AUTHOR_SCHEMA,
-        "source": source_name,
-        "title": (arguments.title or ("venture" if arguments.blog == "venture" else "scope for imagination")).strip(),
-        "subtitle": subtitle,
-        "excerpt": arguments.excerpt.strip(),
-        "entry": entry,
-        "date": arguments.date,
-        "time": "",
-        "location": arguments.location.strip(),
-        "trip": arguments.trip.strip() if arguments.trip else None,
-        "thread": arguments.thread.strip() if arguments.thread else None,
-        "slug": slug,
-        "music": music,
-        "tags": tags,
-        "blog": arguments.blog,
-        "collections": collections,
-        "latitude": arguments.latitude,
-        "longitude": arguments.longitude,
-        "status": "draft",
-    }
-    write_json(metadata_path, metadata)
-
-    print(f"created {relative_display(post_directory, root)}")
+    action = "replaced" if replacing_existing else "created"
+    print(f"{action} {relative_display(post_directory, root)}")
     entry_origin = "from --entry" if arguments.entry else "automatic"
     if arguments.slug:
         slug_origin = "from --slug"
     elif arguments.date:
-        slug_origin = "automatic from entry + subtitle + --date"
+        slug_origin = "automatic from entry + title + subtitle + --date"
     else:
-        slug_origin = "provisional from entry + subtitle + draft date"
+        slug_origin = "provisional from entry + title + subtitle + draft date"
     print(f'post.json "entry" ({entry_origin}): "{entry}"')
     print(f'post.json "blog": "{arguments.blog}"')
     print(f'post.json "source" (automatic from import/format): "{source_name}"')
+    if imported_docx_name:
+        print(
+            f'Word import: kept "{imported_docx_name}" and converted it to '
+            f'editable "{source_name}" ({converted_docx_images} embedded images)'
+        )
     print(f'post.json "slug" ({slug_origin}): "{slug}"')
     if arguments.excerpt:
         print(f'post.json "excerpt" (from --excerpt): {arguments.excerpt!r}')
@@ -1107,6 +1270,7 @@ def review_post(
     *,
     publishing: bool = False,
     rendered_body_html: str | None = None,
+    source_path_override: Path | None = None,
 ) -> ReviewResult:
     metadata = post.metadata
     blockers: list[str] = []
@@ -1161,7 +1325,10 @@ def review_post(
         else:
             notes.append("time: will be stamped on first publish")
     if not valid_post_slug(metadata.get("slug")):
-        blockers.append("slug must use NNNN-title-YYYYMMDD with lowercase letters, numbers, and hyphens")
+        blockers.append(
+            "slug must use NNNN-title-subtitle-YYYYMMDD with lowercase "
+            "letters, numbers, and hyphens"
+        )
     if metadata.get("blog") not in BLOGS:
         blockers.append("blog must be sfi or venture")
     if metadata.get("status") not in STATUSES:
@@ -1261,19 +1428,33 @@ def review_post(
 
     source = metadata.get("source")
     source_is_safe = False
+    effective_source_path = post.source_path
+    pending_source_rename = (
+        publishing
+        and metadata.get("status") == "draft"
+        and source_path_override is not None
+        and source_path_override.parent == post.directory
+        and source_path_override.name == f"{post.directory.name}.html"
+        and source == f"{metadata.get('slug')}.html"
+    )
+    if pending_source_rename:
+        effective_source_path = source_path_override
+        notes.append(f"source: will be finalized as {source}")
     if source is not None and (not isinstance(source, str) or not source.strip()):
         blockers.append("source must be null or a non-empty relative path")
     if isinstance(source, str) and source.strip():
         pure_source = PurePosixPath(source)
         if pure_source.is_absolute() or ".." in pure_source.parts or str(pure_source) != source:
             blockers.append("source must be a normalized relative path inside the post folder")
-        elif pure_source.suffix.lower() not in SUPPORTED_SOURCE_SUFFIXES:
-            blockers.append("source must be a .docx, .html, .htm, .txt, or .md document")
-        elif len(pure_source.parts) != 1 or pure_source.name not in CANONICAL_SOURCE_NAMES:
+        elif pure_source.suffix.lower() not in AUTHOR_SOURCE_SUFFIXES:
+            blockers.append("active source must be an editable .html, .txt, or .md document")
+        elif len(pure_source.parts) != 1 or not valid_author_source_name(
+            pure_source.name, metadata.get("slug")
+        ):
             blockers.append(
-                "source must be entry.docx, entry.html, entry.txt, or entry.md"
+                "source must be entry.md, entry.html, entry.txt, or the full post slug plus .html"
             )
-        elif not post.source_path or not post.source_path.is_file():
+        elif not effective_source_path or not effective_source_path.is_file():
             blockers.append(f"source file is missing: {source}")
         else:
             source_is_safe = True
@@ -1284,11 +1465,18 @@ def review_post(
     blockers.extend(generated_collision_issues(post, root))
 
     body_html = rendered_body_html
-    if source_is_safe and post.source_path:
+    if source_is_safe and effective_source_path:
         if body_html is None:
             try:
                 with tempfile.TemporaryDirectory(prefix="writing-review-") as temporary:
-                    body_html = render_source(post, Path(temporary), "/images/posts/review")
+                    render_post = post
+                    if pending_source_rename and source_path_override is not None:
+                        render_metadata = dict(post.metadata)
+                        render_metadata["source"] = source_path_override.name
+                        render_post = AuthorPost(post.path, render_metadata)
+                    body_html = render_source(
+                        render_post, Path(temporary), "/images/posts/review"
+                    )
             except Exception as error:
                 blockers.append(f"source could not be rendered: {error}")
         if body_html is not None:
@@ -1301,17 +1489,16 @@ def review_post(
                 samples = ", ".join(repr(prompt) for prompt in prompts[:3])
                 blockers.append(f"post body still contains draft placeholders: {samples}")
 
-            if post.source_path.suffix.lower() != ".docx":
-                source_text = post.source_path.read_text(encoding="utf-8")
-                source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.DOTALL)
-                for reference in local_image_references(source_text):
-                    pure_reference = PurePosixPath(reference)
-                    if pure_reference.is_absolute() or ".." in pure_reference.parts:
-                        blockers.append(f"referenced image must stay inside images/: {reference}")
-                        continue
-                    local_path = post.directory / pure_reference
-                    if not local_path.is_file():
-                        blockers.append(f"referenced image is missing: {reference}")
+            source_text = effective_source_path.read_text(encoding="utf-8")
+            source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.DOTALL)
+            for reference in local_image_references(source_text):
+                pure_reference = PurePosixPath(reference)
+                if pure_reference.is_absolute() or ".." in pure_reference.parts:
+                    blockers.append(f"referenced image must stay inside images/: {reference}")
+                    continue
+                local_path = post.directory / pure_reference
+                if not local_path.is_file():
+                    blockers.append(f"referenced image is missing: {reference}")
 
             if blank_excerpt and metadata.get("status") == "draft" and not publishing:
                 excerpt_preview = derive_excerpt(body_html)
@@ -1511,7 +1698,7 @@ def commit_replacements(
             if staged is not None:
                 move_path(staged, target)
                 record["installed"] = True
-    except Exception as error:
+    except BaseException as error:
         rollback_errors: list[str] = []
         for record in reversed(promoted):
             target = record["target"]
@@ -1522,7 +1709,7 @@ def commit_replacements(
                 if backup is not None and backup.exists():
                     target.parent.mkdir(parents=True, exist_ok=True)
                     move_path(backup, target)
-            except Exception as rollback_error:
+            except BaseException as rollback_error:
                 rollback_errors.append(str(rollback_error))
         if rollback_errors:
             raise TransactionError(
@@ -1531,9 +1718,11 @@ def commit_replacements(
                 f"recovery files remain in {backup_root.parent}",
                 recovery_required=True,
             ) from error
-        raise TransactionError(
-            f"{operation} failed; previous files were restored: {error}"
-        ) from error
+        if isinstance(error, Exception):
+            raise TransactionError(
+                f"{operation} failed; previous files were restored: {error}"
+            ) from error
+        raise
 
 
 def generated_record_aliases(record: dict[str, Any]) -> set[str]:
@@ -1650,8 +1839,10 @@ def commit_publication(
     final_author_directory: Path,
     replacements: list[tuple[Path | None, Path]],
     backup_root: Path,
+    *,
+    operation: str = "publish",
 ) -> None:
-    """Promote staged publication files and restore the prior state on failure."""
+    """Rename an author folder, promote staged files, and restore on failure."""
     backup_root.mkdir(parents=True, exist_ok=True)
     promoted: list[dict[str, Any]] = []
     author_renamed = False
@@ -1671,7 +1862,7 @@ def commit_publication(
             if staged is not None:
                 move_path(staged, target)
                 record["installed"] = True
-    except Exception as error:
+    except BaseException as error:
         rollback_errors: list[str] = []
         for record in reversed(promoted):
             target = record["target"]
@@ -1681,19 +1872,25 @@ def commit_publication(
                     remove_path(target)
                 if backup is not None and backup.exists():
                     move_path(backup, target)
-            except Exception as rollback_error:
+            except BaseException as rollback_error:
                 rollback_errors.append(str(rollback_error))
         if author_renamed:
             try:
                 move_path(final_author_directory, author_directory)
-            except Exception as rollback_error:
+            except BaseException as rollback_error:
                 rollback_errors.append(str(rollback_error))
         if rollback_errors:
-            raise WritingError(
-                "publish failed and rollback was incomplete: "
+            raise TransactionError(
+                f"{operation} failed and rollback was incomplete: "
                 f"{error}; rollback issues: {'; '.join(rollback_errors)}"
+                f"; recovery files remain in {backup_root.parent}",
+                recovery_required=True,
             ) from error
-        raise WritingError(f"publish failed; previous files were restored: {error}") from error
+        if isinstance(error, Exception):
+            raise TransactionError(
+                f"{operation} failed; previous files were restored: {error}"
+            ) from error
+        raise
 
 
 def command_publish(arguments: argparse.Namespace, root: Path) -> int:
@@ -1725,22 +1922,39 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
             publish_metadata["slug"] = slug_for_publication_date(
                 str(publish_metadata["slug"]), str(publish_metadata["date"])
             )
+    source_rename = (
+        isinstance(author_post.metadata.get("source"), str)
+        and author_post.metadata.get("source") == f"{author_post.slug}.html"
+        and publish_metadata.get("slug") != author_post.slug
+    )
+    if source_rename:
+        final_source_name = f"{publish_metadata['slug']}.html"
+        unexpected_target = author_post.directory / final_source_name
+        if unexpected_target.exists() or unexpected_target.is_symlink():
+            raise WritingError(
+                "finalized author source already exists: "
+                f"{relative_display(unexpected_target, root)}"
+            )
+        publish_metadata["source"] = final_source_name
     post = AuthorPost(author_post.path, publish_metadata)
     final_author_directory = author_post.directory.parent / post.slug
     public_images = root / "public" / "images" / "posts" / post.slug
-    with tempfile.TemporaryDirectory(prefix=".writing-publish-", dir=root) as temporary:
-        staging_root = Path(temporary)
+    with staged_action_directory(root, ".writing-publish-") as staging_root:
         staged_images = staging_root / "images"
         staged_images.mkdir()
         copied_images = copy_author_images(post, staged_images)
         try:
-            body_html = render_source(post, staged_images, f"/images/posts/{post.slug}")
+            render_post = author_post if source_rename else post
+            body_html = render_source(
+                render_post, staged_images, f"/images/posts/{post.slug}"
+            )
         except Exception as error:
             result = review_post(
                 post,
                 root,
                 publishing=True,
                 rendered_body_html="",
+                source_path_override=author_post.source_path if source_rename else None,
             )
             result.blockers.append(f"source could not be rendered: {error}")
             print_review(result, root)
@@ -1756,6 +1970,7 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
             root,
             publishing=True,
             rendered_body_html=body_html,
+            source_path_override=author_post.source_path if source_rename else None,
         )
         print_review(result, root)
         if not result.ok:
@@ -1783,6 +1998,11 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
                 "  author folder: "
                 f"{relative_display(author_post.directory, root)} → "
                 f"{relative_display(final_author_directory, root)}"
+            )
+        if source_rename:
+            print(
+                "  author source: "
+                f"{author_post.metadata.get('source')} → {post.metadata.get('source')}"
             )
         print(f"  replace: {'yes' if conflicts else 'no'}")
         if arguments.dry_run:
@@ -1821,6 +2041,7 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
         staged_newsletter = staging_root / "newsletter.json"
         staged_venture = staging_root / "venture.json"
         staged_author = staging_root / "post.json"
+        staged_author_source = staging_root / "author-source.html"
         write_json(staged_sfi, sfi_record)
         write_json(staged_newsletter, newsletter)
         if post.blog == "venture":
@@ -1828,6 +2049,8 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
         updated_metadata = dict(post.metadata)
         updated_metadata["status"] = "published"
         write_json(staged_author, updated_metadata)
+        if source_rename and author_post.source_path is not None:
+            shutil.copy2(author_post.source_path, staged_author_source)
 
         replacements: list[tuple[Path | None, Path]] = [
             (staged_images if any(staged_images.iterdir()) else None, public_images),
@@ -1838,9 +2061,23 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
         replacements.extend(
             (
                 (staged_newsletter, newsletter_path),
-                (staged_author, final_author_directory / "post.json"),
             )
         )
+        if source_rename:
+            replacements.extend(
+                (
+                    (
+                        None,
+                        final_author_directory
+                        / str(author_post.metadata.get("source")),
+                    ),
+                    (
+                        staged_author_source,
+                        final_author_directory / str(post.metadata.get("source")),
+                    ),
+                )
+            )
+        replacements.append((staged_author, final_author_directory / "post.json"))
         commit_publication(
             author_post.directory,
             final_author_directory,
@@ -1911,6 +2148,30 @@ def commit_staged_action(
     shutil.rmtree(action_root, ignore_errors=True)
 
 
+def commit_staged_author_action(
+    action_root: Path,
+    author_directory: Path,
+    final_author_directory: Path,
+    replacements: list[tuple[Path | None, Path]],
+    *,
+    operation: str,
+) -> None:
+    """Commit an action that may also rename its managed author folder."""
+    try:
+        commit_publication(
+            author_directory,
+            final_author_directory,
+            replacements,
+            action_root / "backups",
+            operation=operation,
+        )
+    except TransactionError as error:
+        if not error.recovery_required:
+            shutil.rmtree(action_root, ignore_errors=True)
+        raise
+    shutil.rmtree(action_root, ignore_errors=True)
+
+
 def source_argument_path(arguments: argparse.Namespace) -> Path:
     source = arguments.source
     if source is None:
@@ -1939,29 +2200,94 @@ def source_argument_path(arguments: argparse.Namespace) -> Path:
 def command_resource(arguments: argparse.Namespace, root: Path) -> int:
     post = assert_managed_author_post(locate_post(arguments.target, root), root)
     source = source_argument_path(arguments)
-    new_name = f"entry{canonical_source_suffix(source)}"
-    new_target = post.directory / new_name
     old_target = post.source_path
+    target_slug = upgraded_draft_slug(post)
+    final_author_directory = post.directory.parent / target_slug
+    if final_author_directory != post.directory and final_author_directory.exists():
+        raise WritingError(
+            f"updated slug folder already exists: {relative_display(final_author_directory, root)}"
+        )
+
+    same_active_file = (
+        target_slug == post.slug
+        and source.suffix.lower() != ".docx"
+        and old_target is not None
+        and old_target.is_file()
+        and old_target.resolve() == source
+        and valid_author_source_name(post.metadata.get("source"), post.slug)
+    )
+    if same_active_file:
+        print("already active: this document is the post's current source")
+        return 0
+
+    converting_docx = source.suffix.lower() == ".docx"
+    new_name = author_source_name(source, target_slug)
+    new_target = final_author_directory / new_name
+    if final_author_directory != post.directory:
+        pending_target = post.directory / new_name
+        if pending_target.exists() and pending_target != old_target:
+            raise WritingError(
+                "refusing to overwrite a pre-existing finalized source: "
+                f"{relative_display(pending_target, root)}"
+            )
+    action_root = Path(tempfile.mkdtemp(prefix=".writing-resource-", dir=root))
+    staged_source = action_root / new_name
+    staged_metadata = action_root / "post.json"
+    staged_docx_images = action_root / "docx-images"
+    staged_archive: Path | None = None
+    archive_target: Path | None = None
+    converted_docx_images = 0
+
+    try:
+        if converting_docx:
+            converted_docx_images = convert_docx_to_author_html(
+                source,
+                staged_source,
+                staged_docx_images,
+                title=str(post.metadata.get("title") or "untitled"),
+                subtitle=str(post.metadata.get("subtitle") or "untitled"),
+            )
+            if source.parent != post.directory:
+                staged_archive = action_root / f"archive-{source.name}"
+                shutil.copy2(source, staged_archive)
+                archive_target = final_author_directory / source.name
+        else:
+            shutil.copy2(source, staged_source)
+
+        updated_metadata = dict(post.metadata)
+        updated_metadata["slug"] = target_slug
+        updated_metadata["source"] = new_name
+        write_json(staged_metadata, updated_metadata)
+    except Exception as error:
+        shutil.rmtree(action_root, ignore_errors=True)
+        if isinstance(error, WritingError):
+            raise
+        raise WritingError(f"resource could not prepare the updated document: {error}") from error
 
     print(f"resource summary · entry {post.entry}")
     print(f"  document: {source}")
+    if target_slug != post.slug:
+        print(f"  slug: {post.slug} → {target_slug}")
+        print(
+            "  author folder: "
+            f"{relative_display(post.directory, root)} → "
+            f"{relative_display(final_author_directory, root)}"
+        )
     print(f"  active source: {post.metadata.get('source') or '(none)'} → {new_name}")
-    print(f"  metadata: preserved (status remains {post.metadata.get('status')})")
-    print("  author images: preserved")
+    if converting_docx:
+        print(f"  conversion: Word → editable HTML ({converted_docx_images} embedded images)")
+        print(f"  original Word manuscript: kept as {source.name}")
+        if new_target.exists():
+            print("  warning: this replaces the current editable HTML and any manual HTML tweaks")
+    print(f"  metadata: preserved except source/legacy slug (status remains {post.metadata.get('status')})")
+    print("  author images outside converter-managed images/docx: preserved")
     if post.metadata.get("status") == "published":
         print("  live post: unchanged until publish --replace")
     else:
         print("  live post: unchanged")
 
-    same_active_file = (
-        old_target is not None
-        and post.metadata.get("source") == new_name
-        and old_target.resolve() == source
-    )
-    if same_active_file:
-        print("already active: this document is the post's current source")
-        return 0
     if arguments.dry_run:
+        shutil.rmtree(action_root, ignore_errors=True)
         print("dry run: no files changed")
         return 0
     if not arguments.yes:
@@ -1970,31 +2296,50 @@ def command_resource(arguments: argparse.Namespace, root: Path) -> int:
         except EOFError:
             answer = ""
         if answer not in {"y", "yes"}:
+            shutil.rmtree(action_root, ignore_errors=True)
             print("resource cancelled")
             return 1
 
-    action_root = Path(tempfile.mkdtemp(prefix=".writing-resource-", dir=root))
-    staged_source = action_root / new_name
-    staged_metadata = action_root / "post.json"
-    try:
-        shutil.copy2(source, staged_source)
-        updated_metadata = dict(post.metadata)
-        updated_metadata["source"] = new_name
-        write_json(staged_metadata, updated_metadata)
-    except OSError as error:
-        shutil.rmtree(action_root, ignore_errors=True)
-        raise WritingError(f"resource could not stage the updated document: {error}") from error
-
     replacements: list[tuple[Path | None, Path]] = []
-    if old_target is not None and old_target != new_target and (
+    moved_old_target = (
+        final_author_directory / old_target.name if old_target is not None else None
+    )
+    if moved_old_target is not None and moved_old_target != new_target and (
         old_target.exists() or old_target.is_symlink()
-    ):
-        replacements.append((None, old_target))
-    replacements.extend(((staged_source, new_target), (staged_metadata, post.path)))
-    commit_staged_action(action_root, replacements, operation="resource")
+    ) and old_target.suffix.lower() != ".docx":
+        replacements.append((None, moved_old_target))
+    replacements.append((staged_source, new_target))
+    if staged_archive is not None and archive_target is not None:
+        replacements.append((staged_archive, archive_target))
+    if converting_docx:
+        current_docx_images = post.directory / "images" / "docx"
+        managed_docx_images = final_author_directory / "images" / "docx"
+        if staged_docx_images.exists() or current_docx_images.exists():
+            replacements.append(
+                (
+                    staged_docx_images if converted_docx_images else None,
+                    managed_docx_images,
+                )
+            )
+    replacements.append((staged_metadata, final_author_directory / "post.json"))
+    commit_staged_author_action(
+        action_root,
+        post.directory,
+        final_author_directory,
+        replacements,
+        operation="resource",
+    )
 
     print(f"resourced entry {post.entry}: {relative_display(new_target, root)}")
-    if source.parent == post.directory and source.name != new_name:
+    if converting_docx:
+        print(f"editable HTML: {relative_display(new_target, root)}")
+        kept_word = (
+            final_author_directory / source.name
+            if source.parent == post.directory
+            else archive_target or source
+        )
+        print(f"Word manuscript kept: {relative_display(kept_word, root)}")
+    elif source.parent == post.directory and source.name != new_name:
         print(
             "note: the supplied noncanonical document remains alongside entry.*; "
             "remove it manually when you no longer need that copy"
@@ -2278,7 +2623,10 @@ def build_parser() -> argparse.ArgumentParser:
     draft.add_argument("--location")
     draft.add_argument("--trip", help="optional trip or grouping name; required for Venture")
     draft.add_argument("--thread")
-    draft.add_argument("--slug", help="manual ENTRY-title-YYYYMMDD override; requires --date")
+    draft.add_argument(
+        "--slug",
+        help="manual ENTRY-title-subtitle-YYYYMMDD override; requires --date",
+    )
     draft.add_argument("--tags", help="comma-separated manual tags")
     draft.add_argument("--collections", help="comma-separated collection slugs")
     draft.add_argument("--latitude", "--lat", dest="latitude", type=float)

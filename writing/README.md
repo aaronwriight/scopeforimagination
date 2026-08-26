@@ -31,7 +31,7 @@ pnpm writing unpublish ENTRY [--dry-run] [--yes]
 pnpm writing erase ENTRY [--dry-run] [--yes]
 ```
 
-`TARGET` may be an entry number, slug, post folder, `entry.*` source path, or `post.json` path. When your terminal is already inside a post folder, `review`, `render`, `view`, and `publish` can infer the nearest `post.json`, so their target may be omitted. `unpublish` and `erase` are intentionally stricter: they require an explicit numeric `ENTRY` and never infer a destructive target from the current directory.
+`TARGET` may be an entry number, slug, post folder, active source path, or `post.json` path. When your terminal is already inside a post folder, `review`, `render`, `view`, and `publish` can infer the nearest `post.json`, so their target may be omitted. `unpublish` and `erase` are intentionally stricter: they require an explicit numeric `ENTRY` and never infer a destructive target from the current directory.
 
 There is no separate `post` command. `review` is the read-only way to inspect a post and its publication readiness.
 
@@ -76,7 +76,7 @@ Flags can prefill the same workflow. Add `--no-prompt` when a fully specified co
 
 Use `--format` only when starting a new blank source. When `--source` points to an existing `.md`, `.html`, `.htm`, `.txt`, or `.docx` document, its file type is inferred instead. Imported `.htm` files are normalized to `.html`.
 
-Use `--no-prompt` for scripts or when you deliberately want omitted values to use noninteractive defaults. Use `--entry` only for a deliberate migration or reservation. By default, `excerpt` and `date` remain blank until first publication; `--excerpt` and `--date` are manual overrides for intentional summaries or retrospective dates. A manual `--slug` requires `--date`, may customize the middle title words, and must retain the matching `NNNN-` entry prefix and `-YYYYMMDD` date suffix. Use draft-time `--replace` only when you intend to replace an existing draft author folder.
+Use `--no-prompt` for scripts or when you deliberately want omitted values to use noninteractive defaults. Use `--entry` only for a deliberate migration or reservation. By default, `excerpt` and `date` remain blank until first publication; `--excerpt` and `--date` are manual overrides for intentional summaries or retrospective dates. The automatic slug combines the entry, title, subtitle, and date as `NNNN-title-subtitle-YYYYMMDD`. A manual `--slug` requires `--date`, may override the generated title-and-subtitle portion, and must retain the matching `NNNN-` entry prefix and `-YYYYMMDD` date suffix. Use draft-time `--replace` only when you intend to replace an existing draft author folder; the replacement is staged and the existing draft is restored if preparation or promotion fails.
 
 ## One journal sequence, two views
 
@@ -108,17 +108,20 @@ writing/
 │   └── entry.txt
 ├── sfi/
 │   ├── README.md
-│   └── 0001-a-note-from-cambridge-20260825/
+│   └── 0001-scope-for-imagination-a-note-from-cambridge-20260825/
 │       ├── post.json
 │       ├── entry.md
 │       └── images/
 │           └── .gitkeep
 └── venture/
     ├── README.md
-    └── 0002-la-vida-august-2026-m1-20260826/
+    └── 0002-venture-la-vida-august-2026-m1-20260826/
         ├── post.json
-        ├── entry.docx
+        ├── 0002-venture-la-vida-august-2026-m1-20260826.html
+        ├── la-vida-august-2026-m1.docx
         └── images/
+            ├── docx/
+            │   └── image-1.jpg
             ├── summit-view.jpg
             └── trail-map.png
 ```
@@ -126,12 +129,14 @@ writing/
 Inside a post folder:
 
 - `post.json` contains author metadata.
-- `entry.md`, `entry.html`, `entry.txt`, or imported `entry.docx` contains the essay.
+- The filename stored in `post.json` as `source` is the one active essay body.
+- Native bodies use `entry.md`, `entry.html`, or `entry.txt`.
+- A Word import keeps the original `.docx` as an inactive manuscript snapshot and creates editable `<full-slug>.html` as the active body.
 - `images/` contains image files that belong to the post.
 
-The canonical author-body name is always `entry.<ext>`. An imported document is copied and renamed to that form; its original file remains untouched. The metadata key is still named `source`, and its value points to the relative body filename, such as `"entry.md"`.
+The metadata key is named `source`, and its value always points to the active body filename, such as `"entry.md"` or `"0002-venture-la-vida-august-2026-m1-20260826.html"`. The automatic slug—and therefore a Word-derived HTML filename—combines `ENTRY + TITLE + SUBTITLE + date` after slugifying the text fields.
 
-Keep one source document per post folder.
+Keep one **active** source per post folder. Supporting files may coexist with it: the preserved Word manuscript is a snapshot, ordinary author images remain under `images/`, and Word-embedded images are managed under `images/docx/`.
 
 ## Regular workflow
 
@@ -173,13 +178,13 @@ pnpm writing draft \
 `draft`:
 
 - chooses the next entry number across both `writing/sfi/` and `writing/venture/`;
-- creates a provisionally dated, slug-named post folder;
-- copies a reusable template or imports the selected source as `entry.<ext>`;
+- creates a provisionally dated folder and slug from entry, title, subtitle, and date;
+- copies a reusable native template as `entry.<ext>`, or converts an imported Word manuscript immediately into editable `<full-slug>.html`;
 - creates `images/` and `post.json`;
 - leaves `excerpt`, `date`, and `time` blank for first publication unless an override was supplied; and
 - does not publish, deploy, or email anything.
 
-When importing, the original source filename can supply a suggested subtitle, but the copied file is still named `entry.<ext>`. Confirm the prompted values and the resulting `post.json` before writing.
+When importing, the original filename can supply a suggested subtitle. Markdown, HTML, and text imports become their native `entry.<ext>` active source. A Word import is different: the selected manuscript remains unchanged, a snapshot with its original filename is kept in the author folder, and its content is converted to the slug-named HTML file referenced by `post.json`. Confirm the prompted values and resulting files before writing.
 
 ### 2. Write the entry
 
@@ -190,7 +195,8 @@ Choose whichever supported format feels best:
 | `entry.md` | New template or import | Lightweight prose, headings, links, images, quotations, and layout directives. |
 | `entry.html` | New template or import | Direct semantic HTML and the most control over figures and structure. Only the document body is published. |
 | `entry.txt` | New template or import | Plain writing with the same small set of structural markers and layout directives as Markdown. |
-| `entry.docx` | Import only | Existing Word writing, including basic headings, lists, links, emphasis, quotations, and images. |
+| `<full-slug>.html` | Automatic result of a Word import | Editable HTML converted from existing Word writing, including basic headings, lists, links, emphasis, quotations, and images. This is the active source. |
+| Original `*.docx` filename | Preserved Word-import snapshot | The unchanged manuscript retained beside the active HTML for provenance or later re-sourcing; it is not rendered directly. |
 
 Each blank template begins with a commented quick reference. Those comments are removed when the entry is rendered and are never included in the public body. Replace the visible bracketed starter prompt before review.
 
@@ -268,7 +274,7 @@ HTML uses:
 <img src="images/summit-view.jpg" alt="A view across the Adirondack ridgeline" />
 ```
 
-`review` reports missing local image references. On publish, local image references are rewritten to `/images/posts/<slug>/...`, and author images are copied there recursively. Images embedded in a Word source are extracted beneath that generated post directory in `docx/`.
+`review` reports missing local image references. On publish, local image references are rewritten to `/images/posts/<slug>/...`, and author images are copied there recursively. Images embedded in an imported Word manuscript are extracted during conversion into the managed author directory `images/docx/`; publication copies that directory beneath `/images/posts/<slug>/docx/`.
 
 ### Replace an entry's source
 
@@ -285,7 +291,9 @@ pnpm writing resource 0001 --source "/path/to/revised-entry.docx"
 pnpm writing re-source 0001 --source "/path/to/revised-entry.docx"
 ```
 
-When `--source` is omitted in an interactive terminal, the command prompts for the document path. It accepts the same import formats as `draft`, copies the selected document into the post folder under its canonical `entry.<ext>` name, and leaves the supplied original document unchanged. The post's metadata and `images/` folder are preserved; only its canonical author source and the metadata `source` filename are updated.
+When `--source` is omitted in an interactive terminal, the command prompts for the document path. It accepts the same import formats as `draft`. Markdown, HTML, and text become the matching native `entry.<ext>` source. Word is converted immediately into editable `<full-slug>.html`, `post.json.source` points to that HTML, and the selected `.docx` remains unchanged while a manuscript snapshot is kept in the post folder. If a legacy post still uses `entry.docx` directly and you switch it to a native source, that Word file is retained as an inactive manuscript snapshot. Other metadata and author images are preserved. Re-sourcing an older draft whose automatic slug omitted its journal title also upgrades that slug and folder to the current entry–title–subtitle–date form; the summary and dry run show the rename.
+
+Re-sourcing from Word regenerates the slug-named HTML and the managed `images/docx/` directory. After confirmation, that intentionally overwrites manual tweaks in the existing converted HTML and replaces previously extracted Word images. Keep unrelated images elsewhere under `images/`; they are preserved. Use `--dry-run`, and save or commit HTML edits you may want to recover before re-sourcing.
 
 Use `--dry-run` to inspect the planned replacement without changing files. Without `--yes`, a real replacement asks for confirmation. Re-sourcing a published post does not change the currently generated or deployed copy: run `review`, then `publish --replace`, before the revised body becomes the new local live record.
 
@@ -309,10 +317,10 @@ These targets are equivalent:
 
 ```sh
 pnpm writing review 0001
-pnpm writing review 0001-a-note-from-cambridge-20260825
-pnpm writing review writing/sfi/0001-a-note-from-cambridge-20260825
-pnpm writing review writing/sfi/0001-a-note-from-cambridge-20260825/entry.md
-pnpm writing review writing/sfi/0001-a-note-from-cambridge-20260825/post.json
+pnpm writing review 0001-scope-for-imagination-a-note-from-cambridge-20260825
+pnpm writing review writing/sfi/0001-scope-for-imagination-a-note-from-cambridge-20260825
+pnpm writing review writing/sfi/0001-scope-for-imagination-a-note-from-cambridge-20260825/entry.md
+pnpm writing review writing/sfi/0001-scope-for-imagination-a-note-from-cambridge-20260825/post.json
 ```
 
 From inside that post folder, `pnpm writing review` with no target reviews the current post.
@@ -341,7 +349,7 @@ Neither `render` nor `view` changes post metadata, publishes generated content, 
 pnpm writing publish 0001 --dry-run
 ```
 
-A dry run performs the publication review and shows the derived excerpt, publication date/time, final slug, any planned folder rename, and records that would be generated. It does not write output, rename the draft, or save any automatic value.
+A dry run performs the publication review and shows the derived excerpt, publication date/time, final slug, any planned folder or Word-derived HTML rename, and records that would be generated. It does not write output, rename the draft, or save any automatic value.
 
 ### 6. Publish locally
 
@@ -355,10 +363,10 @@ On the first successful publish, the command:
 
 - derives a blank `excerpt` from the first meaningful prose block, without headings or captions, and shortens it to at most 160 characters;
 - stamps a blank `date` and the publication `time` from the local machine's clock, confirming the time immediately after approval;
-- finalizes the slug's date suffix and safely renames the provisional author folder when needed; and
+- finalizes the slug's date suffix and atomically renames the provisional author folder and Word-derived `<full-slug>.html` together when needed; and
 - preserves any nonblank `--excerpt` or `--date` override.
 
-A dry run, failed review, or cancelled confirmation leaves the draft untouched. Republishing an existing entry with `--replace` preserves its original excerpt, date, time, slug, and folder.
+A dry run, failed review, cancelled confirmation, or failed promotion leaves the provisional folder, HTML filename, and metadata untouched. Republishing an existing entry with `--replace` preserves its original excerpt, date, time, slug, and folder.
 
 The reviewed body, generated records, images, and finalized author metadata are staged together. If promotion fails, the command restores the prior files instead of leaving a partial publication.
 
@@ -479,9 +487,9 @@ The machine-readable contract is [`writing/post.schema.json`](../writing/post.sc
 | Field | Who sets it | Meaning |
 | --- | --- | --- |
 | `$schema` | draft command | Relative path to `writing/post.schema.json`. |
-| `source` | draft or resource command | Canonical body filename inside the post folder: `entry.md`, `entry.html`, `entry.txt`, or imported `entry.docx`. The metadata key remains `source`. |
+| `source` | draft or resource command | Filename of the one active body: native `entry.md`, `entry.html`, or `entry.txt`, or `<full-slug>.html` converted from Word. A preserved `.docx` snapshot is not the active source. |
 | `title` | author | Journal/post title shown in the header. SFI normally uses `scope for imagination`; Venture normally uses `venture`. |
-| `subtitle` | author | The entry-specific title used in headers, indexes, and the default slug. |
+| `subtitle` | author | The entry-specific title used in headers, indexes, and the automatic slug. |
 | `excerpt` | publish command, or author override | Short plain-text description for indexes and newsletters. Blank drafts derive it from the first meaningful prose block; use `--excerpt` or edit the value for a manual summary. |
 | `entry` | draft command | One global four-digit string shared by SFI and Venture, for example `"0023"`. |
 | `date` | publish command, or author override | Blank during normal drafting. First publish stamps local `YYYY-MM-DD` and uses it for the final eight slug digits; `--date` supports a deliberate retrospective date. |
@@ -489,7 +497,7 @@ The machine-readable contract is [`writing/post.schema.json`](../writing/post.sc
 | `location` | author | Where the entry was written or situated, using the wording you want displayed. |
 | `trip` | author | Optional public trip or grouping name for either blog, such as `La Vida August 2026 M1`. Venture requires one; unrelated SFI posts may use `null`. |
 | `thread` | author | Optional lowercase, hyphenated slug shared by several entries in one story, trip, or series. |
-| `slug` | commands, author may override | `NNNN-title-YYYYMMDD`. Draft creates a provisional date suffix; first publish finalizes it and the folder. A manual slug requires an explicit date. |
+| `slug` | commands, author may override | `NNNN-title-subtitle-YYYYMMDD`, automatically derived from entry, title, subtitle, and date. Draft creates a provisional date suffix; first publish finalizes it, the folder, and any Word-derived HTML filename. A manual slug requires an explicit date. |
 | `music` | author | Optional tagline with required `title` and `artist`, plus optional `album` and absolute `url`. Use `null` for no song. |
 | `tags` | author | Manual descriptive tags. Every Venture post must include `venture`. |
 | `blog` | author at draft creation | `sfi` for a general entry or `venture` for the Venture subset. |
@@ -543,7 +551,7 @@ If created on August 25, the draft metadata will look like this; its slug date i
   "location": "Cambridge, MA",
   "trip": null,
   "thread": null,
-  "slug": "0001-a-note-from-cambridge-20260825",
+  "slug": "0001-scope-for-imagination-a-note-from-cambridge-20260825",
   "music": null,
   "tags": ["musings"],
   "blog": "sfi",
@@ -562,7 +570,7 @@ pnpm writing publish 0001 --dry-run
 pnpm writing publish 0001
 ```
 
-The successful publish derives `excerpt`, fills `date` and `time`, finalizes the slug/folder date, and changes `status` to `published`.
+The successful publish derives `excerpt`, fills `date` and `time`, finalizes the slug/folder date—and a Word-derived HTML filename when applicable—and changes `status` to `published`.
 
 ## Example: La Vida August 2026 M1
 
@@ -583,12 +591,12 @@ pnpm writing draft \
   --longitude -73.986
 ```
 
-If created on August 26, the copied author source is `entry.docx`, and the draft metadata includes:
+If created on August 26, the Word manuscript is preserved as `la-vida-august-2026-m1.docx`, while its editable active source is `0002-venture-la-vida-august-2026-m1-20260826.html`. The draft metadata includes:
 
 ```json
 {
   "$schema": "../../post.schema.json",
-  "source": "entry.docx",
+  "source": "0002-venture-la-vida-august-2026-m1-20260826.html",
   "title": "venture",
   "subtitle": "La Vida August 2026 M1",
   "excerpt": "",
@@ -598,7 +606,7 @@ If created on August 26, the copied author source is `entry.docx`, and the draft
   "location": "Adirondack Mountains, New York",
   "trip": "La Vida August 2026 M1",
   "thread": "la-vida-august-2026-m1",
-  "slug": "0002-la-vida-august-2026-m1-20260826",
+  "slug": "0002-venture-la-vida-august-2026-m1-20260826",
   "music": null,
   "tags": ["venture", "hiking"],
   "blog": "venture",
@@ -627,8 +635,11 @@ Author-owned files live under `writing/`:
 
 ```text
 writing/<blog>/<slug>/post.json
-writing/<blog>/<slug>/entry.<ext>
+writing/<blog>/<slug>/entry.{md,html,txt}
+writing/<blog>/<slug>/<slug>.html        # active body converted from Word
+writing/<blog>/<slug>/*.docx             # optional preserved manuscript snapshot
 writing/<blog>/<slug>/images/*
+writing/<blog>/<slug>/images/docx/*      # managed Word-embedded images
 ```
 
 Publishing generates the records consumed by the site:
@@ -653,7 +664,7 @@ Private standalone previews are generated separately and ignored by Git:
 
 Treat generated files like build artifacts:
 
-- edit `writing/.../post.json` or `entry.<ext>`, not generated JSON;
+- edit `writing/.../post.json` or the active file named by its `source` field, not generated JSON;
 - rerun `review` and `publish --replace` after an intentional edit;
 - commit author sources, generated records, and generated public images together; and
 - never store private trip notes, secrets, or unpublished material in generated public records.
@@ -684,7 +695,7 @@ Treat generated files like build artifacts:
 Use the complete path to the author metadata:
 
 ```sh
-pnpm writing review writing/venture/0002-la-vida-august-2026-m1-20260826/post.json
+pnpm writing review writing/venture/0002-venture-la-vida-august-2026-m1-20260826/post.json
 ```
 
 Entry numbers and slugs must be unique across both blog folders.
@@ -699,11 +710,11 @@ Open `post.json` and fill the reported value. Blank `excerpt`, `date`, and `time
 
 ### Review finds unfinished text
 
-Search `entry.<ext>` for the visible starter prompt, bracketed placeholders, `TODO`, `TBD`, `FIXME`, `TK`, placeholder URLs, and scaffolding language. The commented quick reference is ignored by rendering and may remain.
+Search the active file named by `post.json.source` for the visible starter prompt, bracketed placeholders, `TODO`, `TBD`, `FIXME`, `TK`, placeholder URLs, and scaffolding language. The commented quick reference is ignored by rendering and may remain.
 
 ### The date changed after the draft was created
 
-Do not rename the draft manually. First publish aligns `date`, the final eight slug digits, and the post folder after confirmation. Use `--date` when drafting—or enter an intentional date in `post.json`—for a retrospective post; `publish --dry-run` shows the resulting final path without changing anything.
+Do not rename the draft manually. First publish atomically aligns `date`, the final eight slug digits, the post folder, and any Word-derived slug HTML filename after confirmation. Use `--date` when drafting—or enter an intentional date in `post.json`—for a retrospective post; `publish --dry-run` shows the resulting final paths without changing anything.
 
 ### A Venture story is missing from one journal
 
@@ -719,7 +730,7 @@ This protects an existing published entry. Confirm that you are editing the corr
 
 ### Re-sourcing did not change the website
 
-That separation is intentional. `resource` and `re-source` update only the canonical author source. Run `review`, inspect `render` or `view`, then use `publish TARGET --replace` to regenerate the local website records. Commit and deploy those changes before the public site updates.
+That separation is intentional. `resource` and `re-source` update only the active author source. For a Word manuscript, they regenerate the editable slug HTML and managed `images/docx/` files after confirmation, without touching the current generated website record. Run `review`, inspect `render` or `view`, then use `publish TARGET --replace` to regenerate the local website records. Commit and deploy those changes before the public site updates.
 
 ### An unpublished or erased entry is still visible
 
