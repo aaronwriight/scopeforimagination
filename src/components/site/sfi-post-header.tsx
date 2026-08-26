@@ -46,16 +46,28 @@ export function SfiPostHeader({
           • {post.location} • {post.entry}
         </p>
 
-        <MusicTagline music={post.music} />
-
-        {post.tags.length > 0 && (
-          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest">
-            {post.tags.map((tag) => (
-              <li key={tag} style={{ color: getSfiTagColor(tag) }}>
-                {tag}
-              </li>
-            ))}
-          </ul>
+        {(post.tags.length > 0 || post.music) && (
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            {post.tags.length > 0 && (
+              <ul aria-label="post tags" className="flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest">
+                {post.tags.map((tag) => (
+                  <li key={tag} style={{ color: getSfiTagColor(tag) }}>
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {post.music && (
+              <span className="inline-flex min-w-0 items-baseline gap-x-2">
+                {post.tags.length > 0 && (
+                  <span aria-hidden="true" className="text-xs text-stone-400">
+                    •
+                  </span>
+                )}
+                <MusicTagline music={post.music} inline className="normal-case tracking-normal" />
+              </span>
+            )}
+          </div>
         )}
       </div>
     </header>

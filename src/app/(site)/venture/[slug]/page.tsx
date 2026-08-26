@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MusicTagline } from "@/components/site/music-tagline";
 import { VentureShell } from "@/components/site/site-content";
+import { getSfiTagColor } from "@/lib/sfi-posts";
 import { formatVentureHeaderDate, getAllVentureEntries, getVentureEntry } from "@/lib/venture-entries";
 
 const collectionLabels = {
@@ -38,42 +39,61 @@ export default async function VentureEntryPage({ params }: { params: Promise<{ s
 
   return (
     <VentureShell title={entry.subtitle} showTitle={false}>
-      <article className="not-prose w-full max-w-none">
-        <Link href="/venture/index" className="text-xs lowercase tracking-widest text-stone-500">
-          ← index
-        </Link>
+      <div className="w-full max-w-3xl">
+        <div className="not-prose">
+          <Link href="/venture/index" className="text-xs lowercase tracking-widest text-stone-500">
+            ← index
+          </Link>
 
-        <header className="mt-10 border-b border-stone-300 pb-7 dark:border-stone-700">
-          <h1 className="font-serif text-2xl font-normal leading-tight text-stone-900 dark:text-stone-100 sm:text-3xl">{entry.title}</h1>
-          <p className="mt-3 font-serif text-base italic leading-6 text-stone-500 sm:text-lg">{entry.subtitle}</p>
-          <p className="mt-3 text-xs leading-6 text-stone-500">
-            <time dateTime={`${entry.date}T${entry.time}`}>
-              {formatVentureHeaderDate(entry.date)} • {entry.time}
-            </time>{" "}
-            • {entry.location} • {entry.entry}
-          </p>
-          <p className="mt-1 text-xs leading-6 text-stone-500">
-            trip: {entry.trip ?? "to add"}
-          </p>
-          <MusicTagline music={entry.music} className="mt-1" />
-          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{entry.excerpt}</p>
-          {(entry.collections.length > 0 || entry.tags.length > 0) && (
-            <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest text-[#6f8200]">
-              {entry.collections.map((collection) => (
-                <li key={collection}>{formatCollection(collection)}</li>
-              ))}
-              {entry.tags.map((tag) => (
-                <li key={tag}>{tag}</li>
-              ))}
-            </ul>
-          )}
-        </header>
+          <header className="mt-10 border-b border-stone-300 pb-7 dark:border-stone-700">
+            <h1 className="font-serif text-2xl font-normal leading-tight text-stone-900 dark:text-stone-100 sm:text-3xl">{entry.title}</h1>
+            <p className="mt-3 font-serif text-base italic leading-6 text-stone-500 sm:text-lg">{entry.subtitle}</p>
+            <p className="mt-3 text-xs leading-6 text-stone-500">
+              <time dateTime={`${entry.date}T${entry.time}`}>
+                {formatVentureHeaderDate(entry.date)} • {entry.time}
+              </time>{" "}
+              • {entry.location} • {entry.entry}
+            </p>
+            <p className="mt-1 text-xs leading-6 text-stone-500">
+              trip: {entry.trip ?? "to add"}
+            </p>
+            {(entry.collections.length > 0 || entry.tags.length > 0 || entry.music) && (
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                {(entry.collections.length > 0 || entry.tags.length > 0) && (
+                  <ul aria-label="post tags and collections" className="flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest">
+                    {entry.collections.map((collection) => (
+                      <li key={`collection:${collection}`} className="text-[#859900]">
+                        {formatCollection(collection)}
+                      </li>
+                    ))}
+                    {entry.tags.map((tag) => (
+                      <li key={`tag:${tag}`} style={{ color: getSfiTagColor(tag) }}>
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {entry.music && (
+                  <span className="inline-flex min-w-0 items-baseline gap-x-2">
+                    {(entry.collections.length > 0 || entry.tags.length > 0) && (
+                      <span aria-hidden="true" className="text-xs text-stone-400">
+                        •
+                      </span>
+                    )}
+                    <MusicTagline music={entry.music} inline className="normal-case tracking-normal" />
+                  </span>
+                )}
+              </div>
+            )}
+            <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{entry.excerpt}</p>
+          </header>
+        </div>
 
         <div
           className="prose prose-stone mt-10 max-w-none font-serif text-sm leading-7 dark:prose-invert prose-headings:font-serif prose-a:text-[#6f8200] prose-img:my-10 prose-img:w-full"
           dangerouslySetInnerHTML={{ __html: entry.bodyHtml }}
         />
-      </article>
+      </div>
     </VentureShell>
   );
 }

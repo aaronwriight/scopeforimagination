@@ -50,7 +50,7 @@
       "type": ["string", "null"]
     },
     "excerpt": {
-      "description": "A short, plain-text summary used in indexes and newsletters. Leave it empty while drafting to derive it from the first meaningful prose block on first publish.",
+      "description": "A short, plain-text summary used in indexes and newsletters. Leave it empty while drafting to derive up to 150 characters from the first two meaningful prose paragraphs on first publish.",
       "type": ["string", "null"]
     },
     "entry": {

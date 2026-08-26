@@ -641,9 +641,24 @@ class WritingPipelineTests(unittest.TestCase):
             writing.derive_excerpt(body), "Use this & preserve inline meaning."
         )
         shortened = writing.derive_excerpt(f"<p>{'patient words ' * 30}</p>")
-        self.assertLessEqual(len(shortened), 160)
+        self.assertLessEqual(len(shortened), 150)
         self.assertTrue(shortened.endswith("…"))
         self.assertFalse(shortened.endswith(" …"))
+
+        complete_two_paragraph_body = (
+            "<p>A short first paragraph.</p>"
+            "<p>A short second paragraph.</p>"
+        )
+        self.assertEqual(
+            writing.derive_excerpt(complete_two_paragraph_body),
+            "A short first paragraph. A short second paragraph.",
+        )
+        continuing_body = complete_two_paragraph_body + "<p>More prose follows.</p>"
+        self.assertEqual(
+            writing.derive_excerpt(continuing_body),
+            "A short first paragraph. A short second paragraph…",
+        )
+        self.assertLessEqual(len(writing.derive_excerpt(continuing_body)), 150)
 
         markdown = (
             "![ridge](images/ridge.jpg)\n\n"
@@ -666,6 +681,105 @@ class WritingPipelineTests(unittest.TestCase):
             ),
             "Right prose.",
         )
+
+    def test_review_blocks_nonportable_image_references_and_allows_portable_ones(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "entry.html"
+            source.write_text(
+                "<html><body><p>A complete entry.</p></body></html>",
+                encoding="utf-8",
+            )
+            result, _, error = self.run_cli(
+                root,
+                "draft",
+                "--source",
+                str(source),
+                "--subtitle",
+                "portable images",
+                "--excerpt",
+                "A complete entry.",
+                "--date",
+                "2026-08-26",
+                "--location",
+                "Kansas City, MO",
+                "--tags",
+                "musings",
+                "--no-prompt",
+            )
+            self.assertEqual(result, 0, error)
+            post = writing.locate_post("0001", root)
+
+            post.source_path.write_text(
+                """<html><body>
+<p>A complete entry.</p>
+<img src="/Users/example/private.jpg" alt="private" />
+<img src="file:///Users/example/private.jpg" alt="private" />
+<img src="images/good.jpg" srcset="C:\\private\\large.jpg 2x" alt="private" />
+</body></html>
+""",
+                encoding="utf-8",
+            )
+            (post.directory / "images" / "good.jpg").write_bytes(b"portable")
+            (post.directory / "images" / "unused.jpg").write_bytes(b"private")
+            result, output, error = self.run_cli(root, "review", "0001")
+            self.assertEqual(result, 1, error)
+            self.assertIn("image reference is not portable", output)
+
+            post.source_path.write_text(
+                """<html><body>
+<p>A complete entry.</p>
+<img src="images/missing.jpg" alt="missing" />
+</body></html>
+""",
+                encoding="utf-8",
+            )
+            result, output, error = self.run_cli(root, "review", "0001")
+            self.assertEqual(result, 1, error)
+            self.assertIn("referenced image is missing: images/missing.jpg", output)
+
+            post.source_path.write_text(
+                """<html><body>
+<p>A complete entry.</p>
+<img src="images/good.jpg" alt="local" />
+<picture><source srcset="images/good.jpg 2x" /></picture>
+<img src="https://example.com/remote.jpg" alt="remote" />
+<video><source src="videos/clip.mp4" type="video/mp4" /></video>
+</body></html>
+""",
+                encoding="utf-8",
+            )
+            result, output, error = self.run_cli(root, "review", "0001")
+            self.assertEqual(result, 0, error)
+            self.assertIn("ready to publish", output)
+
+            with mock.patch(
+                "writing.current_publication_stamp",
+                return_value=("2026-08-26", "14:37"),
+            ):
+                result, _, error = self.run_cli(root, "publish", "0001", "--yes")
+            self.assertEqual(result, 0, error)
+            published = writing.load_json_object(
+                root / "content" / "scope-for-imagination" / "posts" / "0001.json"
+            )
+            image_root = f"/images/posts/{post.slug}"
+            self.assertIn(
+                f'srcset="{image_root}/good.jpg 2x"', published["bodyHtml"]
+            )
+            public_images = root / "public" / "images" / "posts" / post.slug
+            self.assertTrue((public_images / "good.jpg").is_file())
+            self.assertFalse((public_images / "unused.jpg").exists())
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            post = self.create_post(root)
+            post.source_path.write_text(
+                "A complete entry.\n\n![private](file:///Users/example/private.jpg)\n",
+                encoding="utf-8",
+            )
+            result, output, error = self.run_cli(root, "review", "0001")
+            self.assertEqual(result, 1, error)
+            self.assertIn("image reference is not portable", output)
 
     def test_review_rejects_missing_prose_and_noncanonical_source_name(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1845,6 +1959,15 @@ Centered *text*.
                 "![A summit view](images/summit.jpg)\n",
                 encoding="utf-8",
             )
+            metadata = dict(post.metadata)
+            metadata["music"] = {
+                "title": "Water & Wanderlust",
+                "artist": "Yebba",
+                "album": "Jean",
+            }
+            metadata["tags"] = ["sfi", "musings"]
+            writing.write_json(post.path, metadata)
+            post = writing.AuthorPost(post.path, metadata)
             author_before = self.snapshot_files(post.directory)
             paths = self.publication_paths(root, post)
             live_before = {
@@ -1864,6 +1987,18 @@ Centered *text*.
             self.assertIn(str(post.metadata["subtitle"]), preview_html)
             self.assertIn(str(post.metadata["location"]), preview_html)
             self.assertIn(post.entry, preview_html)
+            self.assertLess(
+                preview_html.index('<ul class="labels">'),
+                preview_html.index("Water &amp; Wanderlust"),
+            )
+            self.assertIn(
+                'class="metadata-separator" aria-hidden="true">•</span>',
+                preview_html,
+            )
+            self.assertIn('<li style="color: #cb4b16">sfi</li>', preview_html)
+            self.assertIn(
+                '<li style="color: var(--green)">musings</li>', preview_html
+            )
             preview_images = list(preview.rglob("summit.jpg"))
             self.assertEqual(len(preview_images), 1)
             self.assertEqual(preview_images[0].read_bytes(), b"private-author-image")

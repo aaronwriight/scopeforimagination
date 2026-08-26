@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Iterable, Iterator
+from typing import Any, Callable, Iterator
 from urllib.parse import urlparse
 
 
@@ -981,13 +981,39 @@ def markdown_to_html(source: str, image_web_root: str) -> str:
 
 
 def rewrite_local_images(body_html: str, image_web_root: str) -> str:
-    def replacement(match: re.Match[str]) -> str:
-        prefix, quote, source = match.groups()
+    def rewrite_reference(source: str) -> str:
         if source.startswith("images/"):
-            source = f"{image_web_root}/{source.removeprefix('images/')}"
-        return f"{prefix}{quote}{source}{quote}"
+            return f"{image_web_root}/{source.removeprefix('images/')}"
+        return source
 
-    return re.sub(r"(\bsrc\s*=\s*)([\"'])([^\"']+)\2", replacement, body_html, flags=re.IGNORECASE)
+    def source_replacement(match: re.Match[str]) -> str:
+        prefix, quote, source = match.groups()
+        return f"{prefix}{quote}{rewrite_reference(source)}{quote}"
+
+    def srcset_replacement(match: re.Match[str]) -> str:
+        prefix, quote, source_set = match.groups()
+        candidates: list[str] = []
+        for candidate in source_set.split(","):
+            parts = candidate.strip().split(maxsplit=1)
+            if not parts:
+                continue
+            source = rewrite_reference(parts[0])
+            descriptor = f" {parts[1]}" if len(parts) == 2 else ""
+            candidates.append(f"{source}{descriptor}")
+        return f"{prefix}{quote}{', '.join(candidates)}{quote}"
+
+    body_html = re.sub(
+        r"(\bsrc\s*=\s*)([\"'])([^\"']+)\2",
+        source_replacement,
+        body_html,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(
+        r"(\bsrcset\s*=\s*)([\"'])([^\"']+)\2",
+        srcset_replacement,
+        body_html,
+        flags=re.IGNORECASE,
+    )
 
 
 def render_source(post: AuthorPost, image_directory: Path, image_web_root: str) -> str:
@@ -1018,7 +1044,7 @@ def render_source(post: AuthorPost, image_directory: Path, image_web_root: str) 
 
 
 class ExcerptHTMLParser(HTMLParser):
-    """Collect the first prose block plus a visible-text fallback."""
+    """Collect prose paragraphs plus a visible-text fallback."""
 
     prose_tags = {"p", "li"}
     ignored_tags = {
@@ -1133,25 +1159,39 @@ def normalize_excerpt_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
-def shorten_excerpt(value: str, limit: int = 160) -> str:
+def shorten_excerpt(
+    value: str, limit: int = 150, *, prose_continues: bool = False
+) -> str:
     value = normalize_excerpt_text(value)
-    if len(value) <= limit:
+    if len(value) <= limit and not prose_continues:
         return value
+    if not value or limit < 2:
+        return "…"[:limit]
+    if prose_continues and len(value) < limit:
+        return value.removesuffix(".") + "…"
     prefix = value[: limit - 1].rstrip()
     boundary = prefix.rfind(" ")
     if boundary >= limit // 2:
         prefix = prefix[:boundary]
-    return prefix.rstrip(" ,;:–—-") + "…"
+    return prefix.rstrip(" ,;:–—-").removesuffix(".") + "…"
 
 
 def derive_excerpt(body_html: str) -> str:
     parser = ExcerptHTMLParser()
     parser.feed(body_html)
     parser.close()
-    candidates = parser.paragraphs or [normalize_excerpt_text("".join(parser.visible_text))]
-    for candidate in candidates:
-        if re.search(r"\w", candidate, flags=re.UNICODE):
-            return shorten_excerpt(candidate)
+    if parser.paragraphs:
+        selected_paragraphs = parser.paragraphs[:2]
+        excerpt = normalize_excerpt_text(" ".join(selected_paragraphs))
+        if re.search(r"\w", excerpt, flags=re.UNICODE):
+            return shorten_excerpt(
+                excerpt,
+                prose_continues=len(parser.paragraphs) > len(selected_paragraphs),
+            )
+
+    fallback = normalize_excerpt_text("".join(parser.visible_text))
+    if re.search(r"\w", fallback, flags=re.UNICODE):
+        return shorten_excerpt(fallback)
     return ""
 
 
@@ -1165,10 +1205,93 @@ def legacy_renderers() -> tuple[Callable[..., str], Callable[[str], str]]:
     return docx_renderer, html_renderer
 
 
-def local_image_references(source: str) -> list[str]:
-    references = re.findall(r"!\[[^\]]*\]\((images/[^)]+)\)", source)
-    references += re.findall(r"\bsrc\s*=\s*[\"'](images/[^\"']+)[\"']", source, flags=re.IGNORECASE)
-    return sorted(set(reference.strip() for reference in references))
+class AuthoredImageHTMLParser(HTMLParser):
+    """Collect image URLs from authored HTML, including responsive sources."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.references: list[str] = []
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        tag = tag.lower()
+        attributes = {name.lower(): value for name, value in attrs}
+        if tag not in {"img", "source"}:
+            return
+        srcset = attributes.get("srcset")
+        if tag == "img":
+            source = attributes.get("src")
+            if source:
+                self.references.append(source)
+            elif not srcset:
+                self.references.append("")
+        if not srcset:
+            return
+        for candidate in srcset.split(","):
+            reference = candidate.strip().split(maxsplit=1)[0]
+            if reference:
+                self.references.append(reference)
+
+    def handle_startendtag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        self.handle_starttag(tag, attrs)
+
+
+def authored_image_references(source: str) -> list[str]:
+    """Return every Markdown or HTML image reference in an author source."""
+    references: list[str] = []
+    markdown_pattern = re.compile(
+        r"!\[[^\]]*\]\(\s*(?:<([^>]+)>|([^\s)]+))",
+        flags=re.IGNORECASE,
+    )
+    for match in markdown_pattern.finditer(source):
+        references.append((match.group(1) or match.group(2) or "").strip())
+
+    parser = AuthoredImageHTMLParser()
+    parser.feed(source)
+    parser.close()
+    references.extend(parser.references)
+    return list(dict.fromkeys(reference.strip() for reference in references))
+
+
+def image_reference_issue(reference: str, post: AuthorPost) -> str | None:
+    """Validate that an authored image URL will remain portable after publish."""
+    if not reference:
+        return "image element is missing a source"
+
+    parsed = urlparse(reference)
+    scheme = parsed.scheme.lower()
+    if scheme in {"http", "https"} and parsed.netloc:
+        return None
+    if scheme or parsed.netloc or reference.startswith(("/", "~", "\\")):
+        return (
+            "image reference is not portable; use images/... for post images "
+            "or an absolute http(s) URL"
+        )
+
+    path = parsed.path
+    pure_reference = PurePosixPath(path)
+    if (
+        not path.startswith("images/")
+        or "\\" in path
+        or pure_reference.is_absolute()
+        or ".." in pure_reference.parts
+        or str(pure_reference) != path
+    ):
+        return (
+            "local image reference must be a normalized path beginning with "
+            f"images/: {reference}"
+        )
+
+    images_root = (post.directory / "images").resolve()
+    local_path = (post.directory / pure_reference).resolve()
+    if not local_path.is_relative_to(images_root):
+        return f"referenced image must stay inside images/: {reference}"
+    if not local_path.is_file():
+        return f"referenced image is missing: {reference}"
+    return None
 
 
 def placeholder_matches(value: str) -> list[str]:
@@ -1293,7 +1416,9 @@ def review_post(
     blank_excerpt = excerpt is None or (isinstance(excerpt, str) and not excerpt.strip())
     if blank_excerpt:
         if metadata.get("status") == "draft" and not publishing:
-            notes.append("excerpt: will be derived from the first prose block on first publish")
+            notes.append(
+                "excerpt: will be derived from the first two prose paragraphs on first publish"
+            )
         else:
             blockers.append("excerpt must be a non-empty string")
     elif not isinstance(excerpt, str):
@@ -1491,14 +1616,10 @@ def review_post(
 
             source_text = effective_source_path.read_text(encoding="utf-8")
             source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.DOTALL)
-            for reference in local_image_references(source_text):
-                pure_reference = PurePosixPath(reference)
-                if pure_reference.is_absolute() or ".." in pure_reference.parts:
-                    blockers.append(f"referenced image must stay inside images/: {reference}")
-                    continue
-                local_path = post.directory / pure_reference
-                if not local_path.is_file():
-                    blockers.append(f"referenced image is missing: {reference}")
+            for reference in authored_image_references(source_text):
+                issue = image_reference_issue(reference, post)
+                if issue:
+                    blockers.append(issue)
 
             if blank_excerpt and metadata.get("status") == "draft" and not publishing:
                 excerpt_preview = derive_excerpt(body_html)
@@ -1629,17 +1750,32 @@ def published_record(metadata: dict[str, Any], body_html: str, schema: str) -> d
     return record
 
 
-def author_images(post: AuthorPost) -> Iterable[Path]:
-    directory = post.directory / "images"
-    if not directory.exists():
+def referenced_author_images(post: AuthorPost) -> list[Path]:
+    """Return only local author images actually used by the active source."""
+    source_path = post.source_path
+    if source_path is None or source_path.suffix.lower() == ".docx":
         return []
-    return (path for path in directory.rglob("*") if path.is_file() and path.name != ".gitkeep")
+    if not source_path.is_file():
+        return []
+
+    source_text = source_path.read_text(encoding="utf-8")
+    source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.DOTALL)
+    source_root = (post.directory / "images").resolve()
+    referenced: set[Path] = set()
+    for reference in authored_image_references(source_text):
+        parsed = urlparse(reference)
+        if parsed.scheme or parsed.netloc or not parsed.path.startswith("images/"):
+            continue
+        source = (post.directory / PurePosixPath(parsed.path)).resolve()
+        if source.is_relative_to(source_root) and source.is_file():
+            referenced.add(source)
+    return sorted(referenced)
 
 
 def copy_author_images(post: AuthorPost, destination: Path) -> int:
     count = 0
-    source_root = post.directory / "images"
-    for source in author_images(post):
+    source_root = (post.directory / "images").resolve()
+    for source in referenced_author_images(post):
         relative = source.relative_to(source_root)
         output = destination / relative
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -1947,9 +2083,9 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
     with staged_action_directory(root, ".writing-publish-") as staging_root:
         staged_images = staging_root / "images"
         staged_images.mkdir()
-        copied_images = copy_author_images(post, staged_images)
+        render_post = author_post if source_rename else post
+        copied_images = copy_author_images(render_post, staged_images)
         try:
-            render_post = author_post if source_rename else post
             body_html = render_source(
                 render_post, staged_images, f"/images/posts/{post.slug}"
             )
@@ -2094,7 +2230,10 @@ def command_publish(arguments: argparse.Namespace, root: Path) -> int:
     if post.blog == "venture":
         print(f"published {relative_display(venture_path, root)}")
     print(f"created {relative_display(newsletter_path, root)}")
-    print(f"images: {copied_images} author images plus any embedded document images")
+    print(
+        f"images: {copied_images} referenced author images "
+        "plus any embedded document images"
+    )
     print(f"url: /scope-for-imagination/{post.entry}")
     if post.blog == "venture":
         print(f"venture url: /venture/{post.slug}")
@@ -2383,9 +2522,18 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     collections = (
         metadata.get("collections") if isinstance(metadata.get("collections"), list) else []
     )
-    labels = "".join(
-        f"<li>{html.escape(str(label))}</li>" for label in [*collections, *tags]
+    collection_labels = "".join(
+        f"<li>{html.escape(str(label))}</li>" for label in collections
     )
+    tag_colors = {"sfi": "#cb4b16", "venture": "#586e75"}
+    tag_labels = "".join(
+        '<li style="color: {}">{}</li>'.format(
+            tag_colors.get(str(tag).strip().lower(), "var(--green)"),
+            html.escape(str(tag)),
+        )
+        for tag in tags
+    )
+    labels = f"{collection_labels}{tag_labels}"
     venture_trip = ""
     venture_excerpt = ""
     if post.blog == "venture":
@@ -2393,8 +2541,29 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
             venture_trip = f'<p class="trip">trip: {html.escape(trip)}</p>'
         if excerpt:
             venture_excerpt = f'<p class="excerpt">{html.escape(excerpt)}</p>'
-    music_html = music.replace("<p>", '<p class="music">', 1) if music else ""
+    music_html = (
+        music.replace("<p>", '<span class="music">', 1).replace(
+            "</p>", "</span>", 1
+        )
+        if music
+        else ""
+    )
     labels_html = f'<ul class="labels">{labels}</ul>' if labels else ""
+    separator_html = (
+        '<span class="metadata-separator" aria-hidden="true">•</span>'
+        if labels_html
+        else ""
+    )
+    music_group = (
+        f'<span class="music-group">{separator_html}{music_html}</span>'
+        if music_html
+        else ""
+    )
+    metadata_line = (
+        f'<div class="metadata-line">{labels_html}{music_group}</div>'
+        if music_html or labels_html
+        else ""
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -2412,9 +2581,14 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     h1 {{ margin: 0; font-size: clamp(1.5rem, 4vw, 1.875rem); font-weight: 400; line-height: 1.2; }}
     .subtitle {{ margin: .75rem 0 0; color: var(--muted); font-size: 1.125rem; font-style: italic; line-height: 1.5; }}
     .details, .music, .trip {{ margin: .55rem 0 0; color: var(--muted); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-    .music a, article a {{ color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .16em; }}
+    .music a {{ color: inherit; text-decoration-thickness: 1px; text-underline-offset: .16em; }}
+    article a {{ color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .16em; }}
     .excerpt {{ margin: .65rem 0 0; color: var(--muted); font-size: .875rem; font-style: italic; line-height: 1.6; }}
-    .labels {{ display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .6rem 0 0; padding: 0; list-style: none; color: var(--green); font: .65rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .12em; text-transform: lowercase; }}
+    .metadata-line {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .5rem; margin-top: .6rem; }}
+    .music-group {{ display: inline-flex; min-width: 0; align-items: baseline; gap: .5rem; }}
+    .metadata-line .music {{ margin: 0; }}
+    .metadata-separator {{ color: var(--muted); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .labels {{ display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: 0; padding: 0; list-style: none; color: var(--green); font: .65rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .12em; text-transform: lowercase; }}
     article {{ margin-top: 2.5rem; font-size: .92rem; line-height: 1.85; }}
     article h2, article h3, article h4, article h5, article h6 {{ margin: 2.4rem 0 .8rem; font-weight: 400; line-height: 1.35; }}
     article p, article ul, article ol, article blockquote {{ margin: 1.15rem 0; }}
@@ -2435,9 +2609,8 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
       <p class="subtitle">{subtitle}</p>
       <p class="details">{details}</p>
       {venture_trip}
-      {music_html}
+      {metadata_line}
       {venture_excerpt}
-      {labels_html}
     </header>
     <article>{body_html}</article>
   </main>

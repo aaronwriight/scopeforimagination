@@ -10,8 +10,16 @@ function PostRows({ posts }: { posts: SfiPost[] }) {
   return (
     <div className="border-t border-stone-300 dark:border-stone-700">
       {posts.map((post) => (
-        <article key={post.entry} className="border-b border-stone-300 py-6 dark:border-stone-700">
+        <article
+          key={post.entry}
+          className="grid gap-x-10 gap-y-4 border-b border-stone-300 py-6 dark:border-stone-700 lg:grid-cols-[minmax(0,1.1fr)_minmax(15rem,0.9fr)] lg:items-start"
+        >
           <SfiPostHeader post={post} href={`/scope-for-imagination/${post.entry}`} />
+          {post.excerpt && (
+            <p className="m-0 max-w-sm font-serif text-xs italic leading-5 text-stone-500 dark:text-stone-400 lg:justify-self-end lg:pt-1">
+              {post.excerpt}
+            </p>
+          )}
         </article>
       ))}
     </div>

@@ -246,24 +246,11 @@ export function formatSfiPostTitle(post: Pick<SfiPost, "title" | "subtitle">): s
 }
 
 const tagColors: Record<string, string> = {
-  musings: "#859900",
-  thoughts: "#859900",
-  "cognitive science": "#2aa198",
-  science: "#2aa198",
-  photography: "#d33682",
-  travel: "#268bd2",
-  faith: "#6c71c4",
-  adventure: "#cb4b16",
-  venture: "#cb4b16",
-  "life update": "#b58900",
+  sfi: "#cb4b16",
+  venture: "#586e75",
 };
-
-const fallbackTagColors = ["#859900", "#2aa198", "#d33682", "#268bd2", "#6c71c4", "#cb4b16", "#b58900", "#dc322f"];
 
 export function getSfiTagColor(tag: string): string {
   const normalizedTag = tag.trim().toLowerCase();
-  if (tagColors[normalizedTag]) return tagColors[normalizedTag];
-
-  const hash = [...normalizedTag].reduce((total, character) => total + character.charCodeAt(0), 0);
-  return fallbackTagColors[hash % fallbackTagColors.length];
+  return tagColors[normalizedTag] ?? "#859900";
 }

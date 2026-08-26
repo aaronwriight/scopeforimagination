@@ -274,7 +274,7 @@ HTML uses:
 <img src="images/summit-view.jpg" alt="A view across the Adirondack ridgeline" />
 ```
 
-`review` reports missing local image references. On publish, local image references are rewritten to `/images/posts/<slug>/...`, and author images are copied there recursively. Images embedded in an imported Word manuscript are extracted during conversion into the managed author directory `images/docx/`; publication copies that directory beneath `/images/posts/<slug>/docx/`.
+`review` reports missing local image references and blocks machine-specific paths such as `/Users/...`, `C:\\...`, or `file:///...`. Local post images must use a normalized `images/...` reference; absolute `http://` and `https://` image URLs are also portable. On publish, local `src` and responsive `srcset` references are rewritten to `/images/posts/<slug>/...`, and only referenced author images are copied into that public folder. Unused files remain private in the author folder. Images embedded in an imported Word manuscript are extracted during conversion into the managed author directory `images/docx/`; referenced images are then published beneath `/images/posts/<slug>/docx/`.
 
 ### Replace an entry's source
 
@@ -311,7 +311,7 @@ pnpm writing review 0001
 
 `review` is read-only. It checks the author folder, metadata shape, publication requirements, source document, unfinished prompts, entry and slug collisions, music fields, tags, collections, coordinates, and blog-specific rules. It also renders the body so missing images and malformed source content can be caught before publication.
 
-Blank draft `excerpt`, `date`, and `time` values are expected. Review previews the excerpt that will be derived from the first meaningful prose block and notes that the publication date and time will be stamped later. Fix every blocker and read every note as an editorial checklist.
+Blank draft `excerpt`, `date`, and `time` values are expected. Review previews the excerpt that will be derived from the first two meaningful prose paragraphs and notes that the publication date and time will be stamped later. Fix every blocker and read every note as an editorial checklist.
 
 These targets are equivalent:
 
@@ -361,7 +361,7 @@ pnpm writing publish 0001
 
 On the first successful publish, the command:
 
-- derives a blank `excerpt` from the first meaningful prose block, without headings or captions, and shortens it to at most 160 characters;
+- derives a blank `excerpt` from the first two meaningful prose paragraphs, without headings or captions, and shortens it to at most 150 characters including a trailing ellipsis when prose continues;
 - stamps a blank `date` and the publication `time` from the local machine's clock, confirming the time immediately after approval;
 - finalizes the slug's date suffix and atomically renames the provisional author folder and Word-derived `<full-slug>.html` together when needed; and
 - preserves any nonblank `--excerpt` or `--date` override.
@@ -490,7 +490,7 @@ The machine-readable contract is [`writing/post.schema.json`](../writing/post.sc
 | `source` | draft or resource command | Filename of the one active body: native `entry.md`, `entry.html`, or `entry.txt`, or `<full-slug>.html` converted from Word. A preserved `.docx` snapshot is not the active source. |
 | `title` | author | Journal/post title shown in the header. SFI normally uses `scope for imagination`; Venture normally uses `venture`. |
 | `subtitle` | author | The entry-specific title used in headers, indexes, and the automatic slug. |
-| `excerpt` | publish command, or author override | Short plain-text description for indexes and newsletters. Blank drafts derive it from the first meaningful prose block; use `--excerpt` or edit the value for a manual summary. |
+| `excerpt` | publish command, or author override | Short plain-text description for indexes and newsletters. Blank drafts derive it from the first two meaningful prose paragraphs, capped at 150 characters; use `--excerpt` or edit the value for a manual summary. |
 | `entry` | draft command | One global four-digit string shared by SFI and Venture, for example `"0023"`. |
 | `date` | publish command, or author override | Blank during normal drafting. First publish stamps local `YYYY-MM-DD` and uses it for the final eight slug digits; `--date` supports a deliberate retrospective date. |
 | `time` | publish command | Blank during drafting. The first successful publish stamps local `HH:MM` immediately after approval and verifies that an automatic date has not rolled over; replacement publication preserves it. |
