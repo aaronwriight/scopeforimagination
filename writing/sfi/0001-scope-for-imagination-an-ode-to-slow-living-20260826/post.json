@@ -1,0 +1,28 @@
+{
+  "$schema": "../../post.schema.json",
+  "source": "0001-scope-for-imagination-an-ode-to-slow-living-20260826.html",
+  "title": "Scope for Imagination",
+  "subtitle": "An ode to slow living",
+  "excerpt": "Well, that is one of the things to find out sometime.",
+  "entry": "0001",
+  "date": "2026-08-26",
+  "time": "15:12",
+  "location": "Kansas City, MO",
+  "trip": null,
+  "thread": null,
+  "slug": "0001-scope-for-imagination-an-ode-to-slow-living-20260826",
+  "music": {
+    "title": "Water & Wanderlust",
+    "artist": "Yebba",
+    "album": "Jean"
+  },
+  "tags": [
+    "sfi",
+    "musings"
+  ],
+  "blog": "sfi",
+  "collections": [],
+  "latitude": null,
+  "longitude": null,
+  "status": "published"
+}
