@@ -6,9 +6,9 @@ The everyday workflow is:
 
 ```sh
 pnpm writing draft
-pnpm writing review 0003
-pnpm writing publish 0003 --dry-run
-pnpm writing publish 0003
+pnpm writing review 0001
+pnpm writing publish 0001 --dry-run
+pnpm writing publish 0001
 ```
 
 The `writing/` folder is the author workspace and source of truth. Files under `content/` are generated website records; do not draft by editing those generated files.
@@ -36,7 +36,7 @@ In an interactive terminal, the simplest command starts a guided draft:
 pnpm writing draft
 ```
 
-The prompts collect the missing author fields, let you import an existing document or start a new one, and show defaults in brackets. Press Return to accept a displayed default. The next global entry number and slug are assigned automatically.
+Every question begins with the exact `post.json` field it fills, such as `post.json "title"` or `post.json "date"`. The prompts let you import an existing document or start a new one and show defaults in brackets; press Return to accept a displayed default. Automatic fields—including `entry`, `source`, `slug`, `time`, and `status`—are labeled and announced too.
 
 For a new document, choose `md`, `html`, or `txt`; the default is `md`. A Word document can be imported, but the command does not generate a blank `.docx` template.
 
@@ -84,6 +84,8 @@ SFI is the umbrella journal. Venture is its adventure-focused subset.
 
 The sequence describes publication order. `tags`, `collections`, `trip`, and `thread` describe how entries relate to one another.
 
+With no author or generated entries, the first guided draft starts at `0001`.
+
 ## Folder structure
 
 Each post has one self-contained folder named after its slug:
@@ -98,14 +100,14 @@ writing/
 │   └── entry.txt
 ├── sfi/
 │   ├── README.md
-│   └── 0003-a-note-from-cambridge-20260825/
+│   └── 0001-a-note-from-cambridge-20260825/
 │       ├── post.json
 │       ├── entry.md
 │       └── images/
 │           └── .gitkeep
 └── venture/
     ├── README.md
-    └── 0023-la-vida-august-2026-m1-20260815/
+    └── 0002-la-vida-august-2026-m1-20260815/
         ├── post.json
         ├── entry.docx
         └── images/
@@ -269,7 +271,7 @@ Replace every bracketed prompt, `TODO`, `TBD`, `FIXME`, `TK`, private note, and 
 ### 4. Review
 
 ```sh
-pnpm writing review 0003
+pnpm writing review 0001
 ```
 
 `review` is read-only. It checks the author folder, metadata shape, publication requirements, source document, unfinished prompts, entry and slug collisions, music fields, tags, collections, coordinates, and blog-specific rules. It also renders the body so missing images and malformed source content can be caught before publication.
@@ -279,11 +281,11 @@ A blank draft `time` is expected: review notes that it will be stamped at public
 These targets are equivalent:
 
 ```sh
-pnpm writing review 0003
-pnpm writing review 0003-a-note-from-cambridge-20260825
-pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825
-pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825/entry.md
-pnpm writing review writing/sfi/0003-a-note-from-cambridge-20260825/post.json
+pnpm writing review 0001
+pnpm writing review 0001-a-note-from-cambridge-20260825
+pnpm writing review writing/sfi/0001-a-note-from-cambridge-20260825
+pnpm writing review writing/sfi/0001-a-note-from-cambridge-20260825/entry.md
+pnpm writing review writing/sfi/0001-a-note-from-cambridge-20260825/post.json
 ```
 
 From inside that post folder, `pnpm writing review` with no target reviews the current post.
@@ -291,7 +293,7 @@ From inside that post folder, `pnpm writing review` with no target reviews the c
 ### 5. Preview publication
 
 ```sh
-pnpm writing publish 0003 --dry-run
+pnpm writing publish 0001 --dry-run
 ```
 
 A dry run performs the publication review and shows the records that would be generated. It does not write output, change status, or save a publication time.
@@ -299,7 +301,7 @@ A dry run performs the publication review and shows the records that would be ge
 ### 6. Publish locally
 
 ```sh
-pnpm writing publish 0003
+pnpm writing publish 0001
 ```
 
 `publish` runs the same review, displays the post and planned outputs, and asks for confirmation before writing anything. Answer `y` only after the summary is correct.
@@ -311,13 +313,13 @@ A normal publish generates local website records; it does **not** push to GitHub
 When intentionally regenerating an existing published entry after editing its author source, use:
 
 ```sh
-pnpm writing publish 0003 --replace
+pnpm writing publish 0001 --replace
 ```
 
 The command still asks for confirmation. `--yes` skips the question and is intended for deliberate automation:
 
 ```sh
-pnpm writing publish 0003 --replace --yes
+pnpm writing publish 0001 --replace --yes
 ```
 
 Do not use `--yes` as the everyday workflow; the confirmation summary is the last safeguard against publishing the wrong entry or metadata.
@@ -348,7 +350,7 @@ Commit the author folder, generated record or records, and generated public imag
 Only create a newsletter after the public post URL works:
 
 ```sh
-pnpm writing newsletter 0003
+pnpm writing newsletter 0001
 ```
 
 Without `--send`, this prepares a Resend broadcast draft for review. Inspect its audience, sender, subject, preview text, post URL, formatting, music line, and unsubscribe link in Resend.
@@ -356,13 +358,13 @@ Without `--send`, this prepares a Resend broadcast draft for review. Inspect its
 Preview without creating a remote draft:
 
 ```sh
-pnpm writing newsletter 0003 --dry-run
+pnpm writing newsletter 0001 --dry-run
 ```
 
 Immediate sending is intentionally explicit and asks for confirmation:
 
 ```sh
-pnpm writing newsletter 0003 --send
+pnpm writing newsletter 0001 --send
 ```
 
 `--send --yes` skips that final question and should be reserved for intentional automation. Newsletter setup and private environment variables are documented in [`docs/newsletter-setup.md`](../docs/newsletter-setup.md). Never place API keys or subscriber data in a post folder.
@@ -436,13 +438,13 @@ The draft metadata will look like:
   "title": "scope for imagination",
   "subtitle": "a note from cambridge",
   "excerpt": "A short introduction to the idea at the center of this entry.",
-  "entry": "0003",
+  "entry": "0001",
   "date": "2026-08-25",
   "time": "",
   "location": "Cambridge, MA",
   "trip": null,
   "thread": null,
-  "slug": "0003-a-note-from-cambridge-20260825",
+  "slug": "0001-a-note-from-cambridge-20260825",
   "music": null,
   "tags": ["musings"],
   "blog": "sfi",
@@ -456,9 +458,9 @@ The draft metadata will look like:
 Then review and publish:
 
 ```sh
-pnpm writing review 0003
-pnpm writing publish 0003 --dry-run
-pnpm writing publish 0003
+pnpm writing review 0001
+pnpm writing publish 0001 --dry-run
+pnpm writing publish 0001
 ```
 
 The successful publish fills `time` and changes `status` to `published`.
@@ -493,13 +495,13 @@ The copied author source is `entry.docx`, and the draft metadata includes:
   "title": "venture",
   "subtitle": "La Vida August 2026 M1",
   "excerpt": "A field note from five August days among Adirondack summits.",
-  "entry": "0003",
+  "entry": "0002",
   "date": "2026-08-15",
   "time": "",
   "location": "Adirondack Mountains, New York",
   "trip": "La Vida August 2026 M1",
   "thread": "la-vida-august-2026-m1",
-  "slug": "0003-la-vida-august-2026-m1-20260815",
+  "slug": "0002-la-vida-august-2026-m1-20260815",
   "music": null,
   "tags": ["venture", "hiking"],
   "blog": "venture",
@@ -515,9 +517,9 @@ The number is illustrative; use the number assigned by `draft`. If several La Vi
 Review and publish through the same pipeline:
 
 ```sh
-pnpm writing review 0003
-pnpm writing publish 0003 --dry-run
-pnpm writing publish 0003
+pnpm writing review 0002
+pnpm writing publish 0002 --dry-run
+pnpm writing publish 0002
 ```
 
 The result appears as one globally numbered entry in SFI and as a specialized Venture story. Link its published Venture slug from relevant peak, park, or travel field-note records when those places should point to the story.
@@ -578,7 +580,7 @@ Treat generated files like build artifacts:
 Use the complete path to the author metadata:
 
 ```sh
-pnpm writing review writing/venture/0023-la-vida-august-2026-m1-20260815/post.json
+pnpm writing review writing/venture/0002-la-vida-august-2026-m1-20260815/post.json
 ```
 
 Entry numbers and slugs must be unique across both blog folders.

@@ -294,47 +294,69 @@ def draft_arguments_supplied(arguments: argparse.Namespace) -> bool:
 
 
 def collect_interactive_draft(arguments: argparse.Namespace, entry: str) -> None:
-    print(f"new draft · entry {entry}")
-    arguments.blog = arguments.blog or prompt_choice("Blog", BLOGS, default="sfi")
+    print("guided draft — each answer populates post.json")
+    entry_origin = "from --entry" if arguments.entry else "automatic"
+    print(f'post.json "entry" ({entry_origin}): "{entry}"')
+    arguments.blog = arguments.blog or prompt_choice(
+        'post.json "blog"', BLOGS, default="sfi"
+    )
 
     if arguments.source is None and arguments.source_format is None:
-        existing = prompt_text("Existing document to copy (leave blank for a new document)")
+        existing = prompt_text(
+            'post.json "source" — existing document path to copy (blank = create a new entry file)'
+        )
         if existing:
             normalized_path = existing.strip().strip("\"'").replace("\\ ", " ")
             arguments.source = Path(normalized_path).expanduser()
         else:
             arguments.source_format = prompt_choice(
-                "New document format", BLANK_SOURCE_FORMATS, default="md"
+                'post.json "source" — new entry file format',
+                BLANK_SOURCE_FORMATS,
+                default="md",
             )
 
     default_title = "venture" if arguments.blog == "venture" else "scope for imagination"
-    arguments.title = arguments.title or prompt_text("Title", default=default_title)
+    arguments.title = arguments.title or prompt_text(
+        'post.json "title" — journal title', default=default_title
+    )
 
     subtitle_default = title_from_source(arguments.source) if arguments.source else None
     if arguments.subtitle is None:
-        arguments.subtitle = prompt_text("Subtitle", default=subtitle_default, required=True)
+        arguments.subtitle = prompt_text(
+            'post.json "subtitle" — entry title',
+            default=subtitle_default,
+            required=True,
+        )
     if arguments.excerpt is None:
-        arguments.excerpt = prompt_text("Excerpt")
+        arguments.excerpt = prompt_text('post.json "excerpt" — index/newsletter summary')
     if arguments.date is None:
-        arguments.date = prompt_date("Date", default=date.today().isoformat())
+        arguments.date = prompt_date(
+            'post.json "date" (YYYY-MM-DD)', default=date.today().isoformat()
+        )
     if arguments.location is None:
-        arguments.location = prompt_text("Location")
+        arguments.location = prompt_text('post.json "location"')
     if arguments.tags is None:
-        arguments.tags = prompt_text("Tags (comma-separated)")
+        arguments.tags = prompt_text('post.json "tags" (comma-separated)')
 
     if arguments.blog == "venture":
         if arguments.trip is None:
-            arguments.trip = prompt_text("Trip")
+            arguments.trip = prompt_text('post.json "trip" — Venture trip name')
         if arguments.thread is None:
             if arguments.trip:
-                print(f"Thread suggestion: {slugify(arguments.trip)} (optional)")
-            arguments.thread = prompt_text("Thread (leave blank for a standalone post)")
+                print(
+                    f'post.json "thread" suggestion: {slugify(arguments.trip)} (optional)'
+                )
+            arguments.thread = prompt_text(
+                'post.json "thread" — shared story slug (blank = standalone)'
+            )
         if arguments.collections is None:
-            arguments.collections = prompt_text("Collections (comma-separated)")
+            arguments.collections = prompt_text(
+                'post.json "collections" (comma-separated slugs)'
+            )
         if arguments.latitude is None:
-            arguments.latitude = prompt_number("Latitude")
+            arguments.latitude = prompt_number('post.json "latitude"')
         if arguments.longitude is None:
-            arguments.longitude = prompt_number("Longitude")
+            arguments.longitude = prompt_number('post.json "longitude"')
 
     music_values = (
         arguments.music_title,
@@ -344,16 +366,24 @@ def collect_interactive_draft(arguments: argparse.Namespace, entry: str) -> None
     )
     include_music = any(value is not None for value in music_values)
     if not include_music:
-        include_music = prompt_yes_no("Add a music tagline?")
+        include_music = prompt_yes_no('post.json "music" — add a music tagline?')
     if include_music:
         if not arguments.music_title:
-            arguments.music_title = prompt_text("Song title", required=True)
+            arguments.music_title = prompt_text(
+                'post.json "music.title" — song title', required=True
+            )
         if arguments.music_album is None:
-            arguments.music_album = prompt_text("Album")
+            arguments.music_album = prompt_text(
+                'post.json "music.album" — album title (optional)'
+            )
         if not arguments.music_artist:
-            arguments.music_artist = prompt_text("Artist", required=True)
+            arguments.music_artist = prompt_text(
+                'post.json "music.artist" — artist', required=True
+            )
         if arguments.music_url is None:
-            arguments.music_url = prompt_text("Song URL") or None
+            arguments.music_url = (
+                prompt_text('post.json "music.url" — song URL (optional)') or None
+            )
 
 
 def blank_source_template(root: Path, source_format: str) -> str:
@@ -602,7 +632,14 @@ def command_draft(arguments: argparse.Namespace, root: Path) -> int:
     write_json(metadata_path, metadata)
 
     print(f"created {relative_display(post_directory, root)}")
-    print(f"entry {entry} · {arguments.blog} · {slug}")
+    entry_origin = "from --entry" if arguments.entry else "automatic"
+    slug_origin = "from --slug" if arguments.slug else "automatic from entry + subtitle + date"
+    print(f'post.json "entry" ({entry_origin}): "{entry}"')
+    print(f'post.json "blog": "{arguments.blog}"')
+    print(f'post.json "source" (automatic from import/format): "{source_name}"')
+    print(f'post.json "slug" ({slug_origin}): "{slug}"')
+    print('post.json "time" (stamped on first publish): ""')
+    print('post.json "status": "draft"')
     print(f"write:  {relative_display(post_directory / source_name, root)}")
     print(f"review: pnpm writing review {entry}")
     return 0

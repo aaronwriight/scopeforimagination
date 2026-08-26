@@ -219,10 +219,39 @@ class WritingPipelineTests(unittest.TestCase):
                     "",  # no music
                 )
             )
-            with mock.patch("builtins.input", side_effect=lambda _prompt: next(answers)):
+            prompts: list[str] = []
+
+            def answer(prompt: str) -> str:
+                prompts.append(prompt)
+                return next(answers)
+
+            with mock.patch("builtins.input", side_effect=answer):
                 result, output, error = self.run_cli(root, "draft")
             self.assertEqual(result, 0, error)
-            self.assertIn("new draft · entry 0001", output)
+            self.assertIn('post.json "entry" (automatic): "0001"', output)
+            self.assertIn(
+                'post.json "source" (automatic from import/format): "entry.md"', output
+            )
+            self.assertIn(
+                'post.json "slug" (automatic from entry + subtitle + date): '
+                '"0001-small-hours-20260825"',
+                output,
+            )
+            expected_fields = (
+                'post.json "blog"',
+                'post.json "source"',
+                'post.json "source"',
+                'post.json "title"',
+                'post.json "subtitle"',
+                'post.json "excerpt"',
+                'post.json "date"',
+                'post.json "location"',
+                'post.json "tags"',
+                'post.json "music"',
+            )
+            self.assertEqual(len(prompts), len(expected_fields))
+            for prompt, field in zip(prompts, expected_fields):
+                self.assertTrue(prompt.startswith(field), prompt)
             folder = root / "writing" / "sfi" / "0001-small-hours-20260825"
             metadata = writing.load_json_object(folder / "post.json")
             self.assertEqual(metadata["title"], "scope for imagination")
@@ -298,8 +327,14 @@ class WritingPipelineTests(unittest.TestCase):
             answers = iter(("", "", "The Japanese House", ""))
             tty = mock.Mock()
             tty.isatty.return_value = True
+            prompts: list[str] = []
+
+            def answer(prompt: str) -> str:
+                prompts.append(prompt)
+                return next(answers)
+
             with mock.patch.object(writing.sys, "stdin", tty), mock.patch(
-                "builtins.input", side_effect=lambda _prompt: next(answers)
+                "builtins.input", side_effect=answer
             ):
                 result, _, error = self.run_cli(
                     root,
@@ -332,6 +367,15 @@ class WritingPipelineTests(unittest.TestCase):
                     "Saw You in a Dream",
                 )
             self.assertEqual(result, 0, error)
+            expected_prompts = (
+                'post.json "thread" — shared story slug (blank = standalone)',
+                'post.json "music.album" — album title (optional)',
+                'post.json "music.artist" — artist',
+                'post.json "music.url" — song URL (optional)',
+            )
+            self.assertEqual(len(prompts), len(expected_prompts))
+            for prompt, expected in zip(prompts, expected_prompts):
+                self.assertTrue(prompt.startswith(expected), prompt)
             metadata = writing.locate_post("0001", root).metadata
             self.assertIsNone(metadata["thread"])
             self.assertEqual(
