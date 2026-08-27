@@ -246,7 +246,7 @@ export function formatSfiPostTitle(post: Pick<SfiPost, "title" | "subtitle">): s
 }
 
 const tagColors: Record<string, string> = {
-  sfi: "#cb4b16",
+  sfi: "#f4a825",
   venture: "#586e75",
 };
 

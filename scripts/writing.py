@@ -2525,7 +2525,7 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     collection_labels = "".join(
         f"<li>{html.escape(str(label))}</li>" for label in collections
     )
-    tag_colors = {"sfi": "#cb4b16", "venture": "#586e75"}
+    tag_colors = {"sfi": "#f4a825", "venture": "#586e75"}
     tag_labels = "".join(
         '<li style="color: {}">{}</li>'.format(
             tag_colors.get(str(tag).strip().lower(), "var(--green)"),
