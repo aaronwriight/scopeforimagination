@@ -10,41 +10,98 @@ html.dark {
   color-scheme: dark;
 }
 
+:root {
+  --site-text-primary: #1c1917;
+  --site-text-secondary: #78716c;
+  --site-text-metadata: #8f8883;
+  --site-text-auxiliary: #a8a29e;
+}
+
+html.dark {
+  --site-text-primary: #f5f5f4;
+  --site-text-secondary: #a8a29e;
+  --site-text-metadata: #8f8883;
+  --site-text-auxiliary: #78716c;
+}
+
 :where(html.dark) .text-stone-500 {
-  color: var(--color-stone-400);
+  color: var(--site-text-secondary);
+}
+
+:where(html.dark) .text-stone-450 {
+  color: var(--site-text-metadata);
+}
+
+:where(html.dark) .text-stone-400 {
+  color: var(--site-text-auxiliary);
+}
+
+.prose-stone {
+  --tw-prose-body: var(--site-text-primary);
+  --tw-prose-headings: var(--site-text-primary);
+  --tw-prose-lead: var(--site-text-secondary);
+  --tw-prose-bold: var(--site-text-primary);
+  --tw-prose-counters: var(--site-text-auxiliary);
+  --tw-prose-bullets: var(--site-text-auxiliary);
+  --tw-prose-quotes: var(--site-text-primary);
+  --tw-prose-captions: var(--site-text-auxiliary);
+  --tw-prose-code: var(--site-text-primary);
+  --tw-prose-invert-body: var(--site-text-primary);
+  --tw-prose-invert-headings: var(--site-text-primary);
+  --tw-prose-invert-lead: var(--site-text-secondary);
+  --tw-prose-invert-bold: var(--site-text-primary);
+  --tw-prose-invert-counters: var(--site-text-auxiliary);
+  --tw-prose-invert-bullets: var(--site-text-auxiliary);
+  --tw-prose-invert-quotes: var(--site-text-primary);
+  --tw-prose-invert-captions: var(--site-text-auxiliary);
+  --tw-prose-invert-code: var(--site-text-primary);
 }
 
 :root {
   --venture-map-surface: #ffffff;
   --venture-map-land: #f4f2ec;
   --venture-map-border: #d6d3d1;
+  --venture-map-state-border: #d6d3d1;
   --venture-map-grid: #e7e5e4;
-  --venture-map-label: #57534e;
+  --venture-map-label: #1c1917;
   --venture-map-halo: #ffffff;
   --venture-map-marker-outline: #ffffff;
-  --venture-map-muted-marker: #b8b6ad;
+  --venture-map-muted-marker: #a8a29e;
 }
 
 html.dark {
   --venture-map-surface: #0c0a09;
   --venture-map-land: #292524;
   --venture-map-border: #57534e;
+  --venture-map-state-border: #8f8883;
   --venture-map-grid: #44403c;
-  --venture-map-label: #e7e5e4;
+  --venture-map-label: #f5f5f4;
   --venture-map-halo: #0c0a09;
   --venture-map-marker-outline: #0c0a09;
   --venture-map-muted-marker: #78716c;
 }
 
-.venture-terrain-tile {
+.venture-terrain-layer {
   opacity: 0.52;
   mix-blend-mode: multiply;
 }
 
-html.dark .venture-terrain-tile {
+html.dark .venture-terrain-layer {
   filter: invert(1) contrast(0.86);
   opacity: 0.42;
   mix-blend-mode: screen;
+}
+
+.sand-dollar-mark {
+  background-color: currentColor;
+  -webkit-mask-image: url("/sand_dollar_mark.png");
+  mask-image: url("/sand_dollar_mark.png");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 
 @theme {

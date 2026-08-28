@@ -34,7 +34,7 @@ export default function Guides({ guides }: { guides: SanityGuide[] }) {
             key={`year-${year.year}`}
             className="flex flex-col gap-4 sm:flex-row sm:gap-8"
           >
-            <h2 className="font-mono text-sm text-stone-600 dark:text-stone-500">
+            <h2 className="font-mono text-sm text-stone-500">
               {year.year}
             </h2>
 
@@ -70,7 +70,7 @@ export default function Guides({ guides }: { guides: SanityGuide[] }) {
         There&apos;d be no <b>scope for imagination</b> then, would there?
         <br />
         <br />
-        <span className="block italic font-serif leading-relaxed text-xs text-stone-500 text-right">
+        <span className="block text-right font-serif text-xs italic leading-relaxed text-stone-450">
           - Anne of Green Gables, L. M. Montgomery
         </span>
       </p>

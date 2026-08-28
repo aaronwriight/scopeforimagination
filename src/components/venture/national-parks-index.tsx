@@ -488,6 +488,7 @@ export function NationalParksMap({
       .selectAll("g")
       .data(regions)
       .join("g")
+      .attr("class", "venture-terrain-layer")
       .attr("data-region", (region) => region.id)
       .attr("clip-path", (region) => `url(#national-parks-terrain-${region.id})`);
 
@@ -503,8 +504,7 @@ export function NationalParksMap({
           .attr("width", (tile) => tile.width)
           .attr("height", (tile) => tile.height)
           .attr("preserveAspectRatio", "none")
-          .attr("pointer-events", "none")
-          .attr("class", "venture-terrain-tile");
+          .attr("pointer-events", "none");
       });
     };
 
@@ -533,7 +533,7 @@ export function NationalParksMap({
         .datum(internalBorders)
         .attr("d", geoPath(region.projection))
         .attr("fill", "none")
-        .attr("stroke", "var(--venture-map-border)")
+        .attr("stroke", "var(--venture-map-state-border)")
         .attr("stroke-width", 0.78)
         .attr("vector-effect", "non-scaling-stroke");
 
@@ -542,7 +542,7 @@ export function NationalParksMap({
         .datum(outerBorders)
         .attr("d", geoPath(region.projection))
         .attr("fill", "none")
-        .attr("stroke", "var(--venture-map-border)")
+        .attr("stroke", "var(--venture-map-state-border)")
         .attr("stroke-width", 0.78)
         .attr("vector-effect", "non-scaling-stroke");
     }
@@ -727,7 +727,7 @@ export function NationalParksMap({
           aria-label="Interactive national parks map. Drag to pan, scroll or use plus and minus to zoom, and select a park marker to open its page."
         />
         <div
-          className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300"
+          className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-900 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-100"
           aria-label="Map controls"
         >
           <button
@@ -755,7 +755,7 @@ export function NationalParksMap({
           </button>
         </div>
       </div>
-      <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-500">
+      <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-400">
         <span>drag to pan · scroll or double-click to zoom · hover a marker for its name</span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-[#859900]" aria-hidden="true" />
@@ -835,7 +835,7 @@ export function NationalParksIndex({
   );
 
   const controlClassName =
-    "mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-700 outline-none transition-colors focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300";
+    "mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-900 outline-none transition-colors focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100";
   const controlsAreDefault = state === "all" && completion === "all" && sortOrder === "ascending";
 
   const resetControls = () => {
@@ -849,7 +849,7 @@ export function NationalParksIndex({
       <NationalParksMap parks={mapParks} boundaries={mapBoundaries} boundarySourceUrl={boundarySourceUrl} />
 
       <div className="not-prose mt-10 grid gap-4 sm:grid-cols-3">
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           state
           <select value={state} onChange={(event) => setState(event.target.value)} className={controlClassName}>
             <option value="all">all states &amp; territories</option>
@@ -858,7 +858,7 @@ export function NationalParksIndex({
             ))}
           </select>
         </label>
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           completion
           <select
             value={completion}
@@ -870,7 +870,7 @@ export function NationalParksIndex({
             <option value="not-completed">not completed</option>
           </select>
         </label>
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           sort
           <select
             value={sortOrder}
@@ -895,7 +895,7 @@ export function NationalParksIndex({
       </div>
 
       <p
-        className="not-prose mt-4 flex items-center justify-between gap-4 text-xs tabular-nums text-stone-500"
+        className="not-prose mt-4 flex items-center justify-between gap-4 text-xs tabular-nums text-stone-450"
         aria-live="polite"
       >
         <span>{visibleParks.length} {visibleParks.length === 1 ? "park" : "parks"}</span>
@@ -910,7 +910,7 @@ export function NationalParksIndex({
           >
             <Link
               href={`/venture/parks/${park.slug}`}
-              className="group col-span-2 grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 text-stone-700 no-underline transition-colors hover:text-[#6f8200] dark:text-stone-300"
+              className="group col-span-2 grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 text-stone-900 no-underline transition-colors hover:text-[#6f8200] dark:text-stone-100"
             >
               <span className="text-xs tabular-nums text-stone-400">
                 {String(alphabeticRanks.get(park.slug) ?? 0).padStart(2, "0")}

@@ -31,7 +31,7 @@ export default function SiteChrome({
   return (
     <PlausibleProvider domain="http://aaronwriight.vercel.app">
       <html lang="en" className="scroll-smooth" suppressHydrationWarning>
-        <body className="min-h-screen bg-white font-serif text-sm dark:bg-stone-950 dark:text-stone-400">
+        <body className="min-h-screen bg-white font-serif text-sm text-stone-900 dark:bg-stone-950 dark:text-stone-100">
           <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
           <div className="flex min-h-screen flex-col gap-4">
             <header className="container m-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-2 px-6 py-10 md:pt-20">
@@ -48,14 +48,15 @@ export default function SiteChrome({
 
             {children}
 
-            <footer className="container mx-auto flex px-6 justify-between gap-4 py-20 text-stone-500">
-              <div className="flex items-center gap-3">
-                <Link href="/about" className="text-stone-500">
+            <footer className="container mx-auto flex justify-between gap-4 px-6 py-20 text-stone-500">
+              <div className="flex items-baseline gap-2">
+                <Link href="/about" className="leading-none text-stone-500">
                   wiki
                 </Link>
+                <span aria-hidden="true" className="leading-none text-stone-400">•</span>
                 <ThemeToggle />
               </div>
-              <span>© {new Date().getFullYear()} Aaron Wright</span>
+              <span className="text-stone-400">© {new Date().getFullYear()} Aaron Wright</span>
             </footer>
           </div>
         </body>

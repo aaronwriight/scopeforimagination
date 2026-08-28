@@ -43,9 +43,9 @@ export default function Guide({ guide }: { guide: SanityGuide }) {
   return (
     <main className="prose prose-stone dark:prose-invert prose-base container mx-auto px-6 py-11">
       <h1 className="m-0 text-sm font-medium antialiased">{title}</h1>
-      <p className="m-0 mt-1 text-xs  antialiased">{formatted_date}</p>
+      <p className="m-0 mt-1 text-xs text-stone-450 antialiased">{formatted_date}</p>
 
-      <p className="m-0 mt-4 text-xs  antialiased">{`${north}, ${west}`}</p>
+      <p className="m-0 mt-4 text-xs text-stone-450 antialiased">{`${north}, ${west}`}</p>
 
       <div className="prose prose-sm prose-stone dark:prose-invert mt-10">
         {short_description ? (

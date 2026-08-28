@@ -62,7 +62,7 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
           <p className="mt-3 font-serif text-base italic leading-6 text-stone-500">
             {peak.range}, {peak.state}
           </p>
-          <p className="mt-3 flex items-center gap-2 text-xs lowercase tracking-widest text-stone-500">
+          <p className="mt-3 flex items-center gap-2 text-xs lowercase tracking-widest text-stone-450">
             <CompletionStatus
               complete={peak.completed}
               completeLabel="climbed"
@@ -76,41 +76,41 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
 
         <dl className="grid gap-x-8 gap-y-5 border-b border-stone-300 py-7 text-sm sm:grid-cols-2 lg:grid-cols-4 dark:border-stone-700">
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">rank</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.rank} / 115</dd>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">rank</dt>
+            <dd className="mt-1 font-serif text-stone-450">{peak.rank} / 115</dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">elevation</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.elevationFeet.toLocaleString()} ft</dd>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">elevation</dt>
+            <dd className="mt-1 font-serif text-stone-450">{peak.elevationFeet.toLocaleString()} ft</dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">prominence</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.prominenceFeet.toLocaleString()} ft</dd>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">prominence</dt>
+            <dd className="mt-1 font-serif text-stone-450">{peak.prominenceFeet.toLocaleString()} ft</dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">ascents</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{peak.timesHiked ?? "—"}</dd>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">ascents</dt>
+            <dd className="mt-1 font-serif text-stone-450">{peak.timesHiked ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">date first ascent</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">date first ascent</dt>
+            <dd className="mt-1 font-serif text-stone-450">
               {firstAscent ? formatAscentDate(firstAscent.date) : "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">no. completed</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">no. completed</dt>
+            <dd className="mt-1 font-serif text-stone-450">
               {peak.completionNumber === null ? "—" : formatOrdinal(peak.completionNumber)}
             </dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">trip</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">trip</dt>
+            <dd className="mt-1 font-serif text-stone-450">
               {firstAscent?.trip ?? (peak.completed ? "trip pending" : "—")}
             </dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">source</dt>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">source</dt>
             <dd className="mt-1 font-serif">
               <a href={peak.sourceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
                 Peakbagger ↗
@@ -120,7 +120,7 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
         </dl>
 
         <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">field notes</h2>
+          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-900 dark:text-stone-100">field notes</h2>
           {peak.ascents.length === 0 ? (
             <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
               No field notes recorded yet.
@@ -134,12 +134,12 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
                   </p>
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
-                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">date</dt>
-                      <dd className="mt-1 font-serif text-sm text-stone-500">{formatAscentDate(ascent.date)}</dd>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">date</dt>
+                      <dd className="mt-1 font-serif text-sm text-stone-450">{formatAscentDate(ascent.date)}</dd>
                     </div>
                     <div>
-                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">trip</dt>
-                      <dd className="mt-1 font-serif text-sm text-stone-500">{ascent.trip ?? "trip pending"}</dd>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">trip</dt>
+                      <dd className="mt-1 font-serif text-sm text-stone-450">{ascent.trip ?? "trip pending"}</dd>
                     </div>
                   </dl>
                 </div>
@@ -149,7 +149,7 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
         </section>
 
         <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">journal entries</h2>
+          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-900 dark:text-stone-100">journal entries</h2>
           {linkedAscents.length === 0 ? (
             <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
               No journal entry linked yet.

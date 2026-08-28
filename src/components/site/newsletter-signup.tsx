@@ -104,22 +104,22 @@ export function NewsletterSignup({
     <div>
       <form onSubmit={handleSubscribe} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 text-xs text-stone-500">
+          <label className="space-y-1.5 text-xs text-stone-400">
             <span className="block lowercase tracking-wider">first name</span>
             <input name="firstName" type="text" autoComplete="given-name" maxLength={80} className={fieldClass} />
           </label>
-          <label className="space-y-1.5 text-xs text-stone-500">
+          <label className="space-y-1.5 text-xs text-stone-400">
             <span className="block lowercase tracking-wider">last name</span>
             <input name="lastName" type="text" autoComplete="family-name" maxLength={80} className={fieldClass} />
           </label>
         </div>
 
-        <label className="block space-y-1.5 text-xs text-stone-500">
+        <label className="block space-y-1.5 text-xs text-stone-400">
           <span className="block lowercase tracking-wider">email</span>
           <input name="email" type="email" autoComplete="email" required maxLength={254} className={fieldClass} />
         </label>
 
-        <label className="block space-y-1.5 text-xs text-stone-500">
+        <label className="block space-y-1.5 text-xs text-stone-400">
           <span className="block lowercase tracking-wider">{interestLabel}</span>
           <select name={interestName} defaultValue={interestOptions[0]?.value} className={fieldClass}>
             {interestOptions.map((option) => (
@@ -129,7 +129,7 @@ export function NewsletterSignup({
         </label>
 
         {extraFields.map((field) => (
-          <label key={field.name} className="block space-y-1.5 text-xs text-stone-500">
+          <label key={field.name} className="block space-y-1.5 text-xs text-stone-400">
             <span className="block lowercase tracking-wider">{field.label}</span>
             {field.type === "textarea" ? (
               <textarea
@@ -162,12 +162,12 @@ export function NewsletterSignup({
           <button
             type="submit"
             disabled={subscribeStatus === "submitting"}
-            className="border border-stone-400 px-4 py-2 font-serif text-xs lowercase tracking-widest text-stone-700 hover:border-stone-700 hover:text-stone-950 disabled:cursor-wait disabled:opacity-60 dark:border-stone-600 dark:text-stone-300 dark:hover:border-stone-300 dark:hover:text-stone-100"
+            className="border border-stone-400 px-4 py-2 font-serif text-xs lowercase tracking-widest text-stone-900 hover:border-stone-700 hover:text-[#6f8200] disabled:cursor-wait disabled:opacity-60 dark:border-stone-600 dark:text-stone-100 dark:hover:border-stone-300 dark:hover:text-[#6f8200]"
           >
             {subscribeStatus === "submitting" ? submittingLabel : submitLabel}
           </button>
           {subscribeMessage && (
-            <p role="status" className={`text-xs ${subscribeStatus === "error" ? "text-red-700 dark:text-red-400" : "text-stone-500"}`}>
+            <p role="status" className={`text-xs ${subscribeStatus === "error" ? "text-red-700 dark:text-red-400" : "text-stone-450"}`}>
               {subscribeMessage}
             </p>
           )}
@@ -175,20 +175,20 @@ export function NewsletterSignup({
       </form>
 
       <form onSubmit={handleUnsubscribe} className="mt-10 border-t border-stone-300 pt-6 dark:border-stone-700">
-        <p className="font-serif text-sm lowercase tracking-widest text-stone-700 dark:text-stone-300">unsubscribe</p>
+        <p className="font-serif text-sm lowercase tracking-widest text-stone-900 dark:text-stone-100">unsubscribe</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <label className="sr-only" htmlFor="unsubscribe-email">Email</label>
           <input id="unsubscribe-email" name="email" type="email" autoComplete="email" required placeholder="email address" className={fieldClass} />
           <button
             type="submit"
             disabled={unsubscribeStatus === "submitting"}
-            className="whitespace-nowrap border border-stone-300 px-4 py-2 font-serif text-xs lowercase tracking-widest text-stone-500 hover:border-stone-500 hover:text-stone-800 disabled:cursor-wait disabled:opacity-60 dark:border-stone-700 dark:hover:border-stone-500 dark:hover:text-stone-200"
+            className="whitespace-nowrap border border-stone-300 px-4 py-2 font-serif text-xs lowercase tracking-widest text-stone-900 hover:border-stone-500 hover:text-[#6f8200] disabled:cursor-wait disabled:opacity-60 dark:border-stone-700 dark:text-stone-100 dark:hover:border-stone-500 dark:hover:text-[#6f8200]"
           >
             {unsubscribeStatus === "submitting" ? "removing…" : "unsubscribe"}
           </button>
         </div>
         {unsubscribeMessage && (
-          <p role="status" className={`mt-3 text-xs ${unsubscribeStatus === "error" ? "text-red-700 dark:text-red-400" : "text-stone-500"}`}>
+          <p role="status" className={`mt-3 text-xs ${unsubscribeStatus === "error" ? "text-red-700 dark:text-red-400" : "text-stone-450"}`}>
             {unsubscribeMessage}
           </p>
         )}

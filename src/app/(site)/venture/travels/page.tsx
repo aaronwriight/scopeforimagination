@@ -23,7 +23,7 @@ export default function VentureTravelsPage() {
           <Link
             key={destination.slug}
             href={`/venture/travels/${destination.slug}`}
-            className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-baseline gap-3 border-b border-stone-300 py-4 text-stone-700 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-300"
+            className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-baseline gap-3 border-b border-stone-300 py-4 text-stone-900 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-100"
           >
             <span className="text-xs tabular-nums text-stone-400">{String(index + 1).padStart(2, "0")}</span>
             <span>

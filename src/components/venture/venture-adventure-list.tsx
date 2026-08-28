@@ -117,22 +117,22 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
               </span>
             </div>
             {item.entry && item.time && item.records[0]?.date ? (
-              <p className="mt-1 text-xs leading-6 text-stone-450 dark:text-stone-400">
+              <p className="mt-1 text-xs leading-6 text-stone-450">
                 <time dateTime={`${item.records[0].date}T${item.time}`}>
                   {formatAdventureDate(item.records[0].date)} • {item.time}
                 </time>{" "}
                 • {item.location} • {item.entry}
               </p>
             ) : (
-              <p className="mt-1 text-xs leading-6 text-stone-450 dark:text-stone-400">
+              <p className="mt-1 text-xs leading-6 text-stone-450">
                 <span className="text-stone-500">{item.location}</span> · {dateSummary(item)}
               </p>
             )}
-            <p className="mt-0.5 text-xs leading-6 text-stone-450 dark:text-stone-400">
+            <p className="mt-0.5 text-xs leading-6 text-stone-450">
               trip: {trips.length > 0 ? trips.join(" · ") : "to add"}
             </p>
             <MusicTagline music={item.music} className="mt-1" />
-            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-450 dark:text-stone-400">{item.excerpt}</p>}
+            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-450">{item.excerpt}</p>}
             {journalHrefs.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f8200]">
                 {journalHrefs.map((journalHref, index) => (
@@ -202,18 +202,18 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
   return (
     <div>
       <div className="mb-10 grid gap-3 border-y border-stone-300 py-4 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-end dark:border-stone-700">
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           organize index by
           <select
             value={organizeBy}
             onChange={(event) => setOrganizeBy(event.target.value as OrganizeBy)}
-            className="mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-700 outline-none focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
+            className="mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-900 outline-none focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
           >
             <option value="type">peak / park / travels</option>
             <option value="trip">trip</option>
           </select>
         </label>
-        <p className="m-0 text-xs text-stone-500 sm:text-right">
+        <p className="m-0 text-xs text-stone-450 sm:text-right">
           {items.length} {items.length === 1 ? "place" : "places"} · repeated ascents and visits stay together
         </p>
       </div>

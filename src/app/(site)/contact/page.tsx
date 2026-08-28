@@ -24,7 +24,7 @@ export default function ContactPage() {
         <div className="min-w-0 space-y-3 leading-relaxed sm:-translate-y-1">
           <p className="font-serif text-sm lowercase tracking-widest text-stone-900 dark:text-stone-100">aaron wright</p>
           <p className="text-xs text-stone-500">cognitive scientist, artist</p>
-          <p className="text-xs leading-6 tracking-wider text-stone-500">
+          <p className="text-xs leading-6 tracking-wider text-stone-450">
             cambridge, ma / providence, ri
           </p>
           <p className="text-xs lowercase tracking-wider">
@@ -35,7 +35,7 @@ export default function ContactPage() {
         </div>
       </div>
 
-      <p className="max-w-3xl text-stone-500">
+      <p className="max-w-3xl text-stone-900 dark:text-stone-100">
         You can learn more about me and the work I do in a variety of places on this site or elsewhere. Feel free to reach out about my communities,
         my research, creative efforts, or just to have a chat! Looking forward to connecting! :)
       </p>
@@ -45,7 +45,7 @@ export default function ContactPage() {
           <h2 className="font-serif text-sm font-normal lowercase tracking-widest text-stone-900 dark:text-stone-100">science</h2>
 
           <div className="mt-5 space-y-2">
-            <p className="font-serif text-sm text-stone-700 dark:text-stone-300">
+            <p className="font-serif text-sm text-stone-900 dark:text-stone-100">
               Lab Manager @ Brown Cognitive &amp; Psychological Sciences {"{PEAC lab}"} 🧠
             </p>
           </div>
@@ -67,7 +67,7 @@ export default function ContactPage() {
 
         <section className="border-t border-stone-300 py-7 dark:border-stone-700 sm:border-l sm:border-t-0 sm:pl-8">
           <h2 className="font-serif text-sm font-normal lowercase tracking-widest text-stone-900 dark:text-stone-100">photography &amp; creative</h2>
-          <p className="mt-5 font-serif text-sm text-stone-700 dark:text-stone-300">frame it wright photography, scope for imagination</p>
+          <p className="mt-5 font-serif text-sm text-stone-900 dark:text-stone-100">frame it wright photography, scope for imagination</p>
           <p className="mt-5 text-xs leading-6 text-stone-500">Photography, bookings, creative collaborations, and other musings.</p>
           <p className="mt-5 font-serif text-sm">
             <Link href="mailto:frameitwright@gmail.com" className="text-[#6f8200]">frameitwright@gmail.com</Link>

@@ -1996,6 +1996,7 @@ Centered *text*.
                 preview_html,
             )
             self.assertIn("--secondary: #8f8883", preview_html)
+            self.assertIn("--auxiliary: #a8a29e", preview_html)
             self.assertIn(
                 ".music-symbol { display: inline-flex; align-items: baseline; gap: .25rem;",
                 preview_html,

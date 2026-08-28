@@ -309,7 +309,11 @@ export function Northeast115Map({
           </defs>
 
           <g transform={mapTransform.toString()}>
-            <g clipPath="url(#northeast-states-clip)" aria-label="Esri World Hillshade terrain relief">
+            <g
+              className="venture-terrain-layer"
+              clipPath="url(#northeast-states-clip)"
+              aria-label="Esri World Hillshade terrain relief"
+            >
               {terrainTiles.map((tile) => (
                 <image
                   key={tile.id}
@@ -320,7 +324,6 @@ export function Northeast115Map({
                   height={tile.height}
                   preserveAspectRatio="none"
                   pointerEvents="none"
-                  className="venture-terrain-tile"
                 />
               ))}
             </g>
@@ -354,7 +357,7 @@ export function Northeast115Map({
                   key={String(state.id ?? index)}
                   d={path(state) ?? undefined}
                   fill="none"
-                  stroke="var(--venture-map-border)"
+                  stroke="var(--venture-map-state-border)"
                   strokeWidth={1}
                   vectorEffect="non-scaling-stroke"
                   pointerEvents="none"
@@ -428,13 +431,13 @@ export function Northeast115Map({
             </g>
           </g>
         </svg>
-        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300" aria-label="Map controls">
+        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-900 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-100" aria-label="Map controls">
           <button type="button" className="h-9 w-9 border-r border-stone-300 text-base hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
           <button type="button" className="h-9 w-9 border-r border-stone-300 text-base hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
           <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest hover:bg-stone-100 dark:hover:bg-stone-800" onClick={() => controlMap("reset")}>reset</button>
         </div>
       </div>
-      <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-500">
+      <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-400">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-[#859900]" aria-hidden="true" />
           climbed
@@ -450,7 +453,7 @@ export function Northeast115Map({
           Northeast 115 ranges
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-px w-4 bg-stone-300" aria-hidden="true" />
+          <span className="h-px w-4 bg-stone-300 dark:bg-stone-450" aria-hidden="true" />
           state boundaries
         </span>
         <a href={hillshadeServiceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
@@ -520,7 +523,7 @@ export function Northeast115Index({
   );
 
   const controlClassName =
-    "mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-700 outline-none transition-colors focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300";
+    "mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-900 outline-none transition-colors focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100";
   const controlsAreDefault =
     state === "all" &&
     range === "all" &&
@@ -539,7 +542,7 @@ export function Northeast115Index({
       <Northeast115Map peaks={filteredPeaks} rangeAreas={filteredRangeAreas} />
 
       <div className="not-prose mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           state
           <select value={state} onChange={(event) => setState(event.target.value)} className={controlClassName}>
             <option value="all">all states</option>
@@ -548,7 +551,7 @@ export function Northeast115Index({
             ))}
           </select>
         </label>
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           range
           <select value={range} onChange={(event) => setRange(event.target.value)} className={controlClassName}>
             <option value="all">all ranges</option>
@@ -557,7 +560,7 @@ export function Northeast115Index({
             ))}
           </select>
         </label>
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           completion
           <select
             value={completion}
@@ -569,7 +572,7 @@ export function Northeast115Index({
             <option value="not-completed">not completed</option>
           </select>
         </label>
-        <label className="text-[0.65rem] lowercase tracking-widest text-stone-500">
+        <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           sort
           <select
             value={sortOption}
@@ -596,7 +599,7 @@ export function Northeast115Index({
       </div>
 
       <p
-        className="not-prose mt-4 flex items-center justify-between gap-4 text-xs tabular-nums text-stone-500"
+        className="not-prose mt-4 flex items-center justify-between gap-4 text-xs tabular-nums text-stone-450"
         aria-live="polite"
       >
         <span>{visiblePeaks.length} {visiblePeaks.length === 1 ? "peak" : "peaks"}</span>
@@ -608,7 +611,7 @@ export function Northeast115Index({
           <Link
             key={peak.slug}
             href={`/venture/trails/${peak.slug}`}
-            className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-stone-300 py-4 text-stone-700 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-300"
+            className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-stone-300 py-4 text-stone-900 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-100"
             style={{ textDecoration: "none" }}
           >
             <span className="text-xs tabular-nums text-stone-400">{String(peak.rank).padStart(3, "0")}</span>
@@ -618,7 +621,7 @@ export function Northeast115Index({
                 {peak.range} · {peak.stateAbbreviation}
               </span>
             </span>
-            <span className="flex items-center gap-3 text-xs tabular-nums text-stone-500">
+            <span className="flex items-center gap-3 text-xs tabular-nums text-stone-450">
               <span>{peak.elevationFeet.toLocaleString()} ft</span>
               <CompletionStatus
                 complete={peak.completed}

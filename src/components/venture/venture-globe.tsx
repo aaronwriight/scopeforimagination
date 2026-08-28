@@ -396,18 +396,18 @@ export function VentureGlobe({
           tabIndex={0}
           aria-label="Interactive globe of Venture places. Drag or use arrow keys to rotate, scroll or use plus and minus to zoom, then select a marker to open its entry."
         />
-        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300" aria-label="Map controls">
+        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-900 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-100" aria-label="Map controls">
           <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
           <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
           <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest no-underline hover:bg-stone-100 dark:hover:bg-stone-800" onClick={() => controlMap("reset")}>reset</button>
         </div>
         {entries.length === 0 && (
-          <p className="pointer-events-none absolute inset-x-6 bottom-5 m-0 text-center font-serif text-xs italic text-stone-500">
+          <p className="pointer-events-none absolute inset-x-6 bottom-5 m-0 text-center font-serif text-xs italic text-stone-400">
             adventures will surface here as entries are added
           </p>
         )}
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-center text-xs text-stone-500">
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-center text-xs text-stone-400">
         <span>drag to rotate · scroll or use controls to zoom · select a marker to open its page</span>
         {countries.length > 0 && (
           <span className="inline-flex items-center gap-1.5">

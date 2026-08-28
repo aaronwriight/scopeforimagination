@@ -90,7 +90,7 @@ export function TopicDetails({
         <strong>
           <em>{title}</em>
         </strong>{" "}
-        <em className="text-stone-500">|</em>{" "}
+        <em className="text-stone-400">|</em>{" "}
         <span className="text-[#6f8200] group-hover:underline">
           <em>{question}</em>
         </span>

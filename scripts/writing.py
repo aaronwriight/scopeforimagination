@@ -2559,7 +2559,7 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
   <meta name="robots" content="noindex,nofollow" />
   <title>{subtitle} · private writing preview</title>
   <style>
-    :root {{ color-scheme: light; --ink: #292524; --muted: #78716c; --secondary: #8f8883; --line: #d6d3d1; --green: #6f8200; }}
+    :root {{ color-scheme: light; --ink: #1c1917; --muted: #78716c; --secondary: #8f8883; --auxiliary: #a8a29e; --line: #d6d3d1; --green: #6f8200; }}
     * {{ box-sizing: border-box; }}
     body {{ margin: 0; background: #fff; color: var(--ink); font-family: Georgia, "Times New Roman", serif; }}
     main {{ width: min(100% - 3rem, 48rem); margin: 0 auto; padding: 4rem 0 7rem; }}
@@ -2579,7 +2579,7 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     article p, article ul, article ol, article blockquote {{ margin: 1.15rem 0; }}
     article img {{ display: block; width: 100%; height: auto; margin: 2.5rem 0; }}
     article figure {{ margin: 2.5rem 0; }} article figure img {{ margin: 0; }}
-    article figcaption {{ margin-top: .65rem; color: var(--muted); font-size: .78rem; font-style: italic; text-align: center; }}
+    article figcaption {{ margin-top: .65rem; color: var(--auxiliary); font-size: .78rem; font-style: italic; text-align: center; }}
     article blockquote {{ border-left: 2px solid var(--line); color: #57534e; padding-left: 1.25rem; }}
     article .entry-centered {{ text-align: center; }}
     article .entry-callout {{ border: 1px solid var(--line); margin: 2rem 0; padding: 1rem 1.25rem; }}

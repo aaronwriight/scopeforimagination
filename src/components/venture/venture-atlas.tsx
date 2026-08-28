@@ -72,13 +72,13 @@ export function VentureAtlas({
               className={`cursor-pointer border-t-2 pt-3 text-left transition-[color,border-color,opacity] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#859900] ${
                 active
                   ? "border-[#859900] text-[#6f8200] opacity-100"
-                  : "border-stone-300 text-stone-500 opacity-80 hover:border-stone-400 hover:text-stone-700 hover:opacity-100 dark:border-stone-700 dark:text-stone-400 dark:hover:text-stone-300"
+                  : "border-stone-300 text-stone-500 opacity-80 hover:border-stone-400 hover:text-stone-900 hover:opacity-100 dark:border-stone-700 dark:text-stone-400 dark:hover:text-stone-100"
               }`}
             >
               <span className="block text-[0.68rem] lowercase tracking-widest">
                 {atlasView.label}
               </span>
-              <span className={`mt-2 hidden font-serif text-xs sm:block ${active ? "text-stone-600 dark:text-stone-400" : "text-stone-500"}`}>
+              <span className="mt-2 hidden font-serif text-xs text-stone-500 sm:block">
                 {atlasView.description}
               </span>
             </button>

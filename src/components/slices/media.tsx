@@ -14,7 +14,7 @@ function Media({ content }: { content: PageContent }) {
         sizes="(max-width: 768px) 80vw, (max-width: 1200px) 60vw"
       />
       {content?.caption ? (
-        <p className="mt-2 font-mono text-sm text-gray-400 dark:text-gray-500">
+        <p className="mt-2 font-mono text-sm text-stone-400">
           {content.caption}
         </p>
       ) : null}

@@ -64,29 +64,29 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
 
         <dl className="grid gap-x-8 gap-y-5 border-b border-stone-300 py-7 text-sm sm:grid-cols-2 lg:grid-cols-3 dark:border-stone-700">
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">visits</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">{park.visits.length}</dd>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">visits</dt>
+            <dd className="mt-1 font-serif text-stone-450">{park.visits.length}</dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">date first visit</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">date first visit</dt>
+            <dd className="mt-1 font-serif text-stone-450">
               {firstVisitDate ? formatVisitDate(firstVisitDate) : park.visited ? "date pending" : "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">no. visited</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">no. visited</dt>
+            <dd className="mt-1 font-serif text-stone-450">
               {park.visitNumber === null ? pendingOrEmpty : formatOrdinal(park.visitNumber)}
             </dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">trip</dt>
-            <dd className="mt-1 font-serif text-stone-800 dark:text-stone-200">
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">trip</dt>
+            <dd className="mt-1 font-serif text-stone-450">
               {trips.length > 0 ? trips.join(" · ") : park.visited ? "trip pending" : "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-500">source</dt>
+            <dt className="text-[0.65rem] lowercase tracking-widest text-stone-400">source</dt>
             <dd className="mt-1 font-serif">
               <a href={park.sourceUrl} target="_blank" rel="noreferrer" className="text-[#6f8200]">
                 official NPS page ↗
@@ -96,7 +96,7 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
         </dl>
 
         <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">field notes</h2>
+          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-900 dark:text-stone-100">field notes</h2>
           {park.visits.length === 0 ? (
             <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
               Field notes will begin with the first visit.
@@ -110,20 +110,20 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
                   </h3>
                   <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">date</dt>
-                      <dd className="mt-1 font-serif text-stone-700 dark:text-stone-300">
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">date</dt>
+                      <dd className="mt-1 font-serif text-stone-450">
                         {formatVisitDate(visit.date)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">trip</dt>
-                      <dd className="mt-1 font-serif text-stone-700 dark:text-stone-300">
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">trip</dt>
+                      <dd className="mt-1 font-serif text-stone-450">
                         {visit.trip ?? "trip pending"}
                       </dd>
                     </div>
                   </dl>
                   {visit.fieldNote && (
-                    <p className="mt-4 max-w-3xl font-serif text-sm leading-7 text-stone-700 dark:text-stone-300">
+                    <p className="mt-4 max-w-3xl font-serif text-sm leading-7 text-stone-900 dark:text-stone-100">
                       {visit.fieldNote}
                     </p>
                   )}
@@ -134,7 +134,7 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
         </section>
 
         <section className="mt-10">
-          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">journal entries</h2>
+          <h2 className="text-xs font-medium lowercase tracking-widest text-stone-900 dark:text-stone-100">journal entries</h2>
           {linkedVisits.length === 0 ? (
             <p className="mt-5 border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">
               No journal entry linked yet.
@@ -145,7 +145,7 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
                 <Link
                   key={`${visit.entrySlug}-${index}`}
                   href={`/venture/${visit.entrySlug}`}
-                  className="flex items-baseline justify-between gap-4 border-b border-stone-300 py-5 font-serif text-sm text-stone-700 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-300"
+                  className="flex items-baseline justify-between gap-4 border-b border-stone-300 py-5 font-serif text-sm text-stone-900 transition-colors hover:text-[#6f8200] dark:border-stone-700 dark:text-stone-100"
                 >
                   <span>{formatOccurrence(index + 1, "visit")}</span>
                   <span className="text-xs text-[#6f8200]">read the journal entry →</span>

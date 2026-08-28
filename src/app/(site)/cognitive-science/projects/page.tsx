@@ -53,7 +53,7 @@ export default function CognitiveScienceProjectsPage() {
                   <strong>{project.title}</strong>
                 </Link>
                 <br />
-                <span className="text-stone-600 dark:text-stone-400">{project.description}</span>
+                <span className="text-stone-500">{project.description}</span>
               </li>
             ))}
           </ul>

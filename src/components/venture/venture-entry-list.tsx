@@ -22,14 +22,14 @@ function EntryRows({ entries }: { entries: VentureEntry[] }) {
           <h3 className="font-serif text-lg font-normal leading-tight text-stone-900 dark:text-stone-100">
             <Link href={`/venture/${entry.slug}`}>{entry.subtitle}</Link>
           </h3>
-          <p className="mt-1 text-xs text-stone-450 dark:text-stone-400">
+          <p className="mt-1 text-xs text-stone-450">
             <time dateTime={`${entry.date}T${entry.time}`}>
               {formatVentureHeaderDate(entry.date)} • {entry.time}
             </time>{" "}
             • {entry.location} • {entry.entry}
           </p>
           <MusicTagline music={entry.music} className="mt-1" />
-          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-450 dark:text-stone-400">{entry.excerpt}</p>
+          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-450">{entry.excerpt}</p>
         </article>
       ))}
     </div>
