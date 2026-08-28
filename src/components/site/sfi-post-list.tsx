@@ -16,7 +16,7 @@ function PostRows({ posts }: { posts: SfiPost[] }) {
         >
           <SfiPostHeader post={post} href={`/scope-for-imagination/${post.entry}`} />
           {post.excerpt && (
-            <p className="m-0 max-w-sm font-serif text-xs italic leading-5 text-stone-500 dark:text-stone-400 lg:justify-self-end">
+            <p className="m-0 max-w-sm font-serif text-xs italic leading-5 text-stone-500 lg:justify-self-end">
               {post.excerpt}
             </p>
           )}

@@ -1995,6 +1995,10 @@ Centered *text*.
                 'class="music-symbol" aria-hidden="true">♪</span>',
                 preview_html,
             )
+            self.assertIn(
+                ".music-symbol { margin-right: .4rem; color: inherit;",
+                preview_html,
+            )
             self.assertIn('<li style="color: #f4a825">sfi</li>', preview_html)
             self.assertIn(
                 '<li style="color: var(--green)">musings</li>', preview_html

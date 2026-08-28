@@ -17,7 +17,7 @@ export function MusicTagline({
 
   return (
     <p className={`text-xs leading-6 text-stone-500 ${className}`}>
-      <span aria-hidden="true" className="mr-1.5 text-[0.7rem] text-stone-400">
+      <span aria-hidden="true" className="mr-1.5 text-[0.7rem]">
         ♪
       </span>
       {music.url ? (
@@ -25,7 +25,7 @@ export function MusicTagline({
           href={music.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-stone-500 transition-colors hover:text-[#6f8200]"
+          className="text-inherit transition-colors hover:text-[#6f8200]"
           aria-label={`${music.title} by ${music.artist} (opens in a new tab)`}
         >
           {credit}

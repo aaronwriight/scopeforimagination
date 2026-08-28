@@ -16,31 +16,29 @@ export function SfiPostHeader({
 }) {
   return (
     <header className={className}>
-      {large ? (
-        <h1 className="font-serif text-2xl font-normal leading-tight text-stone-900 dark:text-stone-100 sm:text-3xl">{post.title}</h1>
+      {href ? (
+        <Link href={href} className="group block">
+          <h3 className="font-serif text-lg font-normal leading-snug text-stone-900 transition-colors group-hover:text-[#6f8200] group-focus-visible:text-[#6f8200] dark:text-stone-100 dark:group-hover:text-[#6f8200] dark:group-focus-visible:text-[#6f8200]">
+            {post.title}
+          </h3>
+          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500 transition-colors group-hover:text-[#6f8200] group-focus-visible:text-[#6f8200]">
+            {post.subtitle}
+          </p>
+        </Link>
       ) : (
-        <h3 className="font-serif text-lg font-normal leading-snug text-stone-900 dark:text-stone-100">
-          {href ? (
-            <Link href={href} className="hover:text-[#6f8200]">
-              {post.title}
-            </Link>
+        <>
+          {large ? (
+            <h1 className="font-serif text-2xl font-normal leading-tight text-stone-900 dark:text-stone-100 sm:text-3xl">{post.title}</h1>
           ) : (
-            post.title
+            <h3 className="font-serif text-lg font-normal leading-snug text-stone-900 dark:text-stone-100">{post.title}</h3>
           )}
-        </h3>
+          <p className={`mt-2 font-serif italic leading-6 text-stone-500 ${large ? "text-base sm:text-lg" : "text-sm"}`}>
+            {post.subtitle}
+          </p>
+        </>
       )}
 
       <div className="mt-2 space-y-2">
-        {href ? (
-          <p className={`font-serif italic leading-6 text-stone-500 ${large ? "text-base sm:text-lg" : "text-sm"}`}>
-            <Link href={href} className="transition-colors hover:text-[#6f8200] focus-visible:text-[#6f8200]">
-              {post.subtitle}
-            </Link>
-          </p>
-        ) : (
-          <p className={`font-serif italic leading-6 text-stone-500 ${large ? "text-base sm:text-lg" : "text-sm"}`}>{post.subtitle}</p>
-        )}
-
         <p className="text-xs leading-6 text-stone-500">
           <time dateTime={`${post.date}T${post.time}`}>
             {formatSfiHeaderDate(post.date)} • {post.time}
