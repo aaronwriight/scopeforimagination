@@ -2544,7 +2544,7 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     music_html = (
         music.replace(
             "<p>",
-            '<p class="music"><span class="music-symbol" aria-hidden="true">♪</span>',
+            '<p class="music"><span class="music-symbol" aria-hidden="true">♪ •</span>',
             1,
         )
         if music
@@ -2559,7 +2559,7 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
   <meta name="robots" content="noindex,nofollow" />
   <title>{subtitle} · private writing preview</title>
   <style>
-    :root {{ color-scheme: light; --ink: #292524; --muted: #78716c; --line: #d6d3d1; --green: #6f8200; }}
+    :root {{ color-scheme: light; --ink: #292524; --muted: #78716c; --secondary: #a8a29e; --line: #d6d3d1; --green: #6f8200; }}
     * {{ box-sizing: border-box; }}
     body {{ margin: 0; background: #fff; color: var(--ink); font-family: Georgia, "Times New Roman", serif; }}
     main {{ width: min(100% - 3rem, 48rem); margin: 0 auto; padding: 4rem 0 7rem; }}
@@ -2567,11 +2567,11 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     header {{ border-bottom: 1px solid var(--line); padding-bottom: 1.75rem; }}
     h1 {{ margin: 0; font-size: clamp(1.5rem, 4vw, 1.875rem); font-weight: 400; line-height: 1.2; }}
     .subtitle {{ margin: .75rem 0 0; color: var(--muted); font-size: 1.125rem; font-style: italic; line-height: 1.5; }}
-    .details, .music, .trip {{ margin: .55rem 0 0; color: var(--muted); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .details, .music, .trip {{ margin: .55rem 0 0; color: var(--secondary); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
     .music-symbol {{ margin-right: .4rem; color: inherit; font-size: .7rem; }}
     .music a {{ color: inherit; text-decoration-thickness: 1px; text-underline-offset: .16em; }}
     article a {{ color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .16em; }}
-    .excerpt {{ margin: .65rem 0 0; color: var(--muted); font-size: .875rem; font-style: italic; line-height: 1.6; }}
+    .excerpt {{ margin: .65rem 0 0; color: var(--secondary); font-size: .875rem; font-style: italic; line-height: 1.6; }}
     .labels {{ display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .6rem 0 0; padding: 0; list-style: none; color: var(--green); font: .65rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .12em; text-transform: lowercase; }}
     article {{ margin-top: 2.5rem; font-size: .92rem; line-height: 1.85; }}
     article h2, article h3, article h4, article h5, article h6 {{ margin: 2.4rem 0 .8rem; font-weight: 400; line-height: 1.35; }}

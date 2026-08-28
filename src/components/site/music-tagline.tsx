@@ -16,9 +16,9 @@ export function MusicTagline({
   );
 
   return (
-    <p className={`text-xs leading-6 text-stone-500 ${className}`}>
+    <p className={`text-xs leading-6 text-stone-400 ${className}`}>
       <span aria-hidden="true" className="mr-1.5 text-[0.7rem]">
-        ♪
+        ♪ •
       </span>
       {music.url ? (
         <a

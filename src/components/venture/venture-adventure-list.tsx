@@ -77,20 +77,20 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
               </span>
             </div>
             {item.entry && item.time && item.records[0]?.date ? (
-              <p className="mt-1 text-xs leading-6 text-stone-500">
+              <p className="mt-1 text-xs leading-6 text-stone-400">
                 <time dateTime={`${item.records[0].date}T${item.time}`}>
                   {formatAdventureDate(item.records[0].date)} • {item.time}
                 </time>{" "}
                 • {item.location} • {item.entry}
               </p>
             ) : (
-              <p className="mt-1 text-xs leading-6 text-stone-500">{item.location} · {dateSummary(item)}</p>
+              <p className="mt-1 text-xs leading-6 text-stone-400">{item.location} · {dateSummary(item)}</p>
             )}
-            <p className="mt-0.5 text-xs leading-6 text-stone-500">
+            <p className="mt-0.5 text-xs leading-6 text-stone-400">
               trip: {trips.length > 0 ? trips.join(" · ") : "to add"}
             </p>
             <MusicTagline music={item.music} className="mt-1" />
-            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{item.excerpt}</p>}
+            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-400">{item.excerpt}</p>}
             {journalHrefs.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f8200]">
                 {journalHrefs.map((journalHref, index) => (

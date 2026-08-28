@@ -1992,9 +1992,10 @@ Centered *text*.
                 preview_html.index('<ul class="labels">'),
             )
             self.assertIn(
-                'class="music-symbol" aria-hidden="true">♪</span>',
+                'class="music-symbol" aria-hidden="true">♪ •</span>',
                 preview_html,
             )
+            self.assertIn("--secondary: #a8a29e", preview_html)
             self.assertIn(
                 ".music-symbol { margin-right: .4rem; color: inherit;",
                 preview_html,
