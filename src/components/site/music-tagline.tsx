@@ -3,11 +3,9 @@ import type { MusicCredit } from "@/lib/music-credit";
 export function MusicTagline({
   music,
   className = "",
-  inline = false,
 }: {
   music?: MusicCredit | null;
   className?: string;
-  inline?: boolean;
 }) {
   if (!music) return null;
 
@@ -17,10 +15,11 @@ export function MusicTagline({
     </>
   );
 
-  const Tag = inline ? "span" : "p";
-
   return (
-    <Tag className={`text-xs leading-6 text-stone-500 ${className}`}>
+    <p className={`text-xs leading-6 text-stone-500 ${className}`}>
+      <span aria-hidden="true" className="mr-1.5 text-[0.7rem] text-stone-400">
+        ♪
+      </span>
       {music.url ? (
         <a
           href={music.url}
@@ -34,6 +33,6 @@ export function MusicTagline({
       ) : (
         credit
       )}
-    </Tag>
+    </p>
   );
 }

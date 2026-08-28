@@ -57,33 +57,20 @@ export default async function VentureEntryPage({ params }: { params: Promise<{ s
             <p className="mt-1 text-xs leading-6 text-stone-500">
               trip: {entry.trip ?? "to add"}
             </p>
-            {(entry.collections.length > 0 || entry.tags.length > 0 || entry.music) && (
-              <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                {(entry.collections.length > 0 || entry.tags.length > 0) && (
-                  <ul aria-label="post tags and collections" className="flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest">
-                    {entry.collections.map((collection) => (
-                      <li key={`collection:${collection}`} className="text-[#859900]">
-                        {formatCollection(collection)}
-                      </li>
-                    ))}
-                    {entry.tags.map((tag) => (
-                      <li key={`tag:${tag}`} style={{ color: getSfiTagColor(tag) }}>
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {entry.music && (
-                  <span className="inline-flex min-w-0 items-baseline gap-x-2">
-                    {(entry.collections.length > 0 || entry.tags.length > 0) && (
-                      <span aria-hidden="true" className="text-xs text-stone-400">
-                        •
-                      </span>
-                    )}
-                    <MusicTagline music={entry.music} inline className="normal-case tracking-normal" />
-                  </span>
-                )}
-              </div>
+            <MusicTagline music={entry.music} className="mt-1" />
+            {(entry.collections.length > 0 || entry.tags.length > 0) && (
+              <ul aria-label="post tags and collections" className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] lowercase tracking-widest">
+                {entry.collections.map((collection) => (
+                  <li key={`collection:${collection}`} className="text-[#859900]">
+                    {formatCollection(collection)}
+                  </li>
+                ))}
+                {entry.tags.map((tag) => (
+                  <li key={`tag:${tag}`} style={{ color: getSfiTagColor(tag) }}>
+                    {tag}
+                  </li>
+                ))}
+              </ul>
             )}
             <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500">{entry.excerpt}</p>
           </header>

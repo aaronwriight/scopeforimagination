@@ -2542,28 +2542,15 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
         if excerpt:
             venture_excerpt = f'<p class="excerpt">{html.escape(excerpt)}</p>'
     music_html = (
-        music.replace("<p>", '<span class="music">', 1).replace(
-            "</p>", "</span>", 1
+        music.replace(
+            "<p>",
+            '<p class="music"><span class="music-symbol" aria-hidden="true">♪</span>',
+            1,
         )
         if music
         else ""
     )
     labels_html = f'<ul class="labels">{labels}</ul>' if labels else ""
-    separator_html = (
-        '<span class="metadata-separator" aria-hidden="true">•</span>'
-        if labels_html
-        else ""
-    )
-    music_group = (
-        f'<span class="music-group">{separator_html}{music_html}</span>'
-        if music_html
-        else ""
-    )
-    metadata_line = (
-        f'<div class="metadata-line">{labels_html}{music_group}</div>'
-        if music_html or labels_html
-        else ""
-    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -2581,14 +2568,11 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     h1 {{ margin: 0; font-size: clamp(1.5rem, 4vw, 1.875rem); font-weight: 400; line-height: 1.2; }}
     .subtitle {{ margin: .75rem 0 0; color: var(--muted); font-size: 1.125rem; font-style: italic; line-height: 1.5; }}
     .details, .music, .trip {{ margin: .55rem 0 0; color: var(--muted); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .music-symbol {{ margin-right: .4rem; color: #a8a29e; font-size: .7rem; }}
     .music a {{ color: inherit; text-decoration-thickness: 1px; text-underline-offset: .16em; }}
     article a {{ color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .16em; }}
     .excerpt {{ margin: .65rem 0 0; color: var(--muted); font-size: .875rem; font-style: italic; line-height: 1.6; }}
-    .metadata-line {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .5rem; margin-top: .6rem; }}
-    .music-group {{ display: inline-flex; min-width: 0; align-items: baseline; gap: .5rem; }}
-    .metadata-line .music {{ margin: 0; }}
-    .metadata-separator {{ color: var(--muted); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-    .labels {{ display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: 0; padding: 0; list-style: none; color: var(--green); font: .65rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .12em; text-transform: lowercase; }}
+    .labels {{ display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .6rem 0 0; padding: 0; list-style: none; color: var(--green); font: .65rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .12em; text-transform: lowercase; }}
     article {{ margin-top: 2.5rem; font-size: .92rem; line-height: 1.85; }}
     article h2, article h3, article h4, article h5, article h6 {{ margin: 2.4rem 0 .8rem; font-weight: 400; line-height: 1.35; }}
     article p, article ul, article ol, article blockquote {{ margin: 1.15rem 0; }}
@@ -2609,7 +2593,8 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
       <p class="subtitle">{subtitle}</p>
       <p class="details">{details}</p>
       {venture_trip}
-      {metadata_line}
+      {music_html}
+      {labels_html}
       {venture_excerpt}
     </header>
     <article>{body_html}</article>

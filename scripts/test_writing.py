@@ -1988,11 +1988,11 @@ Centered *text*.
             self.assertIn(str(post.metadata["location"]), preview_html)
             self.assertIn(post.entry, preview_html)
             self.assertLess(
-                preview_html.index('<ul class="labels">'),
                 preview_html.index("Water &amp; Wanderlust"),
+                preview_html.index('<ul class="labels">'),
             )
             self.assertIn(
-                'class="metadata-separator" aria-hidden="true">•</span>',
+                'class="music-symbol" aria-hidden="true">♪</span>',
                 preview_html,
             )
             self.assertIn('<li style="color: #f4a825">sfi</li>', preview_html)
