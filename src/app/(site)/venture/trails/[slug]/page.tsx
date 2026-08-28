@@ -39,7 +39,11 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
   const { slug } = await params;
   const peak = getNortheastPeak(slug);
   if (!peak) notFound();
-  const linkedAscents = peak.ascents.filter(
+  const ascentsNewestFirst = [...peak.ascents].sort((first, second) => {
+    const chronology = (second.date ?? "").localeCompare(first.date ?? "");
+    return chronology !== 0 ? chronology : second.ordinal - first.ordinal;
+  });
+  const linkedAscents = ascentsNewestFirst.filter(
     (ascent): ascent is TrailAscent & { entrySlug: string } => ascent.entrySlug !== null,
   );
   const firstAscent = peak.ascents.find((ascent) => ascent.ordinal === 1);
@@ -123,18 +127,18 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
             </p>
           ) : (
             <div className="mt-5 border-t border-stone-300 dark:border-stone-700">
-              {peak.ascents.map((ascent) => (
+              {ascentsNewestFirst.map((ascent) => (
                 <div key={ascent.ordinal} className="border-b border-stone-300 py-6 dark:border-stone-700">
                   <p className="text-[0.65rem] lowercase tracking-widest text-[#6f8200]">
                     {formatOccurrence(ascent.ordinal, "ascent")}
                   </p>
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
-                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">date</dt>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">date</dt>
                       <dd className="mt-1 font-serif text-sm text-stone-500">{formatAscentDate(ascent.date)}</dd>
                     </div>
                     <div>
-                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-400">trip</dt>
+                      <dt className="text-[0.62rem] lowercase tracking-widest text-stone-500">trip</dt>
                       <dd className="mt-1 font-serif text-sm text-stone-500">{ascent.trip ?? "trip pending"}</dd>
                     </div>
                   </dl>

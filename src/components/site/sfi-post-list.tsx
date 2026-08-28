@@ -2,6 +2,11 @@ import type { SfiPost } from "@/lib/sfi-posts";
 import { formatSfiMonth, getSfiYears } from "@/lib/sfi-posts";
 import { SfiPostHeader } from "@/components/site/sfi-post-header";
 
+function comparePostsNewest(first: SfiPost, second: SfiPost): number {
+  const chronology = `${second.date}T${second.time}`.localeCompare(`${first.date}T${first.time}`);
+  return chronology !== 0 ? chronology : second.entry.localeCompare(first.entry);
+}
+
 function PostRows({ posts }: { posts: SfiPost[] }) {
   if (posts.length === 0) {
     return <p className="border-t border-stone-300 pt-5 font-serif text-sm italic text-stone-500 dark:border-stone-700">No entries yet.</p>;
@@ -9,14 +14,14 @@ function PostRows({ posts }: { posts: SfiPost[] }) {
 
   return (
     <div className="border-t border-stone-300 dark:border-stone-700">
-      {posts.map((post) => (
+      {[...posts].sort(comparePostsNewest).map((post) => (
         <article
           key={post.entry}
           className="grid gap-x-10 gap-y-4 border-b border-stone-300 py-6 dark:border-stone-700 lg:grid-cols-[minmax(0,1.1fr)_minmax(15rem,0.9fr)] lg:items-end"
         >
           <SfiPostHeader post={post} href={`/scope-for-imagination/${post.entry}`} />
           {post.excerpt && (
-            <p className="m-0 max-w-sm font-serif text-xs italic leading-5 text-stone-400 lg:justify-self-end">
+            <p className="m-0 max-w-sm font-serif text-xs italic leading-5 text-stone-450 dark:text-stone-400 lg:justify-self-end">
               {post.excerpt}
             </p>
           )}

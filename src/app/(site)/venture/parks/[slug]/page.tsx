@@ -36,8 +36,13 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
   const park = getNationalPark(slug);
   if (!park) notFound();
   const displayName = formatNationalParkName(park.name);
-  const linkedVisits = park.visits
+  const visitsNewestFirst = park.visits
     .map((visit, index) => ({ visit, index }))
+    .sort((first, second) => {
+      const chronology = (second.visit.date ?? "").localeCompare(first.visit.date ?? "");
+      return chronology !== 0 ? chronology : second.index - first.index;
+    });
+  const linkedVisits = visitsNewestFirst
     .filter(({ visit }) => Boolean(visit.entrySlug));
   const trips = [...new Set(park.visits.flatMap((visit) => (visit.trip ? [visit.trip] : [])))];
   const firstVisitDate = park.visits[0]?.date ?? null;
@@ -98,7 +103,7 @@ export default async function VentureParkPage({ params }: { params: Promise<{ sl
             </p>
           ) : (
             <div className="mt-5 border-t border-stone-300 dark:border-stone-700">
-              {park.visits.map((visit, index) => (
+              {visitsNewestFirst.map(({ visit, index }) => (
                 <article key={`${visit.date ?? "visit"}-${index}`} className="border-b border-stone-300 py-6 dark:border-stone-700">
                   <h3 className="m-0 text-[0.65rem] font-normal lowercase tracking-widest text-[#6f8200]">
                     {formatOccurrence(index + 1, "visit")}

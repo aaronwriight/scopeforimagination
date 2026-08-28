@@ -110,15 +110,15 @@ export function VentureGlobe({
     const spherePath = svg
       .append("path")
       .datum(sphere)
-      .attr("fill", "#ffffff")
-      .attr("stroke", "#d6d3d1")
+      .attr("fill", "var(--venture-map-surface)")
+      .attr("stroke", "var(--venture-map-border)")
       .attr("stroke-width", 1.25);
 
     const graticulePath = svg
       .append("path")
       .datum(graticule)
       .attr("fill", "none")
-      .attr("stroke", "#e7e5e4")
+      .attr("stroke", "var(--venture-map-grid)")
       .attr("stroke-width", 0.7);
 
     const countryPaths = svg
@@ -127,9 +127,9 @@ export function VentureGlobe({
       .selectAll("path")
       .data(countryFeatures)
       .join("path")
-      .attr("fill", (country) => highlightedCountryIds.has(String(country.id)) ? markerGreen : "#f4f2ec")
+      .attr("fill", (country) => highlightedCountryIds.has(String(country.id)) ? markerGreen : "var(--venture-map-land)")
       .attr("fill-opacity", (country) => highlightedCountryIds.has(String(country.id)) ? 0.2 : 1)
-      .attr("stroke", (country) => highlightedCountryIds.has(String(country.id)) ? markerGreen : "#d6d3d1")
+      .attr("stroke", (country) => highlightedCountryIds.has(String(country.id)) ? markerGreen : "var(--venture-map-border)")
       .attr("stroke-opacity", (country) => highlightedCountryIds.has(String(country.id)) ? 0.7 : 1)
       .attr("stroke-width", (country) => highlightedCountryIds.has(String(country.id)) ? 1.1 : 0.65);
 
@@ -186,7 +186,7 @@ export function VentureGlobe({
       .attr("class", "transition-[r] group-hover:[r:7px] group-focus:[r:7px]")
       .attr("r", 5)
       .attr("fill", markerGreen)
-      .attr("stroke", "#ffffff")
+      .attr("stroke", "var(--venture-map-marker-outline)")
       .attr("stroke-width", 2.25);
 
     markerLinks
@@ -202,12 +202,13 @@ export function VentureGlobe({
       .append("text")
       .attr(
         "class",
-        "pointer-events-none fill-stone-700 font-serif text-[12px] opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100",
+        "pointer-events-none font-serif text-[12px] opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100",
       )
+      .attr("fill", "var(--venture-map-label)")
       .attr("x", 51)
       .attr("y", -22)
       .attr("paint-order", "stroke")
-      .attr("stroke", "#ffffff")
+      .attr("stroke", "var(--venture-map-halo)")
       .attr("stroke-linejoin", "round")
       .attr("stroke-width", 5)
       .text((entry) => entry.title);
@@ -385,20 +386,20 @@ export function VentureGlobe({
 
   return (
     <div className="not-prose w-full">
-      <div className="relative w-full overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
+      <div className="relative isolate w-full overflow-hidden border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-950">
         <svg
           ref={svgRef}
-          className="block aspect-[56/33] w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none"
+          className="block aspect-[56/33] w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none dark:bg-stone-950"
           viewBox={`0 0 ${width} ${height}`}
           preserveAspectRatio="xMidYMid meet"
           role="application"
           tabIndex={0}
           aria-label="Interactive globe of Venture places. Drag or use arrow keys to rotate, scroll or use plus and minus to zoom, then select a marker to open its entry."
         />
-        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm" aria-label="Map controls">
-          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
-          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
-          <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest no-underline hover:bg-stone-100" onClick={() => controlMap("reset")}>reset</button>
+        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300" aria-label="Map controls">
+          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
+          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
+          <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest no-underline hover:bg-stone-100 dark:hover:bg-stone-800" onClick={() => controlMap("reset")}>reset</button>
         </div>
         {entries.length === 0 && (
           <p className="pointer-events-none absolute inset-x-6 bottom-5 m-0 text-center font-serif text-xs italic text-stone-500">

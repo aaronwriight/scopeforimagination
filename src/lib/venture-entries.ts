@@ -101,7 +101,10 @@ export async function getAllVentureEntries(): Promise<VentureEntry[]> {
 
   return entries
     .filter((entry): entry is VentureEntry => entry !== null)
-    .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+    .sort((a, b) => {
+      const chronology = `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`);
+      return chronology !== 0 ? chronology : b.entry.localeCompare(a.entry);
+    });
 }
 
 export async function getVentureEntry(slug: string): Promise<VentureEntry | null> {

@@ -3,6 +3,11 @@ import { MusicTagline } from "@/components/site/music-tagline";
 import type { VentureEntry } from "@/lib/venture-entries";
 import { formatVentureHeaderDate } from "@/lib/venture-entries";
 
+function compareEntriesNewest(first: VentureEntry, second: VentureEntry): number {
+  const chronology = `${second.date}T${second.time}`.localeCompare(`${first.date}T${first.time}`);
+  return chronology !== 0 ? chronology : second.entry.localeCompare(first.entry);
+}
+
 function formatMonth(date: string): string {
   return new Date(`${date.slice(0, 7)}-01T12:00:00`).toLocaleDateString("en-US", {
     month: "long",
@@ -12,19 +17,19 @@ function formatMonth(date: string): string {
 function EntryRows({ entries }: { entries: VentureEntry[] }) {
   return (
     <div className="border-t border-stone-300 dark:border-stone-700">
-      {entries.map((entry) => (
+      {[...entries].sort(compareEntriesNewest).map((entry) => (
         <article key={entry.slug} className="border-b border-stone-300 py-6 dark:border-stone-700">
           <h3 className="font-serif text-lg font-normal leading-tight text-stone-900 dark:text-stone-100">
             <Link href={`/venture/${entry.slug}`}>{entry.subtitle}</Link>
           </h3>
-          <p className="mt-1 text-xs text-stone-400">
+          <p className="mt-1 text-xs text-stone-450 dark:text-stone-400">
             <time dateTime={`${entry.date}T${entry.time}`}>
               {formatVentureHeaderDate(entry.date)} • {entry.time}
             </time>{" "}
             • {entry.location} • {entry.entry}
           </p>
           <MusicTagline music={entry.music} className="mt-1" />
-          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-400">{entry.excerpt}</p>
+          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-450 dark:text-stone-400">{entry.excerpt}</p>
         </article>
       ))}
     </div>

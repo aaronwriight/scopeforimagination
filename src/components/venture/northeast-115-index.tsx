@@ -275,10 +275,10 @@ export function Northeast115Map({
 
   return (
     <figure className={`not-prose m-0 w-full ${variant === "index" ? "mt-9" : ""}`}>
-      <div className="relative overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
+      <div className="relative isolate overflow-hidden border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-950">
         <svg
           ref={svgRef}
-          className={`block w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none ${variant === "atlas" ? "aspect-[56/33]" : "h-auto"}`}
+          className={`block w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none dark:bg-stone-950 ${variant === "atlas" ? "aspect-[56/33]" : "h-auto"}`}
           viewBox={`0 0 ${mapWidth} ${mapHeight}`}
           role="application"
           tabIndex={0}
@@ -318,10 +318,9 @@ export function Northeast115Map({
                   y={tile.y}
                   width={tile.width}
                   height={tile.height}
-                  opacity={0.52}
                   preserveAspectRatio="none"
                   pointerEvents="none"
-                  style={{ mixBlendMode: "multiply" }}
+                  className="venture-terrain-tile"
                 />
               ))}
             </g>
@@ -355,7 +354,7 @@ export function Northeast115Map({
                   key={String(state.id ?? index)}
                   d={path(state) ?? undefined}
                   fill="none"
-                  stroke="#d6d3d1"
+                  stroke="var(--venture-map-border)"
                   strokeWidth={1}
                   vectorEffect="non-scaling-stroke"
                   pointerEvents="none"
@@ -388,9 +387,9 @@ export function Northeast115Map({
                       <circle r={14} fill="transparent" stroke="none" />
                       <circle
                         r={isActive ? 6.8 : peak.completed ? 5.3 : 2.9}
-                        fill={peak.completed ? markerGreen : "#c9c5bc"}
+                        fill={peak.completed ? markerGreen : "var(--venture-map-muted-marker)"}
                         fillOpacity={peak.completed ? 1 : 0.78}
-                        stroke="#ffffff"
+                        stroke="var(--venture-map-marker-outline)"
                         strokeWidth={peak.completed ? 1.8 : 1}
                         className="transition-[r,fill-opacity]"
                       />
@@ -408,8 +407,8 @@ export function Northeast115Map({
                         x={56 * direction}
                         y={-25}
                         textAnchor={labelExtendsLeft ? "end" : "start"}
-                        fill="#57534e"
-                        stroke="#ffffff"
+                        fill="var(--venture-map-label)"
+                        stroke="var(--venture-map-halo)"
                         strokeWidth={5}
                         strokeLinejoin="round"
                         paintOrder="stroke"
@@ -429,10 +428,10 @@ export function Northeast115Map({
             </g>
           </g>
         </svg>
-        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm" aria-label="Map controls">
-          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base hover:bg-stone-100" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
-          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base hover:bg-stone-100" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
-          <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest hover:bg-stone-100" onClick={() => controlMap("reset")}>reset</button>
+        <div className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300" aria-label="Map controls">
+          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-in")} aria-label="Zoom in">+</button>
+          <button type="button" className="h-9 w-9 border-r border-stone-300 text-base hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800" onClick={() => controlMap("zoom-out")} aria-label="Zoom out">−</button>
+          <button type="button" className="h-9 px-3 text-[0.65rem] lowercase tracking-widest hover:bg-stone-100 dark:hover:bg-stone-800" onClick={() => controlMap("reset")}>reset</button>
         </div>
       </div>
       <figcaption className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.68rem] text-stone-500">

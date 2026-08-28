@@ -4,14 +4,22 @@ import { SanityGuide } from "@/sanity/types/guides";
 import { GuideThumbnail } from "./thumbnail";
 import { SiteMenu } from "@/components/site/site-content";
 
+function sortableGuideDate(guide: SanityGuide): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(guide.date_of_guide ?? "") ? guide.date_of_guide : "";
+}
+
 export default function Guides({ guides }: { guides: SanityGuide[] }) {
-  const dates = guides.map((item) => item.date_of_guide.split("-")[0]);
+  const sortedGuides = [...guides].sort((first, second) => {
+    const chronology = sortableGuideDate(second).localeCompare(sortableGuideDate(first));
+    return chronology !== 0 ? chronology : second._id.localeCompare(first._id);
+  });
+  const dates = sortedGuides.map((item) => sortableGuideDate(item).slice(0, 4) || "undated");
   const uniqeYears = [...new Set(dates)];
   const groupedGuidesByYear: Array<{ year: string; items: SanityGuide[] }> =
     uniqeYears.map((el) => {
       return {
         year: el,
-        items: guides.filter((item) => item.date_of_guide.split("-")[0] === el),
+        items: sortedGuides.filter((item) => (sortableGuideDate(item).slice(0, 4) || "undated") === el),
       };
     });
 

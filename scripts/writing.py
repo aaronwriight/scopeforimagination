@@ -2559,7 +2559,7 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
   <meta name="robots" content="noindex,nofollow" />
   <title>{subtitle} · private writing preview</title>
   <style>
-    :root {{ color-scheme: light; --ink: #292524; --muted: #78716c; --secondary: #a8a29e; --line: #d6d3d1; --green: #6f8200; }}
+    :root {{ color-scheme: light; --ink: #292524; --muted: #78716c; --secondary: #8f8883; --line: #d6d3d1; --green: #6f8200; }}
     * {{ box-sizing: border-box; }}
     body {{ margin: 0; background: #fff; color: var(--ink); font-family: Georgia, "Times New Roman", serif; }}
     main {{ width: min(100% - 3rem, 48rem); margin: 0 auto; padding: 4rem 0 7rem; }}

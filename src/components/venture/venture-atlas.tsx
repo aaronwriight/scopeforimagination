@@ -21,7 +21,7 @@ const atlasViews: readonly Readonly<{
 
 function AtlasMapLoading() {
   return (
-    <div className="flex aspect-[56/33] items-center justify-center border border-stone-200 bg-white font-serif text-xs italic text-stone-400 dark:border-stone-700">
+    <div className="flex aspect-[56/33] items-center justify-center border border-stone-200 bg-white font-serif text-xs italic text-stone-400 dark:border-stone-700 dark:bg-stone-950">
       loading map…
     </div>
   );

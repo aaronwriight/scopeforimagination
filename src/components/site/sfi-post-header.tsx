@@ -39,7 +39,7 @@ export function SfiPostHeader({
       )}
 
       <div className="mt-2 space-y-2">
-        <p className="text-xs leading-6 text-stone-400">
+        <p className="text-xs leading-6 text-stone-450 dark:text-stone-400">
           <time dateTime={`${post.date}T${post.time}`}>
             {formatSfiHeaderDate(post.date)} • {post.time}
           </time>{" "}

@@ -36,7 +36,10 @@ export default function Guide({ guide }: { guide: SanityGuide }) {
   const west = `${dlo}° ${mlo}′ ${Math.round(slo)}″ ${nsewlo} `;
   const north = `${dla}° ${mla}′ ${Math.round(sla)}″ ${nsewla}`;
 
-  let further = related?.future?.concat(related.past || []);
+  const further = [...(related?.future ?? []), ...(related?.past ?? [])].sort((first, second) => {
+    const chronology = (second.date_of_guide ?? "").localeCompare(first.date_of_guide ?? "");
+    return chronology !== 0 ? chronology : second._id.localeCompare(first._id);
+  });
   return (
     <main className="prose prose-stone dark:prose-invert prose-base container mx-auto px-6 py-11">
       <h1 className="m-0 text-sm font-medium antialiased">{title}</h1>
@@ -60,7 +63,7 @@ export default function Guide({ guide }: { guide: SanityGuide }) {
       <section className="mt-20">
         <h3 className="text-sm font-medium">Further</h3>
         <div className="mt-4 grid grid-cols-3 gap-4">
-          {further?.map((item) => {
+          {further.map((item) => {
             return (
               <GuideThumbnail
                 bg={item.palette?.vibrant?.background || "#ccc"}

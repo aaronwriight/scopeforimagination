@@ -31,7 +31,7 @@ export const GUIDE_QUERY = groq`*[_type == "guide" &&  slug.current == $slug]{
     "lqip" : Image.asset->metadata.lqip
 	},
    "related" : {
-      "past" : *[_type == "guide" && slug.current != $slug && _createdAt < ^._createdAt] | order(date_of_guide desc)  {
+      "past" : *[_type == "guide" && slug.current != $slug && _createdAt < ^._createdAt] | order(date_of_guide desc, _createdAt desc)  {
         _id,
        	"title": title,
         "slug": slug.current,
@@ -42,7 +42,7 @@ export const GUIDE_QUERY = groq`*[_type == "guide" &&  slug.current == $slug]{
         "lqip" : hero_image.asset->metadata.lqip
 
       }[0...3],
-      "future" : *[_type == "guide" && slug.current != $slug && _createdAt > ^._createdAt] | order(date_of_guide asc)  {
+      "future" : *[_type == "guide" && slug.current != $slug && _createdAt > ^._createdAt] | order(date_of_guide desc, _createdAt desc)  {
         _id,
        	"title": title,
         "slug": slug.current,
@@ -63,7 +63,7 @@ export const GUIDE_LIST = groq`*[_type == "guide"] | order(_createdAt desc)  {
   "slug": slug.current,
 }`;
 
-export const GUIDE_INDEX_LIST = groq`*[_type == "guide"] | order(date_of_guide desc)  {
+export const GUIDE_INDEX_LIST = groq`*[_type == "guide"] | order(date_of_guide desc, _createdAt desc)  {
   _id,
  	"title": title,
   "slug": slug.current,
@@ -76,7 +76,7 @@ export const GUIDE_INDEX_LIST = groq`*[_type == "guide"] | order(date_of_guide d
   "lqip" : hero_image.asset->metadata.lqip
 }`;
 
-export const getGuideRSSList = groq`*[_type == "guide"]| order(date_of_guide desc)  {
+export const getGuideRSSList = groq`*[_type == "guide"]| order(date_of_guide desc, _createdAt desc)  {
   _id,
  	"title": title,
   "slug": slug.current,

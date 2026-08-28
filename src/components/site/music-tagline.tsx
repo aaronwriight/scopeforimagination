@@ -17,7 +17,7 @@ export function MusicTagline({
 
   return (
     <p
-      className={`flex flex-wrap items-baseline gap-x-1 text-xs leading-6 text-stone-400 ${className}`}
+      className={`flex flex-wrap items-baseline gap-x-1 text-xs leading-6 text-stone-450 dark:text-stone-400 ${className}`}
     >
       <span aria-hidden="true" className="text-[0.7rem]">
         ♪

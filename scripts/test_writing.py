@@ -1995,7 +1995,7 @@ Centered *text*.
                 'class="music-symbol" aria-hidden="true"><span>♪</span><span>•</span></span>',
                 preview_html,
             )
-            self.assertIn("--secondary: #a8a29e", preview_html)
+            self.assertIn("--secondary: #8f8883", preview_html)
             self.assertIn(
                 ".music-symbol { display: inline-flex; align-items: baseline; gap: .25rem;",
                 preview_html,

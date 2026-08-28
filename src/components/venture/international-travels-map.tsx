@@ -111,14 +111,14 @@ export function InternationalTravelsMap({
       .append("path")
       .datum(sphere)
       .attr("fill", "transparent")
-      .attr("stroke", "#d6d3d1")
+      .attr("stroke", "var(--venture-map-border)")
       .attr("stroke-width", 1.25);
 
     const graticulePath = svg
       .append("path")
       .datum(graticule)
       .attr("fill", "none")
-      .attr("stroke", "#e7e5e4")
+      .attr("stroke", "var(--venture-map-grid)")
       .attr("stroke-width", 0.7);
 
     const countryPaths = svg
@@ -127,9 +127,9 @@ export function InternationalTravelsMap({
       .selectAll("path")
       .data(countryFeatures)
       .join("path")
-      .attr("fill", "#f4f2ec")
+      .attr("fill", "var(--venture-map-land)")
       .attr("fill-opacity", 0.34)
-      .attr("stroke", "#d6d3d1")
+      .attr("stroke", "var(--venture-map-border)")
       .attr("stroke-width", 0.65)
       .attr("vector-effect", "non-scaling-stroke");
 
@@ -167,7 +167,7 @@ export function InternationalTravelsMap({
       .append("circle")
       .attr("r", 5)
       .attr("fill", markerGreen)
-      .attr("stroke", "#ffffff")
+      .attr("stroke", "var(--venture-map-marker-outline)")
       .attr("stroke-width", 2.25)
       .attr("class", "transition-[r] group-hover:[r:7px] group-focus:[r:7px]");
 
@@ -188,11 +188,11 @@ export function InternationalTravelsMap({
       .append("text")
       .attr("x", 57)
       .attr("y", -24)
-      .attr("fill", "#44403c")
+      .attr("fill", "var(--venture-map-label)")
       .attr("font-family", "serif")
       .attr("font-size", 13)
       .attr("paint-order", "stroke")
-      .attr("stroke", "#ffffff")
+      .attr("stroke", "var(--venture-map-halo)")
       .attr("stroke-linejoin", "round")
       .attr("stroke-width", 5)
       .attr(
@@ -372,7 +372,7 @@ export function InternationalTravelsMap({
 
   return (
     <figure className={`not-prose m-0 w-full ${variant === "atlas" ? "mt-0" : "mt-9"}`}>
-      <div className="relative overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
+      <div className="relative isolate overflow-hidden border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-950">
         <canvas
           ref={reliefCanvasRef}
           width={Math.round(mapWidth * 0.5)}
@@ -394,7 +394,7 @@ export function InternationalTravelsMap({
           <button
             type="button"
             onClick={() => controlsRef.current.zoomBy(1.45)}
-            className="flex h-8 w-8 items-center justify-center border border-stone-300 bg-white/95 font-serif text-base text-stone-600 transition-colors hover:border-[#859900] hover:text-[#6f8200] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#859900]"
+            className="flex h-8 w-8 items-center justify-center border border-stone-300 bg-white/95 font-serif text-base text-stone-600 transition-colors hover:border-[#859900] hover:text-[#6f8200] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#859900] dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300 dark:hover:bg-stone-800"
             aria-label="zoom in"
           >
             +
@@ -402,7 +402,7 @@ export function InternationalTravelsMap({
           <button
             type="button"
             onClick={() => controlsRef.current.zoomBy(1 / 1.45)}
-            className="flex h-8 w-8 items-center justify-center border border-stone-300 bg-white/95 font-serif text-base text-stone-600 transition-colors hover:border-[#859900] hover:text-[#6f8200] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#859900]"
+            className="flex h-8 w-8 items-center justify-center border border-stone-300 bg-white/95 font-serif text-base text-stone-600 transition-colors hover:border-[#859900] hover:text-[#6f8200] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#859900] dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300 dark:hover:bg-stone-800"
             aria-label="zoom out"
           >
             −
@@ -410,7 +410,7 @@ export function InternationalTravelsMap({
           <button
             type="button"
             onClick={() => controlsRef.current.reset()}
-            className="h-8 border border-stone-300 bg-white/95 px-2.5 text-[0.62rem] lowercase tracking-wider text-stone-600 transition-colors hover:border-[#859900] hover:text-[#6f8200] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#859900]"
+            className="h-8 border border-stone-300 bg-white/95 px-2.5 text-[0.62rem] lowercase tracking-wider text-stone-600 transition-colors hover:border-[#859900] hover:text-[#6f8200] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#859900] dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300 dark:hover:bg-stone-800"
           >
             reset
           </button>

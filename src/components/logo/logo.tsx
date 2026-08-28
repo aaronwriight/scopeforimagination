@@ -13,7 +13,7 @@ export function Logo() {
         alt="Frame It Wright Photography"
         width={160}
         height={160}
-        className="h-auto w-full"
+        className="h-auto w-full dark:invert dark:mix-blend-screen"
         priority
       />
     </div>

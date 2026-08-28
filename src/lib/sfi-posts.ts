@@ -211,7 +211,10 @@ export async function getAllSfiPosts(): Promise<SfiPost[]> {
   for (const post of sanityPosts) postsByEntry.set(post.entry, post);
   for (const post of localPosts) postsByEntry.set(post.entry, post);
 
-  return [...postsByEntry.values()].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  return [...postsByEntry.values()].sort((a, b) => {
+    const chronology = `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`);
+    return chronology !== 0 ? chronology : b.entry.localeCompare(a.entry);
+  });
 }
 
 export async function getSfiPost(entry: string): Promise<SfiPost | null> {

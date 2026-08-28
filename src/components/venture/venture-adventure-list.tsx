@@ -38,6 +38,42 @@ const kindLabels: Record<VentureAdventureKind, string> = {
   journal: "journal entries",
 };
 
+type TripScope = string | null | undefined;
+
+function recordsForTrip(item: VentureAdventureItem, trip: TripScope): readonly VentureAdventureRecord[] {
+  if (trip === undefined) return item.records;
+  return item.records.filter((record) => record.trip === trip);
+}
+
+function latestKnownTimestamp(item: VentureAdventureItem, trip?: string | null): string {
+  const latestDate = recordsForTrip(item, trip)
+    .flatMap((record) => record.date ? [record.date] : [])
+    .sort((first, second) => second.localeCompare(first))[0];
+
+  if (!latestDate) return "";
+  const time = item.entry && item.time ? item.time : "00:00";
+  return `${latestDate}T${time}`;
+}
+
+function compareItemsNewest(
+  first: VentureAdventureItem,
+  second: VentureAdventureItem,
+  trip?: string | null,
+): number {
+  const chronology = latestKnownTimestamp(second, trip).localeCompare(latestKnownTimestamp(first, trip));
+  if (chronology !== 0) return chronology;
+
+  const title = first.title.localeCompare(second.title, "en");
+  return title !== 0 ? title : first.id.localeCompare(second.id, "en");
+}
+
+function compareRecordsNewest(first: VentureAdventureRecord, second: VentureAdventureRecord): number {
+  const chronology = (second.date ?? "").localeCompare(first.date ?? "");
+  return chronology !== 0
+    ? chronology
+    : second.id.localeCompare(first.id, "en", { numeric: true });
+}
+
 function formatAdventureDate(date: string): string {
   return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
     month: "long",
@@ -47,8 +83,11 @@ function formatAdventureDate(date: string): string {
 }
 
 function uniqueTrips(item: VentureAdventureItem): string[] {
-  return [...new Set(item.records.flatMap((record) => record.trip ? [record.trip] : []))].sort((first, second) =>
-    first.localeCompare(second, "en"),
+  return [...new Set(item.records.flatMap((record) => record.trip ? [record.trip] : []))].sort(
+    (first, second) => {
+      const chronology = latestKnownTimestamp(item, second).localeCompare(latestKnownTimestamp(item, first));
+      return chronology !== 0 ? chronology : first.localeCompare(second, "en");
+    },
   );
 }
 
@@ -64,7 +103,8 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
     <div className="border-t border-stone-300 dark:border-stone-700">
       {items.map((item) => {
         const trips = uniqueTrips(item);
-        const journalHrefs = [...new Set(item.records.flatMap((record) => record.journalHref ? [record.journalHref] : []))];
+        const newestRecords = [...item.records].sort(compareRecordsNewest);
+        const journalHrefs = [...new Set(newestRecords.flatMap((record) => record.journalHref ? [record.journalHref] : []))];
 
         return (
           <article key={item.id} className="border-b border-stone-300 py-5 dark:border-stone-700">
@@ -77,22 +117,22 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
               </span>
             </div>
             {item.entry && item.time && item.records[0]?.date ? (
-              <p className="mt-1 text-xs leading-6 text-stone-400">
+              <p className="mt-1 text-xs leading-6 text-stone-450 dark:text-stone-400">
                 <time dateTime={`${item.records[0].date}T${item.time}`}>
                   {formatAdventureDate(item.records[0].date)} • {item.time}
                 </time>{" "}
                 • {item.location} • {item.entry}
               </p>
             ) : (
-              <p className="mt-1 text-xs leading-6 text-stone-400">
+              <p className="mt-1 text-xs leading-6 text-stone-450 dark:text-stone-400">
                 <span className="text-stone-500">{item.location}</span> · {dateSummary(item)}
               </p>
             )}
-            <p className="mt-0.5 text-xs leading-6 text-stone-400">
+            <p className="mt-0.5 text-xs leading-6 text-stone-450 dark:text-stone-400">
               trip: {trips.length > 0 ? trips.join(" · ") : "to add"}
             </p>
             <MusicTagline music={item.music} className="mt-1" />
-            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-400">{item.excerpt}</p>}
+            {item.excerpt && <p className="mt-2 font-serif text-sm italic leading-6 text-stone-450 dark:text-stone-400">{item.excerpt}</p>}
             {journalHrefs.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f8200]">
                 {journalHrefs.map((journalHref, index) => (
@@ -113,7 +153,7 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
   const [organizeBy, setOrganizeBy] = useState<OrganizeBy>("type");
 
   const groups = useMemo(() => {
-    const sortedItems = [...items].sort((first, second) => first.title.localeCompare(second.title, "en"));
+    const sortedItems = [...items].sort((first, second) => compareItemsNewest(first, second));
     if (organizeBy === "type") {
       return kindOrder
         .map((kind) => ({ label: kindLabels[kind], items: sortedItems.filter((item) => item.kind === kind) }))
@@ -121,21 +161,38 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
     }
 
     const itemsByTrip = new Map<string, VentureAdventureItem[]>();
-    for (const item of sortedItems) {
-      const trips = uniqueTrips(item);
-      for (const trip of trips.length > 0 ? trips : ["trip to add"]) {
-        const tripItems = itemsByTrip.get(trip) ?? [];
+    for (const item of items) {
+      const trips = [...new Set(item.records.map((record) => record.trip ?? "trip to add"))];
+      for (const tripLabel of trips) {
+        const tripItems = itemsByTrip.get(tripLabel) ?? [];
         tripItems.push(item);
-        itemsByTrip.set(trip, tripItems);
+        itemsByTrip.set(tripLabel, tripItems);
       }
     }
 
     const labels = [...itemsByTrip.keys()].sort((first, second) => {
       if (first === "trip to add") return 1;
       if (second === "trip to add") return -1;
-      return first.localeCompare(second, "en");
+      const firstItems = itemsByTrip.get(first) ?? [];
+      const secondItems = itemsByTrip.get(second) ?? [];
+      const firstLatest = firstItems
+        .map((item) => latestKnownTimestamp(item, first))
+        .sort((a, b) => b.localeCompare(a))[0] ?? "";
+      const secondLatest = secondItems
+        .map((item) => latestKnownTimestamp(item, second))
+        .sort((a, b) => b.localeCompare(a))[0] ?? "";
+      const chronology = secondLatest.localeCompare(firstLatest);
+      return chronology !== 0 ? chronology : first.localeCompare(second, "en");
     });
-    return labels.map((label) => ({ label, items: itemsByTrip.get(label) ?? [] }));
+    return labels.map((label) => {
+      const trip = label === "trip to add" ? null : label;
+      return {
+        label,
+        items: [...(itemsByTrip.get(label) ?? [])].sort((first, second) =>
+          compareItemsNewest(first, second, trip),
+        ),
+      };
+    });
   }, [items, organizeBy]);
 
   if (items.length === 0) {

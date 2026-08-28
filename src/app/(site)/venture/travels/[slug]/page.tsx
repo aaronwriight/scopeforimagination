@@ -40,6 +40,10 @@ export default async function VentureTravelDestinationPage({ params }: { params:
   const destination = getTravelDestination(slug);
   if (!destination) notFound();
   const firstVisit = destination.visits[0];
+  const visitsNewestFirst = [...destination.visits].sort((first, second) => {
+    const chronology = (second.date ?? "").localeCompare(first.date ?? "");
+    return chronology !== 0 ? chronology : second.ordinal - first.ordinal;
+  });
   const trips = [
     ...new Set(
       destination.visits
@@ -47,7 +51,7 @@ export default async function VentureTravelDestinationPage({ params }: { params:
         .filter((trip): trip is string => trip !== null),
     ),
   ];
-  const linkedVisits = destination.visits.filter(
+  const linkedVisits = visitsNewestFirst.filter(
     (visit): visit is typeof visit & { entrySlug: string } => Boolean(visit.entrySlug),
   );
 
@@ -87,7 +91,7 @@ export default async function VentureTravelDestinationPage({ params }: { params:
         <section className="mt-10">
           <h2 className="text-xs font-medium lowercase tracking-widest text-stone-700 dark:text-stone-300">field notes</h2>
           <div className="mt-5 border-t border-stone-300 dark:border-stone-700">
-            {destination.visits.map((visit) => (
+            {visitsNewestFirst.map((visit) => (
               <article key={visit.ordinal} className="border-b border-stone-300 py-6 dark:border-stone-700">
                 <h3 className="m-0 text-[0.65rem] font-normal lowercase tracking-widest text-[#6f8200]">
                   {visitLabel(visit.ordinal)}

@@ -446,8 +446,8 @@ export function NationalParksMap({
       .attr("y", (inset) => inset.y)
       .attr("width", (inset) => inset.width)
       .attr("height", (inset) => inset.height)
-      .attr("fill", "#ffffff")
-      .attr("stroke", "#d6d3d1")
+      .attr("fill", "var(--venture-map-surface)")
+      .attr("stroke", "var(--venture-map-border)")
       .attr("stroke-width", 0.8)
       .attr("vector-effect", "non-scaling-stroke");
 
@@ -455,7 +455,7 @@ export function NationalParksMap({
       .append("text")
       .attr("x", (inset) => inset.x + 8)
       .attr("y", (inset) => inset.y + 15)
-      .attr("fill", "#78716c")
+      .attr("fill", "var(--venture-map-label)")
       .attr("font-size", 9)
       .attr("letter-spacing", "0.08em")
       .text((inset) => inset.label);
@@ -479,7 +479,7 @@ export function NationalParksMap({
       ))
       .join("path")
       .attr("d", ({ region, state }) => geoPath(region.projection)(state))
-      .attr("fill", "#ffffff")
+      .attr("fill", "var(--venture-map-surface)")
       .attr("stroke", "none");
 
     const terrainLayers = viewport
@@ -502,10 +502,9 @@ export function NationalParksMap({
           .attr("y", (tile) => tile.y)
           .attr("width", (tile) => tile.width)
           .attr("height", (tile) => tile.height)
-          .attr("opacity", 0.52)
           .attr("preserveAspectRatio", "none")
           .attr("pointer-events", "none")
-          .style("mix-blend-mode", "multiply");
+          .attr("class", "venture-terrain-tile");
       });
     };
 
@@ -534,7 +533,7 @@ export function NationalParksMap({
         .datum(internalBorders)
         .attr("d", geoPath(region.projection))
         .attr("fill", "none")
-        .attr("stroke", "#d6d3d1")
+        .attr("stroke", "var(--venture-map-border)")
         .attr("stroke-width", 0.78)
         .attr("vector-effect", "non-scaling-stroke");
 
@@ -543,7 +542,7 @@ export function NationalParksMap({
         .datum(outerBorders)
         .attr("d", geoPath(region.projection))
         .attr("fill", "none")
-        .attr("stroke", "#d6d3d1")
+        .attr("stroke", "var(--venture-map-border)")
         .attr("stroke-width", 0.78)
         .attr("vector-effect", "non-scaling-stroke");
     }
@@ -593,8 +592,8 @@ export function NationalParksMap({
     markers
       .append("circle")
       .attr("r", (datum) => (datum.park.visited ? 5.5 : 3.2))
-      .attr("fill", (datum) => (datum.park.visited ? markerGreen : "#b8b6ad"))
-      .attr("stroke", "#ffffff")
+      .attr("fill", (datum) => (datum.park.visited ? markerGreen : "var(--venture-map-muted-marker)"))
+      .attr("stroke", "var(--venture-map-marker-outline)")
       .attr("stroke-width", 1.8)
       .attr("class", "transition-[r] group-hover:[r:7px] group-focus:[r:7px]");
 
@@ -612,11 +611,12 @@ export function NationalParksMap({
       .append("text")
       .attr(
         "class",
-        "pointer-events-none fill-stone-700 font-serif text-[12px] opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100",
+        "pointer-events-none font-serif text-[12px] opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100",
       )
+      .attr("fill", "var(--venture-map-label)")
       .attr("y", -22)
       .attr("paint-order", "stroke")
-      .attr("stroke", "#ffffff")
+      .attr("stroke", "var(--venture-map-halo)")
       .attr("stroke-linejoin", "round")
       .attr("stroke-width", 5)
       .text((datum) => datum.park.displayName);
@@ -716,10 +716,10 @@ export function NationalParksMap({
 
   return (
     <figure className={`not-prose m-0 w-full ${variant === "index" ? "mt-9" : ""}`}>
-      <div className="relative overflow-hidden border border-stone-200 bg-white dark:border-stone-700">
+      <div className="relative isolate overflow-hidden border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-950">
         <svg
           ref={svgRef}
-          className={`block w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none ${variant === "atlas" ? "aspect-[56/33]" : "aspect-[5/3]"}`}
+          className={`block w-full touch-none select-none bg-white outline-none [-webkit-tap-highlight-color:transparent] focus:outline-none focus-visible:outline-none dark:bg-stone-950 ${variant === "atlas" ? "aspect-[56/33]" : "aspect-[5/3]"}`}
           viewBox={`0 0 ${mapWidth} ${mapHeight}`}
           preserveAspectRatio="xMidYMid meet"
           role="application"
@@ -727,12 +727,12 @@ export function NationalParksMap({
           aria-label="Interactive national parks map. Drag to pan, scroll or use plus and minus to zoom, and select a park marker to open its page."
         />
         <div
-          className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm"
+          className="absolute right-3 top-3 flex overflow-hidden border border-stone-300 bg-white/95 text-stone-600 shadow-sm dark:border-stone-600 dark:bg-stone-900/95 dark:text-stone-300"
           aria-label="Map controls"
         >
           <button
             type="button"
-            className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100"
+            className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800"
             onClick={() => controlMap("zoom-in")}
             aria-label="Zoom in"
           >
@@ -740,7 +740,7 @@ export function NationalParksMap({
           </button>
           <button
             type="button"
-            className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100"
+            className="h-9 w-9 border-r border-stone-300 text-base no-underline hover:bg-stone-100 dark:border-stone-600 dark:hover:bg-stone-800"
             onClick={() => controlMap("zoom-out")}
             aria-label="Zoom out"
           >
@@ -748,7 +748,7 @@ export function NationalParksMap({
           </button>
           <button
             type="button"
-            className="h-9 px-3 text-[0.65rem] lowercase tracking-widest no-underline hover:bg-stone-100"
+            className="h-9 px-3 text-[0.65rem] lowercase tracking-widest no-underline hover:bg-stone-100 dark:hover:bg-stone-800"
             onClick={() => controlMap("reset")}
           >
             reset

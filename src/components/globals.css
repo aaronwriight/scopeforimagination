@@ -10,8 +10,47 @@ html.dark {
   color-scheme: dark;
 }
 
+:where(html.dark) .text-stone-500 {
+  color: var(--color-stone-400);
+}
+
+:root {
+  --venture-map-surface: #ffffff;
+  --venture-map-land: #f4f2ec;
+  --venture-map-border: #d6d3d1;
+  --venture-map-grid: #e7e5e4;
+  --venture-map-label: #57534e;
+  --venture-map-halo: #ffffff;
+  --venture-map-marker-outline: #ffffff;
+  --venture-map-muted-marker: #b8b6ad;
+}
+
+html.dark {
+  --venture-map-surface: #0c0a09;
+  --venture-map-land: #292524;
+  --venture-map-border: #57534e;
+  --venture-map-grid: #44403c;
+  --venture-map-label: #e7e5e4;
+  --venture-map-halo: #0c0a09;
+  --venture-map-marker-outline: #0c0a09;
+  --venture-map-muted-marker: #78716c;
+}
+
+.venture-terrain-tile {
+  opacity: 0.52;
+  mix-blend-mode: multiply;
+}
+
+html.dark .venture-terrain-tile {
+  filter: invert(1) contrast(0.86);
+  opacity: 0.42;
+  mix-blend-mode: screen;
+}
+
 @theme {
   --animation-spin-slow: spin 30s linear infinite;
+
+  --color-stone-450: #8f8883;
 
   /* set body and heading font to Perpetua */
   --font-family-sans: "Perpetua", "Georgia", serif;
