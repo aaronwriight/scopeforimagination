@@ -16,9 +16,14 @@ export function MusicTagline({
   );
 
   return (
-    <p className={`text-xs leading-6 text-stone-400 ${className}`}>
-      <span aria-hidden="true" className="mr-1.5 text-[0.7rem]">
-        ♪ •
+    <p
+      className={`flex flex-wrap items-baseline gap-x-1 text-xs leading-6 text-stone-400 ${className}`}
+    >
+      <span aria-hidden="true" className="text-[0.7rem]">
+        ♪
+      </span>
+      <span aria-hidden="true" className="text-[0.7rem]">
+        •
       </span>
       {music.url ? (
         <a
@@ -31,7 +36,7 @@ export function MusicTagline({
           {credit}
         </a>
       ) : (
-        credit
+        <span>{credit}</span>
       )}
     </p>
   );

@@ -84,7 +84,9 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
                 • {item.location} • {item.entry}
               </p>
             ) : (
-              <p className="mt-1 text-xs leading-6 text-stone-400">{item.location} · {dateSummary(item)}</p>
+              <p className="mt-1 text-xs leading-6 text-stone-400">
+                <span className="text-stone-500">{item.location}</span> · {dateSummary(item)}
+              </p>
             )}
             <p className="mt-0.5 text-xs leading-6 text-stone-400">
               trip: {trips.length > 0 ? trips.join(" · ") : "to add"}

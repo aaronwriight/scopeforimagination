@@ -2544,9 +2544,9 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     music_html = (
         music.replace(
             "<p>",
-            '<p class="music"><span class="music-symbol" aria-hidden="true">♪ •</span>',
+            '<p class="music"><span class="music-symbol" aria-hidden="true"><span>♪</span><span>•</span></span><span class="music-credit">',
             1,
-        )
+        ).replace("</p>", "</span></p>", 1)
         if music
         else ""
     )
@@ -2567,8 +2567,9 @@ def preview_document_html(post: AuthorPost, body_html: str) -> str:
     header {{ border-bottom: 1px solid var(--line); padding-bottom: 1.75rem; }}
     h1 {{ margin: 0; font-size: clamp(1.5rem, 4vw, 1.875rem); font-weight: 400; line-height: 1.2; }}
     .subtitle {{ margin: .75rem 0 0; color: var(--muted); font-size: 1.125rem; font-style: italic; line-height: 1.5; }}
-    .details, .music, .trip {{ margin: .55rem 0 0; color: var(--secondary); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-    .music-symbol {{ margin-right: .4rem; color: inherit; font-size: .7rem; }}
+    .details, .trip {{ margin: .55rem 0 0; color: var(--secondary); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .music {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .25rem; margin: .55rem 0 0; color: var(--secondary); font: .75rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .music-symbol {{ display: inline-flex; align-items: baseline; gap: .25rem; color: inherit; font-size: .7rem; }}
     .music a {{ color: inherit; text-decoration-thickness: 1px; text-underline-offset: .16em; }}
     article a {{ color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .16em; }}
     .excerpt {{ margin: .65rem 0 0; color: var(--secondary); font-size: .875rem; font-style: italic; line-height: 1.6; }}

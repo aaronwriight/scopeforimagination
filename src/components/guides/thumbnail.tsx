@@ -31,24 +31,15 @@ export function GuideThumbnail({
   // colors for thumb
   const [bgEffect, setBg] = useState(bg);
   useEffect(() => {
-    const isBrowser = typeof window !== "undefined" && window.matchMedia;
-    if (isBrowser) {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      if (mediaQuery) {
-        setBg(mediaQuery.matches ? bgDark : bg);
-        mediaQuery.addEventListener("change", (e) => {
-          setBg(e.matches ? bgDark : bg);
-        });
-      }
-    }
-    return () => {
-      if (isBrowser) {
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        if (mediaQuery) {
-          mediaQuery.removeEventListener("change", () => {});
-        }
-      }
-    };
+    const root = document.documentElement;
+    const syncBackground = () =>
+      setBg(root.classList.contains("dark") ? bgDark : bg);
+    const observer = new MutationObserver(syncBackground);
+
+    syncBackground();
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    return () => observer.disconnect();
   }, [bg, bgDark]);
 
   // kill if no image
