@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function SandDollarHuntingPage() {
   return (
-    <LiteratureShell title="sand dollar hunting">
-      <p className="text-stone-500">coming soon</p>
+    <LiteratureShell title="sand dollar hunting" subtitle="coming soon">
+      {null}
     </LiteratureShell>
   );
 }

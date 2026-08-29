@@ -21,7 +21,7 @@ export function SfiPostHeader({
           <h3 className="font-serif text-lg font-normal leading-snug text-stone-900 transition-colors group-hover:text-[#6f8200] group-focus-visible:text-[#6f8200] dark:text-stone-100 dark:group-hover:text-[#6f8200] dark:group-focus-visible:text-[#6f8200]">
             {post.title}
           </h3>
-          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500 transition-colors group-hover:text-[#6f8200] group-focus-visible:text-[#6f8200]">
+          <p className="mt-2 font-serif text-sm italic leading-6 text-stone-500 transition-colors first-letter:lowercase group-hover:text-[#6f8200] group-focus-visible:text-[#6f8200]">
             {post.subtitle}
           </p>
         </Link>
@@ -32,7 +32,7 @@ export function SfiPostHeader({
           ) : (
             <h3 className="font-serif text-lg font-normal leading-snug text-stone-900 dark:text-stone-100">{post.title}</h3>
           )}
-          <p className={`mt-2 font-serif italic leading-6 text-stone-500 ${large ? "text-base sm:text-lg" : "text-sm"}`}>
+          <p className={`mt-2 font-serif italic leading-6 text-stone-500 first-letter:lowercase ${large ? "text-base sm:text-lg" : "text-sm"}`}>
             {post.subtitle}
           </p>
         </>

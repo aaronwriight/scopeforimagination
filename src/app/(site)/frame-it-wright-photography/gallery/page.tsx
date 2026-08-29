@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function PhotographyGalleryPage() {
   return (
-    <PhotographyShell title="gallery">
-      <p className="text-stone-500">coming soon</p>
+    <PhotographyShell title="gallery" subtitle="coming soon">
+      {null}
     </PhotographyShell>
   );
 }

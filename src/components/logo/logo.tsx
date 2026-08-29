@@ -1,9 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function Logo() {
   return (
-    <Link href="/" aria-label="Home" className="block w-14 text-stone-500 md:w-20">
-      <span aria-hidden="true" className="sand-dollar-mark block aspect-square w-full" />
+    <Link href="/" aria-label="Home" className="block w-14 md:w-20">
+      <Image
+        src="/sand_dollar_cutout.png"
+        alt=""
+        width={160}
+        height={160}
+        className="h-auto w-full transition-[filter] dark:grayscale dark:brightness-[0.34] dark:contrast-[1.08]"
+        priority
+      />
     </Link>
   );
 }

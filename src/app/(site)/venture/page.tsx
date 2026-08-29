@@ -16,7 +16,7 @@ import { getAllTravelDestinations } from "@/lib/venture-travels";
 
 export const metadata: Metadata = {
   title: "venture | aaron wright",
-  description: "A field journal for peaks, parks, and stories gathered along the way.",
+  description: "A field journal for peaks, parks, and places worth remembering.",
 };
 
 export default function VenturePage() {
@@ -33,10 +33,7 @@ export default function VenturePage() {
   const parkBoundaries = getNationalParkBoundaries();
 
   return (
-    <VentureShell title="venture">
-      <p className="text-stone-500">an atlas of places worth remembering</p>
-      <p>A field journal for peaks, parks, and stories gathered along the way.</p>
-
+    <VentureShell title="venture" subtitle="a field journal for peaks, parks, and places worth remembering">
       <VentureAtlas
         destinations={travelDestinations}
         parks={visitedParks}

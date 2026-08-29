@@ -14,9 +14,13 @@ const mailingListLinks = [
 
 export default function MailingListPage() {
   return (
-    <SectionPageShell section="mailing list" links={mailingListLinks} title="mailing list">
-      <p className="max-w-xl text-stone-500">Get an occasional email when a new entry finds its way into Scope for Imagination.</p>
-      <div className="not-prose mt-8 max-w-2xl border-t border-stone-300 pt-7 dark:border-stone-700">
+    <SectionPageShell
+      section="mailing list"
+      links={mailingListLinks}
+      title="mailing list"
+      subtitle="get an occasional email when a new entry finds its way into Scope for Imagination."
+    >
+      <div className="not-prose max-w-2xl">
         <NewsletterSignup />
       </div>
     </SectionPageShell>

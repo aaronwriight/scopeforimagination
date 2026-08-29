@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function CognitiveScienceOverviewPage() {
   return (
-    <ScienceShell title="overview" intro="the social mind in dialogue">
+    <ScienceShell title="overview" subtitle="the social mind in dialogue">
       <p>
         <strong>
           I study the <span className="text-[#6f8200]"><em>social mind in dialogue</em></span>: how the human brain processes{" "}

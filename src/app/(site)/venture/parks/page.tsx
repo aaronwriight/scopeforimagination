@@ -23,8 +23,7 @@ export default function VentureParksPage() {
   const boundaries = getNationalParkBoundaries();
 
   return (
-    <VentureShell title="national parks">
-      <p className="font-serif text-stone-500">A by-park index for visits and their memories</p>
+    <VentureShell title="national parks" subtitle="a by-park index for visits and their memories">
       <NationalParksIndex
         parks={parks}
         boundaries={boundaries}

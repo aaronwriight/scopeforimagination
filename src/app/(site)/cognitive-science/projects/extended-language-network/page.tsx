@@ -9,7 +9,10 @@ export const metadata: Metadata = {
 
 export default function ExtendedLanguageNetworkProjectPage() {
   return (
-    <ProjectShell title="extended language network">
+    <ProjectShell
+      title="extended language network"
+      subtitle="language-selective brain areas whose contributions to language remain to be discovered."
+    >
       <p>
         Language neuroscience has largely focused on core left frontal and temporal areas, but many other cortical, subcortical, and cerebellar areas
         have been implicated in linguistic processing. This project asks which of those areas respond reliably and selectively to language, and what

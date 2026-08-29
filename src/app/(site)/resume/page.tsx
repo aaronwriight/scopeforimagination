@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ResumePage() {
-  return <ContactShell title="resume">{null}</ContactShell>;
+  return <ContactShell title="resume" subtitle="coming soon">{null}</ContactShell>;
 }

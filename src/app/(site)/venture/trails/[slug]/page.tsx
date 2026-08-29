@@ -59,20 +59,21 @@ export default async function VentureTrailPage({ params }: { params: Promise<{ s
           <h1 className="font-serif text-2xl font-normal leading-tight text-stone-900 dark:text-stone-100 sm:text-3xl">
             {peak.name}
           </h1>
-          <p className="mt-3 font-serif text-base italic leading-6 text-stone-500">
+          <p className="mt-3 font-serif text-base italic leading-6 text-stone-500 first-letter:lowercase">
             {peak.range}, {peak.state}
           </p>
-          <p className="mt-3 flex items-center gap-2 text-xs lowercase tracking-widest text-stone-450">
-            <CompletionStatus
-              complete={peak.completed}
-              completeLabel="climbed"
-              incompleteLabel="not yet climbed"
-            />
-            <span className={peak.completed ? "text-[#6f8200]" : undefined}>
-              {peak.completed ? "climbed" : "not yet climbed"}
-            </span>
-          </p>
         </header>
+
+        <p className="mt-5 flex items-center gap-2 text-xs lowercase tracking-widest text-stone-450">
+          <CompletionStatus
+            complete={peak.completed}
+            completeLabel="climbed"
+            incompleteLabel="not yet climbed"
+          />
+          <span className={peak.completed ? "text-[#6f8200]" : undefined}>
+            {peak.completed ? "climbed" : "not yet climbed"}
+          </span>
+        </p>
 
         <dl className="grid gap-x-8 gap-y-5 border-b border-stone-300 py-7 text-sm sm:grid-cols-2 lg:grid-cols-4 dark:border-stone-700">
           <div>

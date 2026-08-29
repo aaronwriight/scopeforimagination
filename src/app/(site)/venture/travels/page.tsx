@@ -13,9 +13,7 @@ export default function VentureTravelsPage() {
   const destinations = getAllTravelDestinations();
 
   return (
-    <VentureShell title="travels">
-      <p className="font-serif text-stone-500">A place-by-place record of journeys farther afield.</p>
-
+    <VentureShell title="travels" subtitle="a place-by-place record of journeys farther afield.">
       <InternationalTravelsMap destinations={destinations} />
 
       <div className="not-prose mt-10 border-t border-stone-300 dark:border-stone-700">

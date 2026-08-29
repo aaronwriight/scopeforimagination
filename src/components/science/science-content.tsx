@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/site/site-content";
 
 const scienceLinks = [
   ["overview", "/cognitive-science"],
@@ -14,11 +15,11 @@ const scienceLinks = [
 
 export function ScienceShell({
   title,
-  intro,
+  subtitle,
   children,
 }: {
   title: string;
-  intro?: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -47,9 +48,8 @@ export function ScienceShell({
           className="prose prose-stone w-full max-w-none self-start text-left text-sm dark:prose-invert prose-headings:font-serif prose-headings:lowercase prose-a:text-[#6f8200] prose-h2:text-sm prose-h2:font-medium prose-h2:tracking-normal prose-h2:normal-case"
           style={{ maxWidth: "56rem" }}
         >
-          <h1 className="m-0 text-base font-medium tracking-widest">{title}</h1>
-          {intro && <p className="mt-2 text-stone-500">{intro}</p>}
-          <div className="mt-3 space-y-5">{children}</div>
+          <PageHeader title={title} subtitle={subtitle} />
+          <div className="mt-8 space-y-5">{children}</div>
         </article>
       </div>
     </main>
@@ -58,13 +58,15 @@ export function ScienceShell({
 
 export function ProjectShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <ScienceShell title={title}>
+    <ScienceShell title={title} subtitle={subtitle}>
       <p className="not-prose m-0">
         <Link href="/cognitive-science/projects" className="text-xs lowercase tracking-widest text-stone-500">
           ← projects

@@ -8,8 +8,7 @@ export const metadata: Metadata = {
 
 export default function CortexProjectPage() {
   return (
-    <ProjectShell title="cortex">
-      <p className="text-stone-500">The tidyverse for computational neuroscience.</p>
+    <ProjectShell title="cortex" subtitle="the tidyverse for computational neuroscience.">
       <p>coming soon</p>
     </ProjectShell>
   );

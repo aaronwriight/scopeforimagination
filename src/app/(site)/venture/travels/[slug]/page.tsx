@@ -66,7 +66,7 @@ export default async function VentureTravelDestinationPage({ params }: { params:
           <h1 className="font-serif text-2xl font-normal leading-tight text-stone-900 dark:text-stone-100 sm:text-3xl">
             {destination.name}
           </h1>
-          <p className="mt-3 font-serif text-base italic leading-6 text-stone-500">{destination.region}</p>
+          <p className="mt-3 font-serif text-base italic leading-6 text-stone-500 first-letter:lowercase">{destination.region}</p>
         </header>
 
         <dl className="grid gap-x-8 gap-y-5 border-b border-stone-300 py-7 text-sm sm:grid-cols-2 lg:grid-cols-3 dark:border-stone-700">

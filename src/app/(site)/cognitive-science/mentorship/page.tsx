@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function MentorshipPage() {
   return (
-    <ScienceShell title="mentorship">
-      <p className="text-stone-500">coming soon</p>
+    <ScienceShell title="mentorship" subtitle="coming soon">
+      {null}
     </ScienceShell>
   );
 }

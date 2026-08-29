@@ -8,10 +8,8 @@ export const metadata: Metadata = {
 
 export default function TidyTuesdayProjectPage() {
   return (
-    <ProjectShell title="tidy tuesday">
-      <p>
-        coming soon
-      </p>
+    <ProjectShell title="tidy tuesday" subtitle="coming soon">
+      {null}
     </ProjectShell>
   );
 }

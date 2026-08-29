@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function PhotographyBookingPage() {
-  return <PhotographyShell title="booking">{null}</PhotographyShell>;
+  return <PhotographyShell title="booking" subtitle="coming soon">{null}</PhotographyShell>;
 }

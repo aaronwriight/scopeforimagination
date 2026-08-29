@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function PersonalPage() {
   return (
     <PersonalShell title="personal">
-      <p className="text-stone-500">I <em>love</em> a good story.</p>
+      <p>I <em>love</em> a good story.</p>
       <p>
         I hold a variety of things in my heart, many of which have shaped my approach to cognitive science. I am deeply inspired by the great
         outdoors and music, and yet no singular peak, terrestrial or acoustic, reflects my whole story. Everything below has been uniquely impactful,

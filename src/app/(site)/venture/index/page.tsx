@@ -105,9 +105,8 @@ export default async function VentureIndexPage() {
   }
 
   return (
-    <VentureShell title="index">
-      <p className="font-serif text-stone-500">Every adventure recorded</p>
-      <div className="not-prose mt-10">
+    <VentureShell title="index" subtitle="every adventure recorded">
+      <div className="not-prose">
         <VentureAdventureList items={items} />
       </div>
     </VentureShell>

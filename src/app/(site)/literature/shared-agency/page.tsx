@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function SharedAgencyPage() {
   return (
-    <LiteratureShell title="shared agency">
-      <p className="text-stone-500">coming soon</p>
+    <LiteratureShell title="shared agency" subtitle="coming soon">
+      {null}
     </LiteratureShell>
   );
 }

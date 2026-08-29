@@ -92,18 +92,6 @@ html.dark .venture-terrain-layer {
   mix-blend-mode: screen;
 }
 
-.sand-dollar-mark {
-  background-color: currentColor;
-  -webkit-mask-image: url("/sand_dollar_mark.png");
-  mask-image: url("/sand_dollar_mark.png");
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-}
-
 @theme {
   --animation-spin-slow: spin 30s linear infinite;
 

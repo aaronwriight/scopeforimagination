@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function VentureAboutPage() {
   return (
-    <VentureShell title="about">
-      <p className="font-serif italic text-stone-500">an author&apos;s note is coming soon</p>
+    <VentureShell title="about" subtitle="an author's note is coming soon">
+      {null}
     </VentureShell>
   );
 }

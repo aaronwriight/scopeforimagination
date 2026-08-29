@@ -16,10 +16,10 @@ export default function VentureTrailsPage() {
   const rangeAreas = getAllNortheastRangeAreas();
 
   return (
-    <VentureShell title="northeast 115">
-      <p className="font-serif text-stone-500">
-        A summit-by-summit log of the 4000-footers across New Hampshire, New York, Maine, and Vermont.
-      </p>
+    <VentureShell
+      title="northeast 115"
+      subtitle="a summit-by-summit log of the 4000-footers across New Hampshire, New York, Maine, and Vermont."
+    >
       <Northeast115Index peaks={peaks} rangeAreas={rangeAreas} />
     </VentureShell>
   );

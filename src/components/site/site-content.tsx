@@ -50,9 +50,11 @@ const sectionLinks = {
 
 export function SitePageShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -63,11 +65,32 @@ export function SitePageShell({
           className="prose prose-stone w-full max-w-none self-start text-left text-sm dark:prose-invert prose-headings:font-serif prose-headings:lowercase prose-a:text-[#6f8200] prose-h2:text-sm prose-h2:font-medium prose-h2:tracking-normal prose-h2:normal-case"
           style={{ maxWidth: contentMaxWidth }}
         >
-          <h1 className="m-0 text-base font-medium lowercase tracking-widest">{title}</h1>
-          <div className="mt-3 space-y-5">{children}</div>
+          <PageHeader title={title} subtitle={subtitle} />
+          <div className="mt-8 space-y-5">{children}</div>
         </article>
       </div>
     </main>
+  );
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+}) {
+  return (
+    <header className="not-prose border-b border-stone-300 pb-5 dark:border-stone-700">
+      <h1 className="m-0 font-serif text-base font-medium lowercase tracking-widest text-stone-900 dark:text-stone-100">
+        {title}
+      </h1>
+      {subtitle ? (
+        <p className="m-0 mt-2 font-serif text-sm leading-6 text-stone-500 first-letter:lowercase">
+          {subtitle}
+        </p>
+      ) : null}
+    </header>
   );
 }
 
@@ -115,12 +138,14 @@ export function SectionPageShell({
   section,
   links,
   title,
+  subtitle,
   showTitle = true,
   children,
 }: {
   section: string;
   links: string[][];
   title: string;
+  subtitle?: React.ReactNode;
   showTitle?: boolean;
   children: React.ReactNode;
 }) {
@@ -132,8 +157,8 @@ export function SectionPageShell({
           className="prose prose-stone w-full max-w-none self-start text-left text-sm dark:prose-invert prose-headings:font-serif prose-headings:lowercase prose-a:text-[#6f8200] prose-h2:text-sm prose-h2:font-medium prose-h2:tracking-normal prose-h2:normal-case"
           style={{ maxWidth: contentMaxWidth }}
         >
-          {showTitle && <h1 className="m-0 text-base font-medium lowercase tracking-widest">{title}</h1>}
-          <div className={showTitle ? "mt-3 space-y-5" : "space-y-5"}>{children}</div>
+          {showTitle && <PageHeader title={title} subtitle={subtitle} />}
+          <div className={showTitle ? "mt-8 space-y-5" : "space-y-5"}>{children}</div>
         </article>
       </div>
     </main>
@@ -142,13 +167,15 @@ export function SectionPageShell({
 
 export function PhotographyShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <SectionPageShell section="photography" links={sectionLinks.photography} title={title}>
+    <SectionPageShell section="photography" links={sectionLinks.photography} title={title} subtitle={subtitle}>
       {children}
     </SectionPageShell>
   );
@@ -156,11 +183,13 @@ export function PhotographyShell({
 
 export function JournalShell({
   title,
+  subtitle,
   showTitle = true,
   years = [],
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   showTitle?: boolean;
   years?: number[];
   children: React.ReactNode;
@@ -173,7 +202,7 @@ export function JournalShell({
   ];
 
   return (
-    <SectionPageShell section="journal" links={journalLinks} title={title} showTitle={showTitle}>
+    <SectionPageShell section="journal" links={journalLinks} title={title} subtitle={subtitle} showTitle={showTitle}>
       {children}
     </SectionPageShell>
   );
@@ -181,15 +210,17 @@ export function JournalShell({
 
 export function VentureShell({
   title,
+  subtitle,
   showTitle = true,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   showTitle?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <SectionPageShell section="venture" links={sectionLinks.venture} title={title} showTitle={showTitle}>
+    <SectionPageShell section="venture" links={sectionLinks.venture} title={title} subtitle={subtitle} showTitle={showTitle}>
       {children}
     </SectionPageShell>
   );
@@ -197,13 +228,15 @@ export function VentureShell({
 
 export function LiteratureShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <SectionPageShell section="literature" links={sectionLinks.literature} title={title}>
+    <SectionPageShell section="literature" links={sectionLinks.literature} title={title} subtitle={subtitle}>
       {children}
     </SectionPageShell>
   );
@@ -211,13 +244,15 @@ export function LiteratureShell({
 
 export function PersonalShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <SectionPageShell section="personal" links={sectionLinks.personal} title={title}>
+    <SectionPageShell section="personal" links={sectionLinks.personal} title={title} subtitle={subtitle}>
       {children}
     </SectionPageShell>
   );
@@ -225,15 +260,17 @@ export function PersonalShell({
 
 export function ContactShell({
   title,
+  subtitle,
   showTitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   showTitle?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <SectionPageShell section="contact" links={sectionLinks.contact} title={title} showTitle={showTitle}>
+    <SectionPageShell section="contact" links={sectionLinks.contact} title={title} subtitle={subtitle} showTitle={showTitle}>
       {children}
     </SectionPageShell>
   );
@@ -241,13 +278,15 @@ export function ContactShell({
 
 export function WikiShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <SectionPageShell section="wiki" links={sectionLinks.wiki} title={title}>
+    <SectionPageShell section="wiki" links={sectionLinks.wiki} title={title} subtitle={subtitle}>
       {children}
     </SectionPageShell>
   );
@@ -255,8 +294,8 @@ export function WikiShell({
 
 export function ComingSoonPage({ title }: { title: string }) {
   return (
-    <SitePageShell title={title}>
-      <p className="text-stone-500">coming soon</p>
+    <SitePageShell title={title} subtitle="coming soon">
+      {null}
     </SitePageShell>
   );
 }
