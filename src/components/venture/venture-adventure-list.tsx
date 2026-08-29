@@ -103,9 +103,9 @@ function dateSummary(item: VentureAdventureItem): string {
   return `known dates: ${formatAdventureDate(dates[0])} – ${formatAdventureDate(dates[dates.length - 1])}`;
 }
 
-function AdventureRows({ id, items }: { id: string; items: readonly VentureAdventureItem[] }) {
+function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
   return (
-    <div id={id} className="border-t border-stone-300 dark:border-stone-700">
+    <div className="border-t border-stone-300 dark:border-stone-700">
       {items.map((item) => {
         const trips = uniqueTrips(item);
         const newestRecords = [...item.records].sort(compareRecordsNewest);
@@ -157,7 +157,7 @@ function AdventureRows({ id, items }: { id: string; items: readonly VentureAdven
 export function VentureAdventureList({ items }: { items: readonly VentureAdventureItem[] }) {
   const [organizeBy, setOrganizeBy] = useState<OrganizeBy>("type");
   const [batchSize, setBatchSize] = useState<ListBatchSize>(5);
-  const [visibleByGroup, setVisibleByGroup] = useState<Record<string, number>>({});
+  const [visibleCount, setVisibleCount] = useState(5);
   const listId = useId();
 
   const groups = useMemo(() => {
@@ -207,14 +207,40 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
     return <p className="font-serif text-sm italic text-stone-500">No adventures recorded yet.</p>;
   }
 
+  const displayRows = groups
+    .flatMap((group) => {
+      const trip = organizeBy === "trip" ? (group.label === "trip to add" ? null : group.label) : undefined;
+      return group.items.map((item) => ({
+        key: `${group.label}:${item.id}`,
+        groupLabel: group.label,
+        item,
+        timestamp: latestKnownTimestamp(item, trip),
+      }));
+    })
+    .sort((first, second) => {
+      const chronology = second.timestamp.localeCompare(first.timestamp);
+      if (chronology !== 0) return chronology;
+      const title = first.item.title.localeCompare(second.item.title, "en");
+      if (title !== 0) return title;
+      return first.key.localeCompare(second.key, "en");
+    });
+  const shownCount = Math.min(visibleCount, displayRows.length);
+  const visibleRowKeys = new Set(displayRows.slice(0, shownCount).map((row) => row.key));
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => visibleRowKeys.has(`${group.label}:${item.id}`)),
+    }))
+    .filter((group) => group.items.length > 0);
+
   const changeOrganizeBy = (nextOrganizeBy: OrganizeBy) => {
     setOrganizeBy(nextOrganizeBy);
-    setVisibleByGroup({});
+    setVisibleCount(batchSize);
   };
 
   const changeBatchSize = (nextBatchSize: ListBatchSize) => {
     setBatchSize(nextBatchSize);
-    setVisibleByGroup({});
+    setVisibleCount(nextBatchSize);
   };
 
   return (
@@ -231,43 +257,32 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
             <option value="trip">trip</option>
           </select>
         </label>
-        <ListBatchSizeControl value={batchSize} onChange={changeBatchSize} label="show per section" />
+        <ListBatchSizeControl value={batchSize} onChange={changeBatchSize} label="adventures" />
         <p className="m-0 text-xs text-stone-450 sm:text-right">
           {items.length} {items.length === 1 ? "place" : "places"} · repeated ascents and visits stay together
         </p>
       </div>
 
-      <div className="space-y-14">
-        {groups.map((group, index) => {
-          const groupKey = `${organizeBy}:${group.label}`;
-          const regionId = `${listId}-group-${index}`;
-          const visibleCount = Math.min(visibleByGroup[groupKey] ?? batchSize, group.items.length);
-
-          return (
-            <section key={group.label}>
-              <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">{group.label}</h2>
-              <AdventureRows id={regionId} items={group.items.slice(0, visibleCount)} />
-              {group.items.length > batchSize ? (
-                <ProgressiveRevealControl
-                  visibleCount={visibleCount}
-                  totalCount={group.items.length}
-                  batchSize={batchSize}
-                  regionId={regionId}
-                  singularLabel="adventure"
-                  pluralLabel="adventures"
-                  contextLabel={group.label}
-                  onShowMore={() => {
-                    setVisibleByGroup((current) => ({
-                      ...current,
-                      [groupKey]: Math.min((current[groupKey] ?? batchSize) + batchSize, group.items.length),
-                    }));
-                  }}
-                />
-              ) : null}
-            </section>
-          );
-        })}
+      <div id={listId} className="space-y-14">
+        {visibleGroups.map((group) => (
+          <section key={group.label}>
+            <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">{group.label}</h2>
+            <AdventureRows items={group.items} />
+          </section>
+        ))}
       </div>
+
+      {displayRows.length > batchSize ? (
+        <ProgressiveRevealControl
+          visibleCount={shownCount}
+          totalCount={displayRows.length}
+          batchSize={batchSize}
+          regionId={listId}
+          singularLabel="adventure"
+          pluralLabel="adventures"
+          onShowMore={() => setVisibleCount((current) => Math.min(current + batchSize, displayRows.length))}
+        />
+      ) : null}
     </div>
   );
 }

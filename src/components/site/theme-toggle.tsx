@@ -41,7 +41,7 @@ export function ThemeToggle() {
       <span>night</span>
       <span
         aria-hidden="true"
-        className="relative h-3.5 w-7 shrink-0 rounded-full border border-stone-400 bg-stone-100 transition-colors dark:border-stone-600 dark:bg-stone-800"
+        className="relative h-3.5 w-7 shrink-0 translate-y-px rounded-full border border-stone-400 bg-stone-100 transition-colors dark:border-stone-600 dark:bg-stone-800"
       >
         <span className="absolute left-0.5 top-0.5 h-2 w-2 rounded-full bg-stone-500 transition-transform dark:translate-x-3 dark:bg-stone-300" />
       </span>

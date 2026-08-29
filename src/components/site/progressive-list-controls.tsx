@@ -14,25 +14,29 @@ export function ListBatchSizeControl({
   label: string;
 }) {
   return (
-    <fieldset className="m-0 min-w-0 border-0 p-0">
-      <legend className="text-[0.65rem] lowercase tracking-widest text-stone-400">{label}</legend>
-      <div className="mt-1 inline-flex border border-stone-300 dark:border-stone-700">
+    <fieldset className="m-0 inline-flex min-w-0 items-baseline gap-2 border-0 p-0">
+      <legend className="sr-only">{label}</legend>
+      <span aria-hidden="true" className="text-[0.65rem] lowercase tracking-widest text-stone-400">
+        show
+      </span>
+      <div className="inline-flex items-baseline gap-2">
         {LIST_BATCH_SIZES.map((size, index) => (
-          <button
-            key={size}
-            type="button"
-            aria-pressed={value === size}
-            onClick={() => onChange(size)}
-            className={`min-w-10 px-3 py-2 font-serif text-sm transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-[#859900] ${
-              index > 0 ? "border-l border-stone-300 dark:border-stone-700" : ""
-            } ${
-              value === size
-                ? "bg-stone-100 text-[#6f8200] dark:bg-stone-800"
-                : "bg-white text-stone-900 hover:text-[#6f8200] dark:bg-stone-950 dark:text-stone-100 dark:hover:text-[#6f8200]"
-            }`}
-          >
-            {size}
-          </button>
+          <span key={size} className="inline-flex items-baseline gap-2">
+            {index > 0 ? <span className="text-stone-300 dark:text-stone-700">·</span> : null}
+            <button
+              type="button"
+              aria-label={`${label}: ${size}`}
+              aria-pressed={value === size}
+              onClick={() => onChange(size)}
+              className={`cursor-pointer border-b pb-0.5 font-serif text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#859900] ${
+                value === size
+                  ? "border-[#859900] text-[#6f8200]"
+                  : "border-transparent text-stone-400 hover:text-[#6f8200]"
+              }`}
+            >
+              {size}
+            </button>
+          </span>
         ))}
       </div>
     </fieldset>
@@ -62,26 +66,25 @@ export function ProgressiveRevealControl({
   const nextCount = Math.min(batchSize, remainingCount);
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-      <span className="text-stone-450" aria-live="polite">
+    <div className="mt-8 flex flex-col items-center gap-2 text-xs">
+      {remainingCount > 0 ? (
+        <button
+          type="button"
+          aria-controls={regionId}
+          aria-label={
+            contextLabel
+              ? `Show ${nextCount} more from ${contextLabel}`
+              : `Show ${nextCount} more ${nextCount === 1 ? singularLabel : pluralLabel}`
+          }
+          onClick={onShowMore}
+          className="cursor-pointer border-b border-transparent pb-0.5 lowercase tracking-widest text-[#6f8200] transition-colors hover:border-current focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#859900]"
+        >
+          show more
+        </button>
+      ) : null}
+      <span className="text-[0.65rem] lowercase tracking-wide text-stone-400" aria-live="polite">
         showing {visibleCount} of {totalCount}
       </span>
-      <button
-        type="button"
-        aria-controls={regionId}
-        aria-label={
-          remainingCount > 0 && contextLabel
-            ? `Show ${nextCount} more from ${contextLabel}`
-            : undefined
-        }
-        disabled={remainingCount === 0}
-        onClick={onShowMore}
-        className="lowercase tracking-wider text-[#6f8200] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#859900] disabled:cursor-default disabled:text-stone-400 disabled:no-underline"
-      >
-        {remainingCount > 0
-          ? `show ${nextCount} more ${nextCount === 1 ? singularLabel : pluralLabel}`
-          : `all ${totalCount} shown`}
-      </button>
     </div>
   );
 }
