@@ -8,9 +8,10 @@ import {
   ProgressiveRevealControl,
   type ListBatchSize,
 } from "@/components/site/progressive-list-controls";
+import { VentureViewSelector, type VentureView } from "@/components/venture/venture-view-selector";
 import type { MusicCredit } from "@/lib/music-credit";
 
-export type VentureAdventureKind = "peak" | "park" | "travel" | "journal";
+export type VentureAdventureKind = "peak" | "park" | "travel";
 
 export type VentureAdventureRecord = Readonly<{
   id: string;
@@ -33,14 +34,27 @@ export type VentureAdventureItem = Readonly<{
   music?: MusicCredit | null;
 }>;
 
-type OrganizeBy = "type" | "trip";
+type OrganizeBy = "kind" | "trip";
 
-const kindOrder: readonly VentureAdventureKind[] = ["peak", "park", "travel", "journal"];
 const kindLabels: Record<VentureAdventureKind, string> = {
   peak: "peaks",
   park: "national parks",
   travel: "travels",
-  journal: "journal entries",
+};
+const kindForView: Record<VentureView, VentureAdventureKind> = {
+  peaks: "peak",
+  parks: "park",
+  travels: "travel",
+};
+const organizeOptionLabels: Record<VentureView, string> = {
+  peaks: "peak",
+  parks: "park",
+  travels: "travel",
+};
+const countLabels: Record<VentureView, readonly [string, string]> = {
+  peaks: ["peak", "peaks"],
+  parks: ["park", "parks"],
+  travels: ["place", "places"],
 };
 
 type TripScope = string | null | undefined;
@@ -155,21 +169,22 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
 }
 
 export function VentureAdventureList({ items }: { items: readonly VentureAdventureItem[] }) {
-  const [organizeBy, setOrganizeBy] = useState<OrganizeBy>("type");
+  const [view, setView] = useState<VentureView>("travels");
+  const [organizeBy, setOrganizeBy] = useState<OrganizeBy>("kind");
   const [batchSize, setBatchSize] = useState<ListBatchSize>(5);
   const [visibleCount, setVisibleCount] = useState(5);
   const listId = useId();
 
   const groups = useMemo(() => {
-    const sortedItems = [...items].sort((first, second) => compareItemsNewest(first, second));
-    if (organizeBy === "type") {
-      return kindOrder
-        .map((kind) => ({ label: kindLabels[kind], items: sortedItems.filter((item) => item.kind === kind) }))
-        .filter((group) => group.items.length > 0);
+    const selectedKind = kindForView[view];
+    const selectedItems = items.filter((item) => item.kind === selectedKind);
+    const sortedItems = [...selectedItems].sort((first, second) => compareItemsNewest(first, second));
+    if (organizeBy === "kind") {
+      return [{ label: kindLabels[selectedKind], items: sortedItems }];
     }
 
     const itemsByTrip = new Map<string, VentureAdventureItem[]>();
-    for (const item of items) {
+    for (const item of selectedItems) {
       const trips = [...new Set(item.records.map((record) => record.trip ?? "trip to add"))];
       for (const tripLabel of trips) {
         const tripItems = itemsByTrip.get(tripLabel) ?? [];
@@ -201,7 +216,7 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
         ),
       };
     });
-  }, [items, organizeBy]);
+  }, [items, organizeBy, view]);
 
   if (items.length === 0) {
     return <p className="font-serif text-sm italic text-stone-500">No adventures recorded yet.</p>;
@@ -212,7 +227,6 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
       const trip = organizeBy === "trip" ? (group.label === "trip to add" ? null : group.label) : undefined;
       return group.items.map((item) => ({
         key: `${group.label}:${item.id}`,
-        groupLabel: group.label,
         item,
         timestamp: latestKnownTimestamp(item, trip),
       }));
@@ -232,6 +246,14 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
       items: group.items.filter((item) => visibleRowKeys.has(`${group.label}:${item.id}`)),
     }))
     .filter((group) => group.items.length > 0);
+  const selectedKind = kindForView[view];
+  const selectedItemCount = items.filter((item) => item.kind === selectedKind).length;
+  const [singularCountLabel, pluralCountLabel] = countLabels[view];
+
+  const changeView = (nextView: VentureView) => {
+    setView(nextView);
+    setVisibleCount(batchSize);
+  };
 
   const changeOrganizeBy = (nextOrganizeBy: OrganizeBy) => {
     setOrganizeBy(nextOrganizeBy);
@@ -245,7 +267,14 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
 
   return (
     <div>
-      <div className="mb-10 grid gap-4 sm:grid-cols-[minmax(0,16rem)_auto_1fr] sm:items-end">
+      <VentureViewSelector
+        value={view}
+        onChange={changeView}
+        label="Choose an adventure index"
+        controlsId={listId}
+      />
+
+      <div className="mb-10 mt-8 grid gap-4 sm:grid-cols-[minmax(0,16rem)_auto_1fr] sm:items-end">
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           organize index by
           <select
@@ -253,24 +282,33 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
             onChange={(event) => changeOrganizeBy(event.target.value as OrganizeBy)}
             className="mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-900 outline-none focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
           >
-            <option value="type">peak / park / travels</option>
+            <option value="kind">{organizeOptionLabels[view]}</option>
             <option value="trip">trip</option>
           </select>
         </label>
-        <ListBatchSizeControl value={batchSize} onChange={changeBatchSize} label="adventures" />
-        <p className="m-0 text-xs text-stone-450 sm:text-right">
-          {items.length} {items.length === 1 ? "place" : "places"} · repeated ascents and visits stay together
+        <ListBatchSizeControl value={batchSize} onChange={changeBatchSize} label={kindLabels[selectedKind]} />
+        <p className="m-0 text-xs text-stone-450 sm:text-right" aria-live="polite">
+          {selectedItemCount} {selectedItemCount === 1 ? singularCountLabel : pluralCountLabel} · repeated
+          ascents and visits stay together
         </p>
       </div>
 
       <div id={listId} className="space-y-14">
         {visibleGroups.map((group) => (
           <section key={group.label}>
-            <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">{group.label}</h2>
+            {organizeBy === "trip" ? (
+              <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">
+                {group.label}
+              </h2>
+            ) : null}
             <AdventureRows items={group.items} />
           </section>
         ))}
       </div>
+
+      {displayRows.length === 0 ? (
+        <p className="font-serif text-sm italic text-stone-500">No {kindLabels[selectedKind]} recorded yet.</p>
+      ) : null}
 
       {displayRows.length > batchSize ? (
         <ProgressiveRevealControl

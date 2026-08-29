@@ -1,23 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { TravelMapDestination } from "@/components/venture/international-travels-map";
 import type { NationalParkIndexItem } from "@/components/venture/national-parks-index";
+import { VentureViewSelector, type VentureView } from "@/components/venture/venture-view-selector";
 import type { NationalParkBoundaryFeature } from "@/lib/venture-parks";
 import type { NortheastPeak, NortheastRangeArea } from "@/lib/venture-trails";
-
-type AtlasView = "peaks" | "parks" | "travels";
-
-const atlasViews: readonly Readonly<{
-  id: AtlasView;
-  label: string;
-  description: string;
-}>[] = [
-  { id: "peaks", label: "northeast 115", description: "peaks and ranges across the northeast" },
-  { id: "parks", label: "national parks", description: "parks across the united states" },
-  { id: "travels", label: "travels", description: "countries & journeys" },
-];
 
 function AtlasMapLoading() {
   return (
@@ -55,38 +44,19 @@ export function VentureAtlas({
   peaks: readonly NortheastPeak[];
   rangeAreas: readonly NortheastRangeArea[];
 }) {
-  const [view, setView] = useState<AtlasView>("travels");
+  const [view, setView] = useState<VentureView>("travels");
+  const mapPanelId = useId();
 
   return (
     <section className="not-prose w-full" aria-label="Venture atlas">
-      <div className="grid grid-cols-3 gap-4" aria-label="Choose an atlas view">
-        {atlasViews.map((atlasView) => {
-          const active = atlasView.id === view;
+      <VentureViewSelector
+        value={view}
+        onChange={setView}
+        label="Choose an atlas view"
+        controlsId={mapPanelId}
+      />
 
-          return (
-            <button
-              key={atlasView.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setView(atlasView.id)}
-              className={`cursor-pointer border-t-2 pt-3 text-left transition-[color,border-color,opacity] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#859900] ${
-                active
-                  ? "border-[#859900] text-[#6f8200] opacity-100"
-                  : "border-stone-300 text-stone-500 opacity-80 hover:border-stone-400 hover:text-stone-900 hover:opacity-100 dark:border-stone-700 dark:text-stone-400 dark:hover:text-stone-100"
-              }`}
-            >
-              <span className="block text-[0.68rem] lowercase tracking-widest">
-                {atlasView.label}
-              </span>
-              <span className="mt-2 hidden font-serif text-xs text-stone-500 sm:block">
-                {atlasView.description}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-6">
+      <div id={mapPanelId} className="mt-6">
         {view === "peaks" && (
           <Northeast115Map peaks={peaks} rangeAreas={rangeAreas} variant="atlas" />
         )}

@@ -3,6 +3,7 @@ import { VentureShell } from "@/components/site/site-content";
 import {
   VentureAdventureList,
   type VentureAdventureItem,
+  type VentureAdventureKind,
 } from "@/components/venture/venture-adventure-list";
 import { getAllVentureEntries } from "@/lib/venture-entries";
 import { formatOccurrence } from "@/lib/venture-format";
@@ -14,6 +15,16 @@ export const metadata: Metadata = {
   title: "index | venture",
   description: "A complete index of Venture field notes.",
 };
+
+function adventureKindForCollections(collections: readonly string[]): VentureAdventureKind {
+  if (collections.some((collection) => ["northeast-115", "peaks", "trails"].includes(collection))) {
+    return "peak";
+  }
+  if (collections.some((collection) => ["national-parks", "parks"].includes(collection))) {
+    return "park";
+  }
+  return "travel";
+}
 
 export default async function VentureIndexPage() {
   const entries = await getAllVentureEntries();
@@ -89,7 +100,7 @@ export default async function VentureIndexPage() {
       id: `journal:${entry.slug}`,
       title: entry.subtitle,
       href: `/venture/${entry.slug}`,
-      kind: "journal",
+      kind: adventureKindForCollections(entry.collections),
       location: entry.location,
       entry: entry.entry,
       time: entry.time,
