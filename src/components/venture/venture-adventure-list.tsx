@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { MusicTagline } from "@/components/site/music-tagline";
+import {
+  ListBatchSizeControl,
+  ProgressiveRevealControl,
+  type ListBatchSize,
+} from "@/components/site/progressive-list-controls";
 import type { MusicCredit } from "@/lib/music-credit";
 
 export type VentureAdventureKind = "peak" | "park" | "travel" | "journal";
@@ -98,9 +103,9 @@ function dateSummary(item: VentureAdventureItem): string {
   return `known dates: ${formatAdventureDate(dates[0])} – ${formatAdventureDate(dates[dates.length - 1])}`;
 }
 
-function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
+function AdventureRows({ id, items }: { id: string; items: readonly VentureAdventureItem[] }) {
   return (
-    <div className="border-t border-stone-300 dark:border-stone-700">
+    <div id={id} className="border-t border-stone-300 dark:border-stone-700">
       {items.map((item) => {
         const trips = uniqueTrips(item);
         const newestRecords = [...item.records].sort(compareRecordsNewest);
@@ -151,6 +156,9 @@ function AdventureRows({ items }: { items: readonly VentureAdventureItem[] }) {
 
 export function VentureAdventureList({ items }: { items: readonly VentureAdventureItem[] }) {
   const [organizeBy, setOrganizeBy] = useState<OrganizeBy>("type");
+  const [batchSize, setBatchSize] = useState<ListBatchSize>(5);
+  const [visibleByGroup, setVisibleByGroup] = useState<Record<string, number>>({});
+  const listId = useId();
 
   const groups = useMemo(() => {
     const sortedItems = [...items].sort((first, second) => compareItemsNewest(first, second));
@@ -199,32 +207,66 @@ export function VentureAdventureList({ items }: { items: readonly VentureAdventu
     return <p className="font-serif text-sm italic text-stone-500">No adventures recorded yet.</p>;
   }
 
+  const changeOrganizeBy = (nextOrganizeBy: OrganizeBy) => {
+    setOrganizeBy(nextOrganizeBy);
+    setVisibleByGroup({});
+  };
+
+  const changeBatchSize = (nextBatchSize: ListBatchSize) => {
+    setBatchSize(nextBatchSize);
+    setVisibleByGroup({});
+  };
+
   return (
     <div>
-      <div className="mb-10 grid gap-3 border-y border-stone-300 py-4 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-end dark:border-stone-700">
+      <div className="mb-10 grid gap-4 sm:grid-cols-[minmax(0,16rem)_auto_1fr] sm:items-end">
         <label className="text-[0.65rem] lowercase tracking-widest text-stone-400">
           organize index by
           <select
             value={organizeBy}
-            onChange={(event) => setOrganizeBy(event.target.value as OrganizeBy)}
+            onChange={(event) => changeOrganizeBy(event.target.value as OrganizeBy)}
             className="mt-1 w-full border border-stone-300 bg-white px-3 py-2 font-serif text-sm text-stone-900 outline-none focus:border-[#859900] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
           >
             <option value="type">peak / park / travels</option>
             <option value="trip">trip</option>
           </select>
         </label>
+        <ListBatchSizeControl value={batchSize} onChange={changeBatchSize} label="show per section" />
         <p className="m-0 text-xs text-stone-450 sm:text-right">
           {items.length} {items.length === 1 ? "place" : "places"} · repeated ascents and visits stay together
         </p>
       </div>
 
       <div className="space-y-14">
-        {groups.map((group) => (
-          <section key={group.label}>
-            <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">{group.label}</h2>
-            <AdventureRows items={group.items} />
-          </section>
-        ))}
+        {groups.map((group, index) => {
+          const groupKey = `${organizeBy}:${group.label}`;
+          const regionId = `${listId}-group-${index}`;
+          const visibleCount = Math.min(visibleByGroup[groupKey] ?? batchSize, group.items.length);
+
+          return (
+            <section key={group.label}>
+              <h2 className="mb-4 font-serif text-sm font-normal lowercase tracking-widest text-stone-500">{group.label}</h2>
+              <AdventureRows id={regionId} items={group.items.slice(0, visibleCount)} />
+              {group.items.length > batchSize ? (
+                <ProgressiveRevealControl
+                  visibleCount={visibleCount}
+                  totalCount={group.items.length}
+                  batchSize={batchSize}
+                  regionId={regionId}
+                  singularLabel="adventure"
+                  pluralLabel="adventures"
+                  contextLabel={group.label}
+                  onShowMore={() => {
+                    setVisibleByGroup((current) => ({
+                      ...current,
+                      [groupKey]: Math.min((current[groupKey] ?? batchSize) + batchSize, group.items.length),
+                    }));
+                  }}
+                />
+              ) : null}
+            </section>
+          );
+        })}
       </div>
     </div>
   );

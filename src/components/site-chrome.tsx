@@ -49,7 +49,7 @@ export default function SiteChrome({
             {children}
 
             <footer className="container mx-auto flex justify-between gap-4 px-6 py-20 text-stone-500">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-center gap-2 leading-none">
                 <Link href="/about" className="leading-none text-stone-500">
                   wiki
                 </Link>

@@ -9,7 +9,7 @@ export function Logo() {
         alt=""
         width={160}
         height={160}
-        className="h-auto w-full transition-[filter] dark:grayscale dark:brightness-[0.34] dark:contrast-[1.08]"
+        className="h-auto w-full transition-[filter] dark:grayscale dark:brightness-[0.47] dark:contrast-[1.03]"
         priority
       />
     </Link>

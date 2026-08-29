@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { MusicTagline } from "@/components/site/music-tagline";
 import type { SfiPost } from "@/lib/sfi-posts";
-import { formatSfiHeaderDate, getSfiTagColor } from "@/lib/sfi-posts";
+import { formatSfiHeaderDate, getSfiTagColor } from "@/lib/sfi-post-display";
+
+export type SfiPostHeaderData = Pick<
+  SfiPost,
+  "title" | "subtitle" | "date" | "time" | "location" | "entry" | "music" | "tags"
+>;
 
 export function SfiPostHeader({
   post,
@@ -9,7 +14,7 @@ export function SfiPostHeader({
   large = false,
   className = "",
 }: {
-  post: SfiPost;
+  post: SfiPostHeaderData;
   href?: string;
   large?: boolean;
   className?: string;
